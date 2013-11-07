@@ -1,0 +1,12 @@
+{
+    "fields": {
+        "sampleString"      : {"typeOfValue":"string"},
+        "sampleStringArray" : {"typeOfValue":"string", "displayName":"Letters of the Alphabet", "multipleValuesPerRow": true},
+        "sampleNumber"      : {"typeOfValue":"number", "unlimitedValues":true}
+    },
+    "data" : [
+        {"sampleString": "hello", "sampleStringArray": [],         "sampleNumber" :  8.5},
+        {"sampleString": "hello", "sampleStringArray": ["a", "b"], "sampleNumber" : 10  },
+        {}
+    ]
+}
