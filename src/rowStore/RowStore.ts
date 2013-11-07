@@ -58,7 +58,7 @@ module ozone.rowStore {
     }
 
     /** The default non-unary Field type for RowStores. */
-    export class AjaxRowField<T> implements Field<T> {
+    export class JsonRowField<T> implements Field<T> {
 
         /** Private constructor:  please use factory methods. */
         constructor( public identifier : string,
@@ -94,7 +94,7 @@ module ozone.rowStore {
         }
     }
 
-    export class UnaryAjaxRowField<T> implements UnaryField<T> {
+    export class UnaryJsonRowField<T> implements UnaryField<T> {
         constructor( public identifier : string,
                      public displayName : string,
                      public typeOfValue : string,

@@ -49,9 +49,9 @@ module ozone.rowStore {
 
                 var fProto : any;
                 if (fd.multipleValuesPerRow)
-                    fProto = AjaxRowField;
+                    fProto = JsonRowField;
                 else
-                    fProto = UnaryAjaxRowField;
+                    fProto = UnaryJsonRowField;
                 var field = new fProto(fd.identifier, fd.displayName, fd.typeOfValue, null, fd.range(), fd.distinctValueEstimate());
                 fields.push(field);
             }
@@ -117,8 +117,8 @@ module ozone.rowStore {
 
     function proto(field : Field<any>) : any {
         if (typeof field["value"] === "function") {
-            return UnaryAjaxRowField;
+            return UnaryJsonRowField;
         }
-        return AjaxRowField;
+        return JsonRowField;
     }
 }

@@ -61,9 +61,9 @@ var ozone;
         rowStore.RowStore = RowStore;
 
         /** The default non-unary Field type for RowStores. */
-        var AjaxRowField = (function () {
+        var JsonRowField = (function () {
             /** Private constructor:  please use factory methods. */
-            function AjaxRowField(identifier, displayName, typeOfValue, typeConstructor, rangeVal, distinctValueEstimateVal) {
+            function JsonRowField(identifier, displayName, typeOfValue, typeConstructor, rangeVal, distinctValueEstimateVal) {
                 if (typeof typeConstructor === "undefined") { typeConstructor = null; }
                 if (typeof rangeVal === "undefined") { rangeVal = null; }
                 if (typeof distinctValueEstimateVal === "undefined") { distinctValueEstimateVal = Number.POSITIVE_INFINITY; }
@@ -74,15 +74,15 @@ var ozone;
                 this.rangeVal = rangeVal;
                 this.distinctValueEstimateVal = distinctValueEstimateVal;
             }
-            AjaxRowField.prototype.range = function () {
+            JsonRowField.prototype.range = function () {
                 return this.rangeVal;
             };
 
-            AjaxRowField.prototype.distinctValueEstimate = function () {
+            JsonRowField.prototype.distinctValueEstimate = function () {
                 return this.distinctValueEstimateVal;
             };
 
-            AjaxRowField.prototype.canHold = function (otherField) {
+            JsonRowField.prototype.canHold = function (otherField) {
                 if (this.typeOfValue === otherField.typeOfValue) {
                     if (this.typeOfValue === 'object') {
                         return this.typeConstructor === otherField.typeConstructor;
@@ -92,16 +92,16 @@ var ozone;
                 return false;
             };
 
-            AjaxRowField.prototype.values = function (rowToken) {
+            JsonRowField.prototype.values = function (rowToken) {
                 var result = rowToken[this.identifier];
                 return (result == null) ? [] : result;
             };
-            return AjaxRowField;
+            return JsonRowField;
         })();
-        rowStore.AjaxRowField = AjaxRowField;
+        rowStore.JsonRowField = JsonRowField;
 
-        var UnaryAjaxRowField = (function () {
-            function UnaryAjaxRowField(identifier, displayName, typeOfValue, typeConstructor, rangeVal, distinctValueEstimateVal) {
+        var UnaryJsonRowField = (function () {
+            function UnaryJsonRowField(identifier, displayName, typeOfValue, typeConstructor, rangeVal, distinctValueEstimateVal) {
                 if (typeof typeConstructor === "undefined") { typeConstructor = null; }
                 if (typeof rangeVal === "undefined") { rangeVal = null; }
                 if (typeof distinctValueEstimateVal === "undefined") { distinctValueEstimateVal = Number.POSITIVE_INFINITY; }
@@ -112,15 +112,15 @@ var ozone;
                 this.rangeVal = rangeVal;
                 this.distinctValueEstimateVal = distinctValueEstimateVal;
             }
-            UnaryAjaxRowField.prototype.range = function () {
+            UnaryJsonRowField.prototype.range = function () {
                 return this.rangeVal;
             };
 
-            UnaryAjaxRowField.prototype.distinctValueEstimate = function () {
+            UnaryJsonRowField.prototype.distinctValueEstimate = function () {
                 return this.distinctValueEstimateVal;
             };
 
-            UnaryAjaxRowField.prototype.canHold = function (otherField) {
+            UnaryJsonRowField.prototype.canHold = function (otherField) {
                 if (this.typeOfValue === otherField.typeOfValue) {
                     if (this.typeOfValue === 'object') {
                         return this.typeConstructor === otherField.typeConstructor;
@@ -130,17 +130,17 @@ var ozone;
                 return false;
             };
 
-            UnaryAjaxRowField.prototype.values = function (rowToken) {
+            UnaryJsonRowField.prototype.values = function (rowToken) {
                 var v = this.value(rowToken);
                 return (v == null) ? [] : [v];
             };
 
-            UnaryAjaxRowField.prototype.value = function (rowToken) {
+            UnaryJsonRowField.prototype.value = function (rowToken) {
                 return rowToken[this.identifier];
             };
-            return UnaryAjaxRowField;
+            return UnaryJsonRowField;
         })();
-        rowStore.UnaryAjaxRowField = UnaryAjaxRowField;
+        rowStore.UnaryJsonRowField = UnaryJsonRowField;
 
         var RangeCalculator = (function (_super) {
             __extends(RangeCalculator, _super);
