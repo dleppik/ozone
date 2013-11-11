@@ -64,7 +64,7 @@ TODO
 
 - [X] Simple array bitmap
 
-- [ ] Bitmap-based column-oriented fields
+- [ ] Bitmap-based column-oriented fields (implemented, not fully tested-- see bootstrap-demo.js)
 
 - [ ] Packed bitmaps using Array.  (Fallback for older browsers, and may be faster for filtering.)
 

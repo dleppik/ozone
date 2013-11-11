@@ -5,16 +5,30 @@
 
 module ozone.columnStore {
 
-    class ColumnStore implements RandomAccessStore {
+    export class ColumnStore implements RandomAccessStore {
 
-        public length : number;
+        /**
+         * ECMAScript doesn't require associative arrays to retain the order of their keys, although most
+         * implementations do.  (Rhino doesn't.)  So a separate fieldArray isn't completely redundant.
+         */
+        private fieldMap : { [key: string]: Field<any>; } ;
 
-        fields() : Field<any>[] {
-            throw new Error("Not written");
+
+        constructor( public length: number, private fieldArray : Field<any>[] ) {
+            this.fieldMap = {};
+            for (var i=0; i<fieldArray.length; i++) {
+                var field = fieldArray[i];
+                this.fieldMap[field.identifier] = field;
+            }
         }
 
-        field(key:String):ozone.Field<any> {
-            throw new Error("Not written");
+
+        fields() : Field<any>[] {
+            return this.fieldArray;
+        }
+
+        field(key:String) : Field<any> {
+            return this.fieldMap[name];
         }
 
         filter(filter : Filter) : RandomAccessStore {
@@ -35,7 +49,9 @@ module ozone.columnStore {
 
 
         eachRow(rowAction:Function) {
-            throw new Error("Not written");
+            for (var i=0; i<this.length; i++) {
+                rowAction(i);
+            }
         }
 
     }

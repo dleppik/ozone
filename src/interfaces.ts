@@ -66,7 +66,7 @@ module ozone {
     }
 
     export interface RandomAccessField<T> extends Field<T> {
-
+        // TODO provide bitmaps for values
     }
 
     /**
@@ -83,7 +83,7 @@ module ozone {
          * the fly.
          */
         // TODO  This really needs to be a property of transformers
-        canHold(otherField: Field<T>);
+        //canHold(otherField: Field<T>);
 
         /**
          * Returns all values for this row.  Never returns null.  This is called within DataStore.eachRow(), and uses
@@ -167,6 +167,7 @@ module ozone {
      * browser compatibility, and to test performance, we allow for many implementations.  These are read-only.
      */
     export interface Bitmap {
+
         get(index : number) : boolean;
 
         /** The lowest value for which get() returns true, or -1 if size === 0. */
