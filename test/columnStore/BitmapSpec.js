@@ -173,10 +173,6 @@ describe("Generic bitmap methods", function() {
                 });
             });
 
-            it("Fails", function() {
-                expect("true").toBeFalsy();
-            });
-
             it("Has 'each' which matches the iterator", function() {
                 bitmapForEachArray(function(array, bitmap) {
                     var it = bitmap.iterator();
