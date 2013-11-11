@@ -1,5 +1,9 @@
 #!/bin/sh
 
+#
+# Unix build script for this script.
+#
+
 cd "$( dirname "${BASH_SOURCE[0]}" )"
 cd ..
-tsc -m 'amd' --sourcemap src/*.ts src/rowStore/*.ts --out lib/ozone.js
+tsc -m 'amd' --sourcemap src/*.ts src/rowStore/*.ts src/columnStore/*.ts --out ozone.js

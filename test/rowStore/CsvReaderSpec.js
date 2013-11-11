@@ -2,11 +2,11 @@
 
 "use strict";
 
-describe("RowTransformer", function() {
+describe("RowStore", function() {
     describe("CsvReader", function() {
         var testCsv = function(line, expected) {
-            var reader = new ozone.CsvReader();
-            reader.read(line);
+            var reader = new ozone.rowStore.CsvReader();
+            reader.onItem(line);
             var lineOutput = reader.columnNames;
             expect(lineOutput).toEqual(expected);
         };

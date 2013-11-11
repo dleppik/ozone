@@ -38,22 +38,24 @@ module ozone.rowStore {
             var toComputeRange : string[] = [];
             var toComputeDistinctValues : string[] = [];
             for (var key in fieldInfo) {
-                var fd = FieldDescriptor.build(fieldInfo[key], key);
-                fieldDescriptors.push(fd);
-                if (fd.shouldCalculateDistinctValues) {
-                    toComputeDistinctValues.push(key);
-                }
-                if (fd.typeOfValue === "number"  && fd.range()===null) {
-                    toComputeRange.push(key);
-                }
+                if (fieldInfo.hasOwnProperty(key)) {
+                    var fd = FieldDescriptor.build(fieldInfo[key], key);
+                    fieldDescriptors.push(fd);
+                    if (fd.shouldCalculateDistinctValues) {
+                        toComputeDistinctValues.push(key);
+                    }
+                    if (fd.typeOfValue === "number"  && fd.range()===null) {
+                        toComputeRange.push(key);
+                    }
 
-                var fProto : any;
-                if (fd.multipleValuesPerRow)
-                    fProto = JsonRowField;
-                else
-                    fProto = UnaryJsonRowField;
-                var field = new fProto(fd.identifier, fd.displayName, fd.typeOfValue, null, fd.range(), fd.distinctValueEstimate());
-                fields.push(field);
+                    var fProto : any;
+                    if (fd.multipleValuesPerRow)
+                        fProto = JsonRowField;
+                    else
+                        fProto = UnaryJsonRowField;
+                    var field = new fProto(fd.identifier, fd.displayName, fd.typeOfValue, null, fd.range(), fd.distinctValueEstimate());
+                    fields.push(field);
+                }
             }
 
             var result = new RowStore(fields, data, rowTransformer);
