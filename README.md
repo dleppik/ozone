@@ -70,7 +70,7 @@ TODO
 
 - [ ] Packed bitmaps using Uint32Array.
 
-- [ ] Simple array-based fields, for when bitmaps would be inefficient
+- [ ] Simple array-based UnaryFields, for when bitmaps would be inefficient
 
 - [ ] Binary column-oriented reader/writers
 
