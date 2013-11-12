@@ -13,7 +13,7 @@ Ozone is a special-purpose database for filtering and counting. It's good for an
 
 There are also things Ozone is not designed to do.  Ozone is column-oriented, rather than row-oriented: it is not made for accessing individual records.  Ozone is also not well suited for data that can't be summarized easily, such as names or identifiers.  In general, it's best at handling large columns with a small number of individual values, such as answers to multiple-choice questions.
 
-The major differences between Ozone and a traditional SQL database (these are not unusual for OLAP databases):
+The major differences between Ozone and a traditional SQL database (most of these are not unusual for OLAP databases):
 
 * Ozone uses its own jQuery-like JavaScript API, not SQL or MDX.
 
