@@ -111,9 +111,6 @@ module ozone.rowStore {
                     result = result.withField(newField);
                 }
             }
-
-
-
             return result;
         }
 

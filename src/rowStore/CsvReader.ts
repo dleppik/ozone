@@ -64,6 +64,8 @@ module ozone.rowStore {
             }
             return result;
         }
+
+
         private lineToArray(row : any) : string[] {
             var cells : string[] = [];
             var str = <string> row;

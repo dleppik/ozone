@@ -41,6 +41,7 @@ module ozone.rowStore {
                     rowAction(row);
                 }
             }
+            this.rowTransformer.onEnd();
         }
 
         /** Replace an existing field with this one.  If the old field isn't found, the new one is added at the end. */

@@ -75,17 +75,6 @@ module ozone {
     export interface Field<T> extends FieldDescribing {
 
         /**
-         * If true, this field's data type is exactly convertible from of the other field's, and therefore it can
-         * hold the other field's data.  For example, a UnaryField<string> can hold the values from a Field<string>.
-         * Similarly, the DataStore may provide conversions from numbers to Dates or from booleans to strings.
-         *
-         * This is particularly useful for building proxy DataStores which can convert from one format to another on
-         * the fly.
-         */
-        // TODO  This really needs to be a property of transformers
-        //canHold(otherField: Field<T>);
-
-        /**
          * Returns all values for this row.  Never returns null.  This is called within DataStore.eachRow(), and uses
          * the token provided by that function.
          */

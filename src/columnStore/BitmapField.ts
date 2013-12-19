@@ -89,11 +89,11 @@ module ozone.columnStore {
         private rangeVal : Range;
 
         constructor(descriptor : FieldDescribing, private valueList : T[], private valueMap : {(valueId:string) : Bitmap}) {
-            this.identifier = descriptor.identifier;
-            this.displayName = descriptor.displayName;
-            this.typeOfValue = descriptor.typeOfValue;
+            this.identifier      = descriptor.identifier;
+            this.displayName     = descriptor.displayName;
+            this.typeOfValue     = descriptor.typeOfValue;
             this.typeConstructor = descriptor.typeConstructor;
-            this.rangeVal = descriptor.range();
+            this.rangeVal        = descriptor.range();
         }
 
         public allValues() : T[] {
