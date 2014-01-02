@@ -8,7 +8,7 @@ module ozone.columnStore {
     /**
      * Stores the entire column in a single dense array.
      */
-    export class ArrayField<T> implements UnaryField<T> {
+    export class ArrayField<T> implements UnaryField<T>, RandomAccessField<T> {
 
         /**
          * Returns a reducer that can be run on a source DataStore to reproduce a sourceField.
@@ -102,5 +102,8 @@ module ozone.columnStore {
             return this.valueEstimate;
         }
 
+        public rowHasValue(index : number, value : any) : boolean {
+            return this.array[index] === value;
+        }
     }
 }

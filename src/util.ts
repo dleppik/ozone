@@ -4,6 +4,10 @@
 
 /// <reference path='_all.ts' />
 
+
+/**
+ *  Contains tiny classes that are too small to merit their own file.
+ */
 module ozone {
 
     /**
@@ -47,6 +51,5 @@ module ozone {
             this.reset();
             return result;
         }
-
     }
 }

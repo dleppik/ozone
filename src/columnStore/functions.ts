@@ -19,11 +19,9 @@ module ozone.columnStore {
 
             var newBuilder;
             if (sourceFieldIsUnary  &&  sourceField.distinctValueEstimate() > 500) {  // 500 is somewhat arbitrary
-                console.log("Using ArrayField for "+sourceField.displayName); // XXX
                 newBuilder = ArrayField.builder(<UnaryField>sourceField);
             }
             else {
-                console.log("Using BitmapField for "+sourceField.displayName); // XXX
                 newBuilder = BitmapField.builder(sourceField);
             }
             builders[sourceField.identifier] = newBuilder;

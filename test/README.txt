@@ -1,1 +1,2 @@
 Credit card complaint data is from https://data.consumerfinance.gov/dataset/Credit-card-complaints/x3w3-u78g
+Olympic data from http://www.theguardian.com/sport/datablog/2012/jun/25/olympic-medal-winner-list-data

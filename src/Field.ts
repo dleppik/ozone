@@ -4,6 +4,34 @@
 /// <reference path='_all.ts' />
 
 module ozone {
+
+
+    /**
+     * An OLAP dimension.  Similar to a column in a database table, except that Fields may have multiple values per row.
+     */
+    export interface Field<T> extends FieldDescribing {
+
+        /**
+         * Returns all values for this row.  Never returns null.  This is called within DataStore.eachRow(), and uses
+         * the token provided by that function.
+         */
+        values(rowToken : any) : T[];
+    }
+
+    /** All fields in a RandomAccessStore are RandomAccessFields. */
+    export interface RandomAccessField<T> extends Field<T> {
+        rowHasValue(rowToken : any, value : any) : boolean;
+    }
+
+    /** A Field where values(row) returns at most one value. */
+    export interface UnaryField<T> extends Field<T> {
+        /**
+         * Returns the single value of values(rowToken), or null.  This is called within DataStore.eachRow(), and uses
+         * the token provided by that function.
+         */
+        value(rowToken : any) : T;
+    }
+
     export class FieldDescriptor implements FieldDescribing {
 
         /**

@@ -5,7 +5,7 @@
 module ozone {
     export class StoreProxy implements DataStore {
 
-        constructor( private source : DataStore ) {
+        constructor( public source : DataStore ) {
         }
 
         public fields(): Field<any>[] {

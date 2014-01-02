@@ -8,6 +8,9 @@ module ozone.rowStore {
     /**
      * A row-oriented DataStore that acts on an array of rows.  The interpretation of the rows is done entirely by
      * the Fields.  This is mainly intended for server-side (node.js) usage to convert data into more efficient formats.
+     *
+     * Although the current implementation stores rows in an array, this may someday be changed to be stream-based to
+     * handle data more efficiently.  For this reason the public API only allows row access from start to end.
      */
     export class RowStore implements DataStore {
 

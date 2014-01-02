@@ -5,7 +5,15 @@
 
 module ozone.columnStore {
 
-    export class ColumnStore implements RandomAccessStore {
+    import ArrayIndexBitmap = ozone.bitmap.ArrayIndexBitmap;
+    import RangeBitmap = ozone.bitmap.RangeBitmap;
+
+
+    export interface ColumnStoreInterface extends RandomAccessStore {
+        bitmap() : Bitmap;
+    }
+
+    export class ColumnStore implements ColumnStoreInterface {
 
         /**
          * ECMAScript doesn't require associative arrays to retain the order of their keys, although most
@@ -22,30 +30,26 @@ module ozone.columnStore {
             }
         }
 
+        bitmap() : Bitmap {
+            return new RangeBitmap(0, this.length);
+        }
 
         fields() : Field<any>[] {
             return this.fieldArray;
         }
 
-        field(key:String) : Field<any> {
-            return this.fieldMap[name];
+        field(key:string) : Field<any> {
+            return this.fieldMap[key];
         }
 
         filter(filter : Filter) : RandomAccessStore {
-            throw new Error("Not written");
+            return filterColumnStore(this, this, filter);
         }
 
-        filters() : Filter[] {
-            return [];
-        }
+        filters()           : Filter[] { return []; }
+        simplifiedFilters() : Filter[] { return []; }
 
-        simplifiedFilters() : Filter[] {
-            throw new Error("Not written");
-        }
-
-        removeFilter(filter : Filter) : RandomAccessStore {
-            throw new Error("Not written");
-        }
+        removeFilter(filter : Filter) : RandomAccessStore { return this; }
 
 
         eachRow(rowAction:Function) {

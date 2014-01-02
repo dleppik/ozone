@@ -26,6 +26,15 @@ module ozone {
 
     /**
      * A DataStore that can be queried.  Also the result of most queries.
+     *
+     * More technically:
+     *
+     * A RandomAccessStore's rows are identified by internal IDs which exist solely to allow for efficient querying.
+     * These IDs are unique to a particular RandomAccessStore:  reconstructing the store in a slightly different way
+     * may yield completely different IDs.
+     *
+     * The default implementation (ColumnStore) uses integers for IDs because it is built around Bitmaps;  future
+     * implementations (e.g. unions of stores) may use something else for IDs.
      */
     export interface RandomAccessStore extends DataStore {
         // TODO
@@ -34,6 +43,7 @@ module ozone {
         // TODO
 
         /** Returns a proxy with the filter applied.  Applying the same filter twice has no effect. */
+        // TODO overload this with filter-building shortcuts.
         filter(filter : Filter) : RandomAccessStore;
 
 
@@ -56,38 +66,6 @@ module ozone {
 
         /** The number of elements in the DataStore. */
         length : number;
-    }
-
-    export interface Filter {
-        displayName : string;
-
-        /** Used by RandomAccessStore to apply a filter. */
-        applyFilter(store : RandomAccessStore) : Bitmap;
-    }
-
-    export interface RandomAccessField<T> extends Field<T> {
-        // TODO provide bitmaps for values
-    }
-
-    /**
-     * An OLAP dimension.  Similar to a column in a database table, except that Fields may have multiple values per row.
-     */
-    export interface Field<T> extends FieldDescribing {
-
-        /**
-         * Returns all values for this row.  Never returns null.  This is called within DataStore.eachRow(), and uses
-         * the token provided by that function.
-         */
-        values(rowToken : any) : T[];
-    }
-
-    /** A Field where values(row) returns at most one value. */
-    export interface UnaryField<T> extends Field<T> {
-        /**
-         * Returns the single value of values(rowToken), or null.  This is called within DataStore.eachRow(), and uses
-         * the token provided by that function.
-         */
-        value(rowToken : any) : T;
     }
 
 
@@ -135,7 +113,7 @@ module ozone {
         /** Returns true if the iterator has more items. */
         hasNext() : boolean;
 
-        /** Returns the next item.  Returns undefined if hasNext() is false. */
+        /** Returns the next item; subsequent calls return subsequent items.  Returns undefined if hasNext() is false. */
         next() : I;
     }
 
@@ -173,10 +151,19 @@ module ozone {
 
         /** Iterate over all "true" elements in order. */
         iterator() : OrderedIterator<number>;
+
+        /** Returns a bitmap containing only the elements that are found in both bitmaps. */
+        union(bm : Bitmap) : Bitmap;
+
+        /** Returns a bitmap containing all the elements in either bitmap. */
+        intersection(bm : Bitmap) : Bitmap;
+
+        /** Returns true if the iterators produce identical results. */
+        equals(bm : Bitmap) : boolean;
     }
 
     /** Packs bits in 32-bit unsigned ints.   */
-    export interface PackedBitmap {
+    export interface PackedBitmap extends Bitmap {
 
         /** Equals Math.floor(min()/32). */
         minBits() : number;
@@ -191,7 +178,7 @@ module ozone {
     /** Most Bitmap class objects should be BitmapBuilding to provide a factory method. */
     export interface BitmapBuilding {
         /**
-         * The returned builder is meant to be used once, to build exactly one Bitmap.  A call to onItem()
+         * The returned Reducer is meant to be used once, to build exactly one Bitmap.  A call to onItem()
          * sets a bit, and calls should be done in order from lowest to highest.
          */
         builder(min? : number, max?: number) : Reducer<number,Bitmap>

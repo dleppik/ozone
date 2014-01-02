@@ -5,6 +5,9 @@
 
 module ozone.columnStore {
 
+    import ArrayIndexBitmap = ozone.bitmap.ArrayIndexBitmap;
+    import RangeBitmap = ozone.bitmap.RangeBitmap;
+
 
     export interface IndexedRowToken {
         index : number;
@@ -36,7 +39,7 @@ module ozone.columnStore {
 
             var bitmapSource : BitmapBuilding = (params.bitmapSource)
                 ? params.bitmapSource
-                : ozone.columnStore.ArrayIndexBitmap;
+                : ArrayIndexBitmap;
             var bitmapBuilders : any = {};
             for (var i=0; i<valueList.length; i++) {
                 var value = valueList[i];
@@ -107,7 +110,7 @@ module ozone.columnStore {
             for (var i=0; i<this.valueList.length; i++) {
                 var value = this.valueList[i];
                 var bitmap = this.valueMap[value.toString()];
-                if (bitmap.get(value)) {
+                if (bitmap.get(index)) {
                     result.push(value);
                 }
             }
@@ -123,5 +126,18 @@ module ozone.columnStore {
             return this.valueList.length;
         }
 
+        public rowHasValue(index : number, value : any) : boolean {
+            var bitmap : Bitmap = this.valueMap[value.toString()];
+            if (bitmap) {
+                return bitmap.get(index);
+            }
+            return false;
+        }
+
+        /** Return the bitmap matching value.toString(), or an empty bitmap if the value is not found. */
+        bitmapForValue( value : any ) : Bitmap {
+            var bitmap : Bitmap = this.valueMap[value.toString()];
+            return (bitmap)  ?  bitmap  :  RangeBitmap.emptyBitmap;
+        }
     }
 }

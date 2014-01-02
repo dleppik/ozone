@@ -6,4 +6,4 @@
 
 cd "$( dirname "${BASH_SOURCE[0]}" )"
 cd ..
-tsc -m 'amd' --sourcemap src/*.ts src/rowStore/*.ts src/columnStore/*.ts --out ozone.js
+tsc -m 'amd' --sourcemap src/*.ts src/bitmap/*.ts src/rowStore/*.ts src/columnStore/*.ts --out ozone.js
