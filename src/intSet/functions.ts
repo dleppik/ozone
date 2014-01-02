@@ -4,7 +4,9 @@
 /// <reference path='../_all.ts' />
 
 
-module ozone.bitmap {
+module ozone.intSet {
+
+    export var empty : RangeIntSet;  // Initialized in RangeIntSet.ts
 
     /**
      * A textbook binary search which returns the index where the item is found,
@@ -39,16 +41,16 @@ module ozone.bitmap {
     }
 
     /**
-     * Return a bitmap builder.  If min and max are provided, a builder optimized for that size may be returned.
+     * Return a IntSet builder.  If min and max are provided, a builder optimized for that size may be returned.
      */
-    export function builder(min : number = 0, max: number = -1) : Reducer<number,Bitmap> {
-        return ArrayIndexBitmap.builder();
+    export function builder(min : number = 0, max: number = -1) : Reducer<number,IntSet> {
+        return ArrayIndexIntSet.builder();
     }
 
-    /** Return a bitmap containing all the numbers provided by the iterators. */
-    export function unionOfIterators(...iterators : Iterator<number>[]) : Bitmap {
+    /** Return a IntSet containing all the numbers provided by the iterators. */
+    export function unionOfIterators(...iterators : Iterator<number>[]) : IntSet {
         if (iterators.length===0) {
-            return RangeBitmap.emptyBitmap;
+            return empty;
         }
 
         var values : number[] = [];
@@ -59,12 +61,12 @@ module ozone.bitmap {
             }
         }
         if (values.length===0) {
-            return RangeBitmap.emptyBitmap;
+            return empty;
         }
 
         values.sort(function(a,b) { return a-b; });  // Default sort function is alphabetical
 
-        var builder = ozone.bitmap.builder(values[0], values[values.length-1]);
+        var builder = ozone.intSet.builder(values[0], values[values.length-1]);
         var lastValue : number = NaN;
         for (i=0; i<values.length; i++) {
             var val = values[i];
@@ -76,10 +78,10 @@ module ozone.bitmap {
         return builder.onEnd();
     }
 
-    /** Return a bitmap containing only the numbers provided by all of the iterators. */
-    export function intersectionOfOrderedIterators(...iterators : OrderedIterator<number>[]) : Bitmap {
+    /** Return a IntSet containing only the numbers provided by all of the iterators. */
+    export function intersectionOfOrderedIterators(...iterators : OrderedIterator<number>[]) : IntSet {
         if (iterators.length === 0) {
-            return RangeBitmap.emptyBitmap;
+            return empty;
         }
         if (iterators.length === 1) {
             return unionOfIterators(iterators[0]);  // The algorithm below assumes at least 2 iterators.
@@ -88,7 +90,7 @@ module ozone.bitmap {
         // Cycle through the iterators round-robbin style, skipping to the highest element so far.  When we have N
         // iterators in a row giving us the same value, that element goes into the builder.
 
-        var builder = ArrayIndexBitmap.builder();
+        var builder = ArrayIndexIntSet.builder();
         var currentIteratorIndex = 0;
         var numIteratorsWithCurrentValue = 1; // Always start with 1, for the current iterator
         var previousValue : number = NaN;

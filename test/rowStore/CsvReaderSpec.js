@@ -2,6 +2,19 @@
 
 "use strict";
 
+describe("Anything works", function() {
+    it("has ozone", function() {
+        expect(ozone).toBeDefined();
+    });
+    it("has ozone.rowStore", function() {
+        expect(ozone.rowStore).toBeDefined();
+    });
+    it("has ozone.rowStore.CsvReader", function() {
+        expect(ozone.rowStore.CsvReader).toBeDefined();
+    });
+
+});
+
 describe("RowStore", function() {
     describe("CsvReader", function() {
         var testCsv = function(line, expected) {

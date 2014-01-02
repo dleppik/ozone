@@ -5,9 +5,6 @@
 
 module ozone.columnStore {
 
-    import ArrayIndexBitmap = ozone.bitmap.ArrayIndexBitmap;
-    import RangeBitmap = ozone.bitmap.RangeBitmap;
-
     export function filterColumnStore(source : ColumnStore, oldStore : ColumnStoreInterface, ...filtersToAdd : Filter[]) : ColumnStoreInterface {
         if (filtersToAdd.length === 0) {
             return oldStore;
@@ -27,7 +24,7 @@ module ozone.columnStore {
             var filterTarget = filtersForIteration;
             if (newFilter instanceof ValueFilter) {
                 var fieldId = (<ValueFilter> newFilter).fieldDescriptor.identifier;
-                if (source.field(fieldId) instanceof BitmapField) {
+                if (source.field(fieldId) instanceof IntSetField) {
                     filterTarget = filtersForBitwiseOr;
                 }
             }
@@ -38,28 +35,28 @@ module ozone.columnStore {
         }
 
 
-        // Bitmap filtering
+        // IntSet filtering
 
-        var bitmap = oldStore.bitmap();
+        var set = oldStore.intSet();
 
         for (var i=0; i<filtersForBitwiseOr.length; i++) {
             var filter = <ValueFilter> newFilter;
             var fieldId = filter.fieldDescriptor.identifier;
-            var field = <BitmapField> source.field(fieldId);
-            var fieldBitmap = field.bitmapForValue(filter.value);
+            var field = <IntSetField> source.field(fieldId);
+            var fieldIntSet = field.intSetForValue(filter.value);
             // TODO
-            // TODO  merge bitmaps
+            // TODO  merge IntSets
             // TODO
         }
 
         // TODO
-        // TODO  Use the bitmap generated above
+        // TODO  Use the IntSets generated above
         // TODO
 
 
         // Iterative filtering
 
-        var bitmapBuilder = ArrayIndexBitmap.builder(bitmap.min(), bitmap.max());
+        var setBuilder = ozone.intSet.ArrayIndexIntSet.builder(set.min(), set.max());
 
         // TODO
         // TODO Use an iterator, so we can skip
@@ -70,14 +67,14 @@ module ozone.columnStore {
                 if ( ! filter.matches(oldStore, rowToken)) {
                     return;
                 }
-                bitmapBuilder.onItem(rowToken);
+                setBuilder.onItem(rowToken);
             }
         });
-        bitmap = bitmapBuilder.onEnd();
+        set = setBuilder.onEnd();
 
         var newFilters : Filter[] = oldStore.filters().concat(filtersForIteration);
         newFilters.sort(compareFilterByName);
-        return new FilteredColumnStore(source, newFilters, bitmap);
+        return new FilteredColumnStore(source, newFilters, set);
     }
 
     function compareFilterByName(a : Filter, b: Filter) : number {
@@ -90,12 +87,12 @@ module ozone.columnStore {
 
         length : number;
 
-        constructor( public source : ColumnStore, private filterArray : Filter[], private filterBits : Bitmap) {
+        constructor( public source : ColumnStore, private filterArray : Filter[], private filterBits : IntSet) {
             super(source);
             this.length = filterBits.size;
         }
 
-        bitmap() : Bitmap {
+        intSet() : IntSet {
             return this.filterBits;
         }
 

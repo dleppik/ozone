@@ -5,22 +5,18 @@
 
 module ozone.columnStore {
 
-    import ArrayIndexBitmap = ozone.bitmap.ArrayIndexBitmap;
-    import RangeBitmap = ozone.bitmap.RangeBitmap;
-
-
     export interface IndexedRowToken {
         index : number;
         rowToken : any;
     }
 
     /**
-     * A Field which consists of bitmaps for each Value.  Although values need not be strings, they are identified
-     * internally by their toString method.  It is legal for values to have empty bitmaps;  for example, a Month
+     * A Field which consists of intSets for each Value.  Although values need not be strings, they are identified
+     * internally by their toString method.  It is legal for values to have empty intSets;  for example, a Month
      * field might contain all the months of the year in order, even if only a few have any values, to guarantee that
      * the UI looks right.
      */
-    export class BitmapField<T> implements RandomAccessField<T> {
+    export class IntSetField<T> implements RandomAccessField<T> {
 
         /**
          * Returns a reducer that can be run on a source DataStore to reproduce a sourceField.
@@ -29,21 +25,21 @@ module ozone.columnStore {
          * @param params       additional parameters:
          *                     values       -- if provided, this is the list of values used and any values not in this
          *                                     list are ignored.  This also defines the order of values.
-         *                     bitmapSource -- if provided, a BitmapBuilding to override the default.  The default may
+         *                     intSetSource -- if provided, a IntSetBuilding to override the default.  The default may
          *                                     change, and may be browser specific or determined based on the
          *                                     characteristics of sourceField.
          */
-        public static builder<T>(sourceField : Field<T>, params : any = {} ) : Reducer<IndexedRowToken,BitmapField<T>> {
+        public static builder<T>(sourceField : Field<T>, params : any = {} ) : Reducer<IndexedRowToken,IntSetField<T>> {
             var addValues =  ! params.values;
             var valueList : T[] = (addValues) ? [] : params.values.concat();
 
-            var bitmapSource : BitmapBuilding = (params.bitmapSource)
-                ? params.bitmapSource
-                : ArrayIndexBitmap;
-            var bitmapBuilders : any = {};
+            var intSetSource : IntSetBuilding = (params.intSetSource)
+                ? params.intSetSource
+                : ozone.intSet.ArrayIndexIntSet;
+            var intSetBuilders : any = {};
             for (var i=0; i<valueList.length; i++) {
                 var value = valueList[i];
-                bitmapBuilders[value.toString()] = bitmapSource.builder();
+                intSetBuilders[value.toString()] = intSetSource.builder();
             }
 
             return {
@@ -51,10 +47,10 @@ module ozone.columnStore {
                     var values = sourceField.values(indexedRowToken.rowToken);
                     for (var i=0; i<values.length; i++) {
                         var value = <any> values[i];
-                        var builder : Reducer<number,Bitmap> = bitmapBuilders[value.toString()];
+                        var builder : Reducer<number,IntSet> = intSetBuilders[value.toString()];
                         if (typeof(builder) === "undefined"  &&  addValues) {
-                            builder = bitmapSource.builder();
-                            bitmapBuilders[value.toString()] = builder;
+                            builder = intSetSource.builder();
+                            intSetBuilders[value.toString()] = builder;
                             valueList.push(value);
                         }
                         if (typeof(builder) === "object") {
@@ -62,8 +58,8 @@ module ozone.columnStore {
                         }
                     }
                 },
-                onEnd: function() : BitmapField<T> {
-                    var valueMap =  <{(valueId:string) : Bitmap}>  {};
+                onEnd: function() : IntSetField<T> {
+                    var valueMap =  <{(valueId:string) : IntSet}>  {};
                     if (addValues && valueList.length > 0) {
                         var firstValue = valueList[0];
                         if (typeof firstValue === "object") {
@@ -77,9 +73,9 @@ module ozone.columnStore {
                     }
                     for (var i=0; i< valueList.length; i++) {
                         var value = valueList[i];
-                        valueMap[value.toString()] = bitmapBuilders[value].onEnd();
+                        valueMap[value.toString()] = intSetBuilders[value].onEnd();
                     }
-                    return new BitmapField<T>(sourceField, valueList, valueMap);
+                    return new IntSetField<T>(sourceField, valueList, valueMap);
                 }
             };
         }
@@ -91,7 +87,7 @@ module ozone.columnStore {
 
         private rangeVal : Range;
 
-        constructor(descriptor : FieldDescribing, private valueList : T[], private valueMap : {(valueId:string) : Bitmap}) {
+        constructor(descriptor : FieldDescribing, private valueList : T[], private valueMap : {(valueId:string) : IntSet}) {
             this.identifier      = descriptor.identifier;
             this.displayName     = descriptor.displayName;
             this.typeOfValue     = descriptor.typeOfValue;
@@ -109,8 +105,8 @@ module ozone.columnStore {
 
             for (var i=0; i<this.valueList.length; i++) {
                 var value = this.valueList[i];
-                var bitmap = this.valueMap[value.toString()];
-                if (bitmap.get(index)) {
+                var intSet = this.valueMap[value.toString()];
+                if (intSet.get(index)) {
                     result.push(value);
                 }
             }
@@ -127,17 +123,17 @@ module ozone.columnStore {
         }
 
         public rowHasValue(index : number, value : any) : boolean {
-            var bitmap : Bitmap = this.valueMap[value.toString()];
-            if (bitmap) {
-                return bitmap.get(index);
+            var intSet : IntSet = this.valueMap[value.toString()];
+            if (intSet) {
+                return intSet.get(index);
             }
             return false;
         }
 
-        /** Return the bitmap matching value.toString(), or an empty bitmap if the value is not found. */
-        bitmapForValue( value : any ) : Bitmap {
-            var bitmap : Bitmap = this.valueMap[value.toString()];
-            return (bitmap)  ?  bitmap  :  RangeBitmap.emptyBitmap;
+        /** Return the intSet matching value.toString(), or an empty intSet if the value is not found. */
+        intSetForValue( value : any ) : IntSet {
+            var set : IntSet = this.valueMap[value.toString()];
+            return (set)  ?  set  :  intSet.empty;
         }
     }
 }

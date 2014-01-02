@@ -22,7 +22,7 @@ module ozone.columnStore {
                 newBuilder = ArrayField.builder(<UnaryField>sourceField);
             }
             else {
-                newBuilder = BitmapField.builder(sourceField);
+                newBuilder = IntSetField.builder(sourceField);
             }
             builders[sourceField.identifier] = newBuilder;
         }

@@ -4,12 +4,12 @@
 
 "use strict";
 
-describe("Bitmap functions", function() {
-    var ArrayIterator = ozone.bitmap.OrderedArrayIterator;
+describe("IntSet functions", function() {
+    var ArrayIterator = ozone.intSet.OrderedArrayIterator;
 
     describe("unionOfIterators", function() {
         it("unions", function() {
-            var union = ozone.bitmap.unionOfIterators;
+            var union = ozone.intSet.unionOfIterators;
 
             expect(union(new ArrayIterator([])).size).toBe(0);
 
@@ -42,7 +42,7 @@ describe("Bitmap functions", function() {
 
     describe("intersectionOfOrderedIterators", function() {
         it("intersects", function() {
-            var intersection = ozone.bitmap.intersectionOfOrderedIterators;
+            var intersection = ozone.intSet.intersectionOfOrderedIterators;
 
             expect(intersection(new ArrayIterator([])).size).toBe(0);
             var allThrees = intersection(new ArrayIterator([3,3,3,3,3,3,3,3,3]));
@@ -82,37 +82,37 @@ describe("Bitmap functions", function() {
 });
 
 
-describe("RangeBitmap", function() {
-    var RangeBitmap = ozone.bitmap.RangeBitmap;
+describe("RangeIntSet", function() {
+    var RangeIntSet = ozone.intSet.RangeIntSet;
 
     var minMaxLengths = [ [0,0,1], [5,10,6], [-1,-1,0] ];
-    var bitmaps = [];
+    var intSets = [];
     for (var i=0; i< minMaxLengths.length; i++) {
         var mml = minMaxLengths[i];
-        bitmaps.push(new RangeBitmap(mml[0], mml[2]));
+        intSets.push(new RangeIntSet(mml[0], mml[2]));
     }
 
     it("Reports min accurately", function() {
-        for (var i=0; i<bitmaps.length; i++) {
-            expect(bitmaps[i].min()).toBe(minMaxLengths[i][0]);
+        for (var i=0; i<intSets.length; i++) {
+            expect(intSets[i].min()).toBe(minMaxLengths[i][0]);
         }
     });
     it("Reports max accurately", function() {
-        for (var i=0; i<bitmaps.length; i++) {
-            expect(bitmaps[i].max()).toBe(minMaxLengths[i][1]);
+        for (var i=0; i<intSets.length; i++) {
+            expect(intSets[i].max()).toBe(minMaxLengths[i][1]);
         }
     });
     it("Reports size accurately", function() {
-        for (var i=0; i<bitmaps.length; i++) {
-            expect(bitmaps[i].size).toBe(minMaxLengths[i][2]);
+        for (var i=0; i<intSets.length; i++) {
+            expect(intSets[i].size).toBe(minMaxLengths[i][2]);
         }
     });
 
     it("Iterates with proper min, max, and length", function() {
-        for (var i=0; i<bitmaps.length; i++) {
-            var bitmap = bitmaps[i];
+        for (var i=0; i<intSets.length; i++) {
+            var intSet = intSets[i];
             var mml = minMaxLengths[i];
-            var iterator = bitmap.iterator();
+            var iterator = intSet.iterator();
             var nonEmpty = mml[2] > 0;
 
             expect(iterator.hasNext()).toBe(nonEmpty);
@@ -125,9 +125,9 @@ describe("RangeBitmap", function() {
                 count++;
             }
             if (nonEmpty) {
-                expect(first).toBe(bitmap.min());
-                expect(last).toBe(bitmap.max());
-                expect(count).toBe(bitmap.size);
+                expect(first).toBe(intSet.min());
+                expect(last).toBe(intSet.max());
+                expect(count).toBe(intSet.size);
             }
             else {
                 expect(count).toBe(1);
@@ -137,7 +137,7 @@ describe("RangeBitmap", function() {
     });
 
     it("Iterates with proper skip behavior", function() {
-        var it = new ozone.bitmap.RangeBitmap(5, 6).iterator();
+        var it = new ozone.intSet.RangeIntSet(5, 6).iterator();
         it.skipTo(7);  expect(it.next()).toBe( 7);
         it.skipTo(8);  expect(it.next()).toBe( 8);
         it.skipTo(7);  expect(it.next()).toBe( 9);
@@ -146,50 +146,50 @@ describe("RangeBitmap", function() {
     });
 
     it("Unions with itself produce itself", function() {
-        for (var i=0; i<bitmaps.length; i++) {
-            var bitmap = bitmaps[i];
-            if (bitmap.size > 0) {
-                expect(bitmap.union(bitmap)).toBe(bitmap);
+        for (var i=0; i<intSets.length; i++) {
+            var intSet = intSets[i];
+            if (intSet.size > 0) {
+                expect(intSet.union(intSet)).toBe(intSet);
             }
         }
     });
 
-    it("Unions with empty bitmap to produce itself", function() {
-        for (var i=0; i<bitmaps.length; i++) {
-            var bitmap = bitmaps[i];
-            expect(bitmap.union(RangeBitmap.emptyBitmap).equals(bitmap)).toBe(true);
+    it("Unions with empty IntSet to produce itself", function() {
+        for (var i=0; i<intSets.length; i++) {
+            var intSet = intSets[i];
+            expect(intSet.union(ozone.intSet.empty).equals(intSet)).toBe(true);
         }
     });
 
-    it("Unions with intersecting RangeBitmaps to produce RangeBitmaps", function() {
-        var a = RangeBitmap.fromTo(0, 9);
-        var b = RangeBitmap.fromTo(1, 10);
+    it("Unions with intersecting RangeIntSets to produce RangeIntSets", function() {
+        var a = RangeIntSet.fromTo(0, 9);
+        var b = RangeIntSet.fromTo(1, 10);
         var aUnionB = a.union(b);
         expect(aUnionB).toEqual(b.union(a));
-        expect(aUnionB instanceof RangeBitmap).toBe(true);
+        expect(aUnionB instanceof RangeIntSet).toBe(true);
         expect(aUnionB.min()).toBe(0);
         expect(aUnionB.max()).toBe(10);
 
-        a = RangeBitmap.fromTo(50, 60);
-        b = RangeBitmap.fromTo(60, 70);
+        a = RangeIntSet.fromTo(50, 60);
+        b = RangeIntSet.fromTo(60, 70);
         aUnionB = a.union(b);
         expect(aUnionB).toEqual(b.union(a));
-        expect(aUnionB instanceof RangeBitmap).toBe(true);
+        expect(aUnionB instanceof RangeIntSet).toBe(true);
         expect(aUnionB.min()).toBe(50);
         expect(aUnionB.max()).toBe(70);
 
-        a = RangeBitmap.fromTo( 99, 110);
-        b = RangeBitmap.fromTo(100, 105);
+        a = RangeIntSet.fromTo( 99, 110);
+        b = RangeIntSet.fromTo(100, 105);
         aUnionB = a.union(b);
         expect(aUnionB).toEqual(b.union(a));
-        expect(aUnionB instanceof RangeBitmap).toBe(true);
+        expect(aUnionB instanceof RangeIntSet).toBe(true);
         expect(aUnionB.min()).toBe(99);
         expect(aUnionB.max()).toBe(110);
     });
 
-    it("Unions with non-intersecting RangeBitmaps to produce a disjoint bitmap", function() {
-        var a = RangeBitmap.fromTo(10, 20);
-        var b = RangeBitmap.fromTo(21, 30);
+    it("Unions with non-intersecting RangeIntSets to produce a disjoint IntSet", function() {
+        var a = RangeIntSet.fromTo(10, 20);
+        var b = RangeIntSet.fromTo(21, 30);
         var aUnionB = a.union(b);
 
         expect(b.union(a).equals(aUnionB)).toBe(true);
@@ -201,24 +201,24 @@ describe("RangeBitmap", function() {
         });
     });
 
-    it("Intersects with other RangeBitmaps properly", function() {
-        var a = RangeBitmap.fromTo(10, 20);
-        var b = RangeBitmap.fromTo(21, 30);
+    it("Intersects with other RangeIntSets properly", function() {
+        var a = RangeIntSet.fromTo(10, 20);
+        var b = RangeIntSet.fromTo(21, 30);
         var aAndB = a.intersection(b);
         expect(aAndB.size).toBe(0);
 
-        var c = RangeBitmap.fromTo(15, 25);
-        var expectedAAndC = RangeBitmap.fromTo(15, 20);
+        var c = RangeIntSet.fromTo(15, 25);
+        var expectedAAndC = RangeIntSet.fromTo(15, 20);
         expect(a.intersection(c).equals(expectedAAndC)).toBe(true);
         expect(c.intersection(a).equals(expectedAAndC)).toBe(true);
     });
 });
 
-describe("General-purpose Bitmaps", function() {
-    var RangeBitmap = ozone.bitmap.RangeBitmap;
-    var ArrayIterator = ozone.bitmap.OrderedArrayIterator;
-    var unionOfIterators = ozone.bitmap.unionOfIterators;
-    var intersectionOfOrderedIterators = ozone.bitmap.intersectionOfOrderedIterators;
+describe("General-purpose IntSets", function() {
+    var RangeIntSet = ozone.intSet.RangeIntSet;
+    var ArrayIterator = ozone.intSet.OrderedArrayIterator;
+    var unionOfIterators = ozone.intSet.unionOfIterators;
+    var intersectionOfOrderedIterators = ozone.intSet.intersectionOfOrderedIterators;
 
     // Many of these were generated randomly.  We need to test boundaries around 32 for packed bitmaps
     var arrays = [
@@ -235,7 +235,7 @@ describe("General-purpose Bitmaps", function() {
         [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 ]
     ];
 
-    var bitmapClasses = [ ozone.bitmap.ArrayIndexBitmap ];
+    var intSetClasses = [ ozone.intSet.ArrayIndexIntSet ];
 
     var forEachArray = function(beforeElements, onEachElement, afterElements) {
         for (var i=0; i< arrays.length; i++) {
@@ -254,12 +254,12 @@ describe("General-purpose Bitmaps", function() {
         }
     };
 
-    var bitmapForEachArray = function(withArrayAndBitmap) {
+    var intSetForEachArray = function(withArrayAndIntSet) {
         var builder;
         forEachArray(
-            function(array)          { builder = bitmapClass.builder(); },
+            function(array)          { builder = intSetClass.builder(); },
             function(array, element) { builder.onItem(element); },
-            function(array)          { withArrayAndBitmap(array, builder.onEnd()); }
+            function(array)          { withArrayAndIntSet(array, builder.onEnd()); }
         );
     };
 
@@ -270,23 +270,23 @@ describe("General-purpose Bitmaps", function() {
                 for (var arrayIndex=0; arrayIndex<array.length; arrayIndex++) {
                     var nextInArray = array[arrayIndex];
                     for (; element < nextInArray; element++) {
-                        expect(ozone.bitmap.search(element, array, 0, array.length-1)).toEqual(~arrayIndex);
+                        expect(ozone.intSet.search(element, array, 0, array.length-1)).toEqual(~arrayIndex);
                     }
-                    expect(ozone.bitmap.search(element, array, 0, array.length-1)).toEqual(arrayIndex);
+                    expect(ozone.intSet.search(element, array, 0, array.length-1)).toEqual(arrayIndex);
                     element++;
                 }
             });
         });
     });
 
-    for (var bitmapClassIndex = 0; bitmapClassIndex < bitmapClasses.length; bitmapClassIndex++) {
-        var bitmapClass = bitmapClasses[bitmapClassIndex];
-        describe("Implementation "+bitmapClassIndex+": "+bitmapClass, function() {
+    for (var intSetClassIndex = 0; intSetClassIndex < intSetClasses.length; intSetClassIndex++) {
+        var intSetClass = intSetClasses[intSetClassIndex];
+        describe("Implementation "+intSetClassIndex+": "+intSetClass, function() {
             it("Has a builder that produces something of the right size", function() {
                 var builder;
                 forEachArray(
                     function() {
-                        builder = bitmapClass.builder();
+                        builder = intSetClass.builder();
                         expect(typeof(builder)).toBe("object");
                     },
                     function(a, element) { builder.onItem(element); },
@@ -294,37 +294,37 @@ describe("General-purpose Bitmaps", function() {
                 );
             });
             it("Reports min accurately", function() {
-                bitmapForEachArray(function(array, bitmap) {
+                intSetForEachArray(function(array, intSet) {
                     var expected = (array.length == 0) ?  -1  : array[0];
-                    expect(bitmap.min()).toEqual(expected);
+                    expect(intSet.min()).toEqual(expected);
                 });
             });
             it("Reports max accurately", function() {
-                bitmapForEachArray(function(array, bitmap) {
+                intSetForEachArray(function(array, intSet) {
                     var expected = (array.length == 0) ?  -1  : array[array.length-1];
-                    expect(bitmap.max()).toEqual(expected);
+                    expect(intSet.max()).toEqual(expected);
                 });
             });
             it("Reports 'get' accurately", function() {
-                bitmapForEachArray(function(array, bitmap) {
+                intSetForEachArray(function(array, intSet) {
                     var element = 0;
                     for (var arrayIndex=0; arrayIndex<array.length; arrayIndex++) {
                         var nextInArray = array[arrayIndex];
                         for (; element < nextInArray; element++) {
-                            expect(bitmap.get(element)).toEqual(false);
+                            expect(intSet.get(element)).toEqual(false);
                         }
-                        expect(bitmap.get(element)).toEqual(true);
+                        expect(intSet.get(element)).toEqual(true);
                         element++;
                     }
                     for (; element < nextInArray+33; element++) {  // Check past next packed bits
-                        expect(bitmap.get(element)).toEqual(false);
+                        expect(intSet.get(element)).toEqual(false);
                     }
                 });
             });
             describe("Iterator", function() {
                 it("Increases monotonically", function() {
-                    bitmapForEachArray(function(array, bitmap) {
-                        var it = bitmap.iterator();
+                    intSetForEachArray(function(array, intSet) {
+                        var it = intSet.iterator();
                         var previous = -1;
                         while (it.hasNext()) {
                             var element = it.next();
@@ -334,51 +334,51 @@ describe("General-purpose Bitmaps", function() {
                     });
                 });
                 it("Matches get", function() {
-                    bitmapForEachArray(function(array, bitmap) {
-                        var it = bitmap.iterator();
+                    intSetForEachArray(function(array, intSet) {
+                        var it = intSet.iterator();
                         while (it.hasNext()) {
                             var element = it.next();
-                            expect(bitmap.get(element)).toBe(true);
+                            expect(intSet.get(element)).toBe(true);
                         }
                     });
                 });
                 it("Matches size", function() {
-                    bitmapForEachArray(function(array, bitmap) {
-                        var it = bitmap.iterator();
+                    intSetForEachArray(function(array, intSet) {
+                        var it = intSet.iterator();
                         var count = 0;
                         while (it.hasNext()) {
                             it.next();
                             count++;
                         }
-                        expect(count).toBe(bitmap.size);
+                        expect(count).toBe(intSet.size);
                     });
                 });
                 it("Skips properly", function() {
-                    bitmapForEachArray(function(array, bitmap) {
+                    intSetForEachArray(function(array, intSet) {
                         if (array.length > 0) {
-                            var it = bitmap.iterator();
-                            it.skipTo(bitmap.min()-1);
-                            expect(it.next()).toBe(bitmap.min());
+                            var it = intSet.iterator();
+                            it.skipTo(intSet.min()-1);
+                            expect(it.next()).toBe(intSet.min());
 
-                            it = bitmap.iterator();
-                            it.skipTo(bitmap.min());
-                            it.skipTo(bitmap.min());
-                            it.skipTo(bitmap.min());
-                            expect(it.next()).toBe(bitmap.min());
+                            it = intSet.iterator();
+                            it.skipTo(intSet.min());
+                            it.skipTo(intSet.min());
+                            it.skipTo(intSet.min());
+                            expect(it.next()).toBe(intSet.min());
                             if (array.length > 1) {
-                                it.skipTo(bitmap.max());
-                                expect(it.next()).toBe(bitmap.max());
+                                it.skipTo(intSet.max());
+                                expect(it.next()).toBe(intSet.max());
                             }
 
-                            it = bitmap.iterator();
-                            it.skipTo(bitmap.max()+1);
+                            it = intSet.iterator();
+                            it.skipTo(intSet.max()+1);
                             expect(it.hasNext()).toBe(false);
 
                             if (array.length > 1) {
-                                it = bitmap.iterator();
-                                var skipTo = bitmap.max()-1;
+                                it = intSet.iterator();
+                                var skipTo = intSet.max()-1;
                                 it.skipTo(skipTo);
-                                var expectedNext = (bitmap.get(skipTo)) ?  skipTo  :  bitmap.max();
+                                var expectedNext = (intSet.get(skipTo)) ?  skipTo  :  intSet.max();
                                 expect(it.next()).toBe(expectedNext);
                             }
                         }
@@ -387,86 +387,86 @@ describe("General-purpose Bitmaps", function() {
             });
 
             it("Has 'each' which matches the iterator", function() {
-                bitmapForEachArray(function(array, bitmap) {
-                    var it = bitmap.iterator();
-                    bitmap.each(function(element) {
+                intSetForEachArray(function(array, intSet) {
+                    var it = intSet.iterator();
+                    intSet.each(function(element) {
                         expect(element).toBe(it.next());
                     });
                     expect(it.hasNext()).toBe(false);
                 });
             });
 
-            it("Unions with a RangeBitmap with the same or wider range to produce a RangeBitmap", function() {
-                bitmapForEachArray(function(array, bitmap) {
-                    var sameSize = RangeBitmap.fromTo(bitmap.min(), bitmap.max());
-                    var sameSizeUnion = bitmap.union(sameSize);
+            it("Unions with a RangeIntSet with the same or wider range to produce a RangeIntSet", function() {
+                intSetForEachArray(function(array, intSet) {
+                    var sameSize = RangeIntSet.fromTo(intSet.min(), intSet.max());
+                    var sameSizeUnion = intSet.union(sameSize);
                     if (!sameSizeUnion.equals(sameSize)) {
                         console.log("sameSizeUnion min: "+sameSizeUnion.min()+", max: "+sameSizeUnion.max()+
                             ", size: "+sameSizeUnion.size+", equality: "+sameSizeUnion.equals(sameSize));
                     }
                     expect(sameSizeUnion.equals(sameSize)).toBe(true);
-                    expect(sameSizeUnion instanceof RangeBitmap).toBe(true);
+                    expect(sameSizeUnion instanceof RangeIntSet).toBe(true);
 
-                    var bigger = RangeBitmap.fromTo(0, bitmap.max()+1);
-                    var biggerUnion = bitmap.union(bigger);
+                    var bigger = RangeIntSet.fromTo(0, intSet.max()+1);
+                    var biggerUnion = intSet.union(bigger);
                     expect(biggerUnion.equals(bigger)).toBe(true);
-                    expect(biggerUnion instanceof RangeBitmap).toBe(true);
+                    expect(biggerUnion instanceof RangeIntSet).toBe(true);
                 });
             });
 
-            it("Unions with a partially overlapping or smaller RangeBitmap properly", function() {
-                bitmapForEachArray(function(array, intSet) {
+            it("Unions with a partially overlapping or smaller RangeIntSet properly", function() {
+                intSetForEachArray(function(array, intSet) {
                     if (array.length === 0) {
                         return;
                     }
-                    var r1 = RangeBitmap.fromTo(0, intSet.min());
+                    var r1 = RangeIntSet.fromTo(0, intSet.min());
                     expect(intSet.union(r1).equals(unionOfIterators(r1.iterator(), intSet.iterator()))).toBe(true);
 
-                    var r2 = RangeBitmap.fromTo(intSet.max(), intSet.max()+2);
+                    var r2 = RangeIntSet.fromTo(intSet.max(), intSet.max()+2);
                     expect(intSet.union(r2).equals(unionOfIterators(r2.iterator(), intSet.iterator()))).toBe(true);
 
                     if (intSet.size > 1) {
-                        var r3 = RangeBitmap.fromTo(intSet.min()+1, intSet.max());
+                        var r3 = RangeIntSet.fromTo(intSet.min()+1, intSet.max());
                         expect(intSet.union(r3).equals(unionOfIterators(r3.iterator(), intSet.iterator()))).toBe(true);
                     }
                     if (intSet.size > 2) {
-                        var r4 = RangeBitmap.fromTo(intSet.min()+1, intSet.max()-1);
+                        var r4 = RangeIntSet.fromTo(intSet.min()+1, intSet.max()-1);
                         expect(intSet.union(r4).equals(unionOfIterators(r4.iterator(), intSet.iterator()))).toBe(true);
                     }
                 });
             });
 
-            it("Intersects with a RangeBitmap with the same or wider range to produce itself or an equivalent bitmap", function() {
-                bitmapForEachArray(function(array, intSet) {
+            it("Intersects with a RangeIntSet with the same or wider range to produce itself or an equivalent intSet", function() {
+                intSetForEachArray(function(array, intSet) {
                     if (array.length === 0) {
                         return;
                     }
-                    var r1 = RangeBitmap.fromTo(intSet.min(), intSet.max());
+                    var r1 = RangeIntSet.fromTo(intSet.min(), intSet.max());
                     expect(intSet.intersection(r1).equals(intersectionOfOrderedIterators(r1.iterator(), intSet.iterator()))).toBe(true);
 
-                    var r2 = RangeBitmap.fromTo(0, intSet.max()+1);
+                    var r2 = RangeIntSet.fromTo(0, intSet.max()+1);
                     expect(intSet.intersection(r2).equals(intersectionOfOrderedIterators(r2.iterator(), intSet.iterator()))).toBe(true);
 
                 });
             });
 
-            it("Intersects with a partially overlapping or smaller RangeBitmap to produce a truncated subset", function() {
-                bitmapForEachArray(function(array, intSet) {
+            it("Intersects with a partially overlapping or smaller RangeIntSet to produce a truncated subset", function() {
+                intSetForEachArray(function(array, intSet) {
                     if (array.length === 0) {
                         return;
                     }
-                    var r1 = RangeBitmap.fromTo(0, intSet.min());
+                    var r1 = RangeIntSet.fromTo(0, intSet.min());
                     expect(intSet.intersection(r1).equals(intersectionOfOrderedIterators(r1.iterator(), intSet.iterator()))).toBe(true);
 
-                    var r2 = RangeBitmap.fromTo(intSet.max(), intSet.max()+2);
+                    var r2 = RangeIntSet.fromTo(intSet.max(), intSet.max()+2);
                     expect(intSet.intersection(r2).equals(intersectionOfOrderedIterators(r2.iterator(), intSet.iterator()))).toBe(true);
 
                     if (intSet.size > 1) {
-                        var r3 = RangeBitmap.fromTo(intSet.min()+1, intSet.max());
+                        var r3 = RangeIntSet.fromTo(intSet.min()+1, intSet.max());
                         expect(intSet.intersection(r3).equals(intersectionOfOrderedIterators(r3.iterator(), intSet.iterator()))).toBe(true);
                     }
                     if (intSet.size > 2) {
-                        var r4 = RangeBitmap.fromTo(intSet.min()+1, intSet.max()-1);
+                        var r4 = RangeIntSet.fromTo(intSet.min()+1, intSet.max()-1);
                         expect(intSet.intersection(r4).equals(intersectionOfOrderedIterators(r4.iterator(), intSet.iterator()))).toBe(true);
                     }
                 });
@@ -477,14 +477,14 @@ describe("General-purpose Bitmaps", function() {
                 var a2 = [ 2,    5, 8    ];
                 var au = [ 2, 3, 5, 8, 9 ];
 
-                var set1 = bitmapClass.fromArray(a1);
-                var set2 = bitmapClass.fromArray(a2);
+                var set1 = intSetClass.fromArray(a1);
+                var set2 = intSetClass.fromArray(a2);
 
                 expect(set1.union(set2).size).toEqual(5);  // Hard coded, to keep other bugs from hiding failure
                 expect(set1.union(set2).min()).toEqual(2);
                 expect(set1.union(set2).max()).toEqual(9);
-                expect(set1.union(set2)).toEqual(bitmapClass.fromArray(au));
-                expect(set2.union(set1)).toEqual(bitmapClass.fromArray(au));
+                expect(set1.union(set2)).toEqual(intSetClass.fromArray(au));
+                expect(set2.union(set1)).toEqual(intSetClass.fromArray(au));
 
             });
 
@@ -494,25 +494,25 @@ describe("General-purpose Bitmaps", function() {
                 var a2 = [ 2,     5, 8    ];
                 var ai = [        5, 8];
 
-                var set1 = bitmapClass.fromArray(a1);
-                var set2 = bitmapClass.fromArray(a2);
+                var set1 = intSetClass.fromArray(a1);
+                var set2 = intSetClass.fromArray(a2);
 
                 expect(set1.intersection(set2).size).toEqual(2);  // Hard coded, to keep other bugs from hiding failure
                 expect(set1.intersection(set2).min()).toEqual(5);
                 expect(set1.intersection(set2).max()).toEqual(8);
-                expect(set1.intersection(set2)).toEqual(bitmapClass.fromArray(ai));
-                expect(set2.intersection(set1)).toEqual(bitmapClass.fromArray(ai));
+                expect(set1.intersection(set2)).toEqual(intSetClass.fromArray(ai));
+                expect(set2.intersection(set1)).toEqual(intSetClass.fromArray(ai));
             });
 
-            for (var bitmapClassIndex1 = 0; bitmapClassIndex1 < bitmapClasses.length; bitmapClassIndex1++) {
-                var bitmapClass1 = bitmapClasses[bitmapClassIndex1];
-                describe("Interaction with "+bitmapClassIndex1+" "+bitmapClass1, function() {
+            for (var intSetClassIndex1 = 0; intSetClassIndex1 < intSetClasses.length; intSetClassIndex1++) {
+                var intSetClass1 = intSetClasses[intSetClassIndex1];
+                describe("Interaction with "+intSetClassIndex1+" "+intSetClass1, function() {
 
                     var forEachArrayAndIntSet = function (onEach) {
-                        bitmapForEachArray(function(array0, intSet0) {
+                        intSetForEachArray(function(array0, intSet0) {
                             for (var index1=0; index1< arrays.length; index1++) {
                                 var array1 = arrays[index1];
-                                var intSet1 = bitmapClass1.fromArray(array1);
+                                var intSet1 = intSetClass1.fromArray(array1);
                                 onEach(array0, intSet0, array1, intSet1);
                             }
                         });

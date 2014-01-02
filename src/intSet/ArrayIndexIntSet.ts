@@ -3,27 +3,28 @@
  */
 /// <reference path='../_all.ts' />
 
-module ozone.bitmap {
+module ozone.intSet {
     /**
-     * The most trivial of general-purpose bitmap implementations;  a sorted array of indexes.  This can work well for
+     * The most trivial of general-purpose IntSet implementations;  a sorted array of indexes.  This can work well for
      * sparse data.
      * We don't use a boolean[], because while in practice it should iterate in construction order or index
      * order, we don't want to rely on JS runtime implementation details.
      */
-    export class ArrayIndexBitmap implements Bitmap {
+    export class ArrayIndexIntSet implements IntSet {
 
-        /** Matches other bitmap builders. */
-        public static builder(min : number = 0, max: number = -1) : Reducer<number,Bitmap> {
+        /** Matches the API of other IntSet builders. */
+        public static builder(min : number = 0, max: number = -1) : Reducer<number,IntSet> {
             var array : number[] = [];
-            return (<Reducer<number,Bitmap>> {
+            return (<Reducer<number,IntSet>> {
                 onItem: function(item : number) { array.push(item); },
-                onEnd:  function() { return new ArrayIndexBitmap(array)}
+                onEnd:  function() { return new ArrayIndexIntSet(array)}
             });
         }
 
         public static fromArray(elements : number[]) {
-            return new ArrayIndexBitmap(elements.concat());
+            return new ArrayIndexIntSet(elements.concat());
         }
+
 
         public size : number;
 
@@ -55,14 +56,14 @@ module ozone.bitmap {
             return new OrderedArrayIterator<number>(this.indexes);
         }
 
-        equals(bm : Bitmap) : boolean {
-            if (bm===this) {
+        equals(set : IntSet) : boolean {
+            if (set===this) {
                 return true;
             }
-            if (bm instanceof RangeBitmap) {
-                return bm.equals(this);
+            if (set instanceof RangeIntSet) {
+                return set.equals(this);
             }
-            if (this.size !== bm.size  || this.min() !== bm.min()  || this.max() !== bm.max()) {
+            if (this.size !== set.size  || this.min() !== set.min()  || this.max() !== set.max()) {
                 return false;
             }
             if (this.size===0) {
@@ -70,7 +71,7 @@ module ozone.bitmap {
             }
 
             var it1 = this.iterator();
-            var it2 = bm.iterator();
+            var it2 = set.iterator();
 
             while(it1.hasNext()) {
                 if (it1.next() != it2.next()) {
@@ -81,21 +82,21 @@ module ozone.bitmap {
         }
 
 
-        union(bm : Bitmap) : Bitmap {
+        union(set : IntSet) : IntSet {
             if (this.size === 0) {
-                return bm;
+                return set;
             }
-            if (bm.size === 0) {
+            if (set.size === 0) {
                 return this; // Min and max aren't useful for comparisons with unions
             }
-            if (bm instanceof RangeBitmap && bm.min() <= this.min() && bm.max() >= this.max()) {
-                return bm;
+            if (set instanceof RangeIntSet && set.min() <= this.min() && set.max() >= this.max()) {
+                return set;
             }
-            return unionOfIterators(this.iterator(), bm.iterator());
+            return unionOfIterators(this.iterator(), set.iterator());
         }
 
-        intersection(bm : Bitmap) : Bitmap {
-            return intersectionOfOrderedIterators(this.iterator(), bm.iterator());
+        intersection(set : IntSet) : IntSet {
+            return intersectionOfOrderedIterators(this.iterator(), set.iterator());
         }
     }
 

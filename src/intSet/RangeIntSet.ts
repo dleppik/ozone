@@ -3,32 +3,29 @@
  */
 /// <reference path='../_all.ts' />
 
-module ozone.bitmap {
-
+module ozone.intSet {
     /**
-     * A trivial bitmap which contains all values in a range.
+     * A trivial intSet which contains all values in a range.
      */
-    export class RangeBitmap implements Bitmap {
+    export class RangeIntSet implements IntSet {
 
-        public static emptyBitmap = new RangeBitmap(-1, 0);
-
-        /** Return a RangeBitmap from minValue to maxValue inclusive. */
-        public static fromTo(minValue : number, maxValue : number) : RangeBitmap {
+        /** Return a RangeIntSet from minValue to maxValue inclusive. */
+        public static fromTo(minValue : number, maxValue : number) : RangeIntSet {
             if (minValue === -1  && maxValue === -1) {
-                return RangeBitmap.emptyBitmap;
+                return intSet.empty;
             }
             var length = 1+maxValue-minValue;
             if (length <= 0) {
-                return RangeBitmap.emptyBitmap;
+                return intSet.empty;
             }
             if (maxValue < minValue) {
                 throw new Error("Max "+maxValue+" < "+" min "+minValue);
             }
             if (minValue < 0) {
-                throw new Error("Min must be at least 0 for non-empty bitmap, is "+minValue+" (to "+maxValue+")");
+                throw new Error("Min must be at least 0 for non-empty intSet, is "+minValue+" (to "+maxValue+")");
             }
 
-            return new RangeBitmap(minValue, length);
+            return new RangeIntSet(minValue, length);
         }
 
         constructor(private minValue : number, public size : number) {
@@ -73,54 +70,54 @@ module ozone.bitmap {
             };
         }
 
-        equals(bm : Bitmap) : boolean {
-            // In the case of RangeBitmaps, we need only check min, max, and size
+        equals(bm : IntSet) : boolean {
+            // In the case of RangeIntSets, we need only check min, max, and size
             // because size is a function of min and max.
             return this.size === bm.size  && this.min() === bm.min()  && this.max() === bm.max();
         }
 
-        union(bm : Bitmap) : Bitmap {
+        union(bm : IntSet) : IntSet {
             if (this.size===0) {
                 return bm;
             }
             if (bm.size===0) {
                 return this;
             }
-            if (typeof(bm["unionWithRangeBitmap"]) === "function") {
-                return bm["unionWithRangeBitmap"](this);
+            if (typeof(bm["unionWithRangeIntSet"]) === "function") {
+                return bm["unionWithRangeIntSet"](this);
             }
 
             var lowBm = (this.min() < bm.min()) ? this : bm;
 
-            if (bm instanceof RangeBitmap) {
+            if (bm instanceof RangeIntSet) {
                 if (bm.min()===this.min() && bm.size===this.size) {
                     return this;
                 }
                 var highBm = (lowBm===this) ? bm : this;
                 if (lowBm.max() >= highBm.min()) {
-                    return RangeBitmap.fromTo(lowBm.min(), Math.max(lowBm.max(), highBm.max()));
+                    return RangeIntSet.fromTo(lowBm.min(), Math.max(lowBm.max(), highBm.max()));
                 }
             }
-            return ozone.bitmap.unionOfIterators(highBm.iterator(), lowBm.iterator());
+            return ozone.intSet.unionOfIterators(highBm.iterator(), lowBm.iterator());
         }
 
-        intersection(bm : Bitmap) : Bitmap {
+        intersection(bm : IntSet) : IntSet {
             if (this.size === 0 || bm.size === 0) {
-                return RangeBitmap.emptyBitmap;
+                return intSet.empty;
             }
-            if (typeof(bm["intersectionWithRangeBitmap"]) === "function") {
-                return bm["intersectionWithRangeBitmap"](this);
+            if (typeof(bm["intersectionWithRangeIntSet"]) === "function") {
+                return bm["intersectionWithRangeIntSet"](this);
             }
 
             var min = Math.max(this.min(), bm.min());
             var max = Math.min(this.max(), bm.max());
             if (max < min) {
-                return RangeBitmap.emptyBitmap;
+                return intSet.empty;
             }
-            if (bm instanceof RangeBitmap) {
-                return RangeBitmap.fromTo(min, max);
+            if (bm instanceof RangeIntSet) {
+                return RangeIntSet.fromTo(min, max);
             }
-            return ozone.bitmap.intersectionOfOrderedIterators(this.iterator(), bm.iterator());
+            return ozone.intSet.intersectionOfOrderedIterators(this.iterator(), bm.iterator());
         }
 
         toString() {
@@ -131,4 +128,6 @@ module ozone.bitmap {
         }
 
     }
+
+    empty = new RangeIntSet(-1, 0);
 }

@@ -33,7 +33,7 @@ module ozone {
      * These IDs are unique to a particular RandomAccessStore:  reconstructing the store in a slightly different way
      * may yield completely different IDs.
      *
-     * The default implementation (ColumnStore) uses integers for IDs because it is built around Bitmaps;  future
+     * The default implementation (ColumnStore) uses integers for IDs because it is built around IntSets;  future
      * implementations (e.g. unions of stores) may use something else for IDs.
      */
     export interface RandomAccessStore extends DataStore {
@@ -130,10 +130,10 @@ module ozone {
     }
 
     /**
-     * Our favorite column storage type is a bitmap for each value, with each bit representing a row index.  For
+     * Our favorite column storage type is a IntSet for each value, with each bit representing a row index.  For
      * browser compatibility, and to test performance, we allow for many implementations.  These are read-only.
      */
-    export interface Bitmap {
+    export interface IntSet {
 
         get(index : number) : boolean;
 
@@ -152,18 +152,18 @@ module ozone {
         /** Iterate over all "true" elements in order. */
         iterator() : OrderedIterator<number>;
 
-        /** Returns a bitmap containing only the elements that are found in both bitmaps. */
-        union(bm : Bitmap) : Bitmap;
+        /** Returns an IntSet containing only the elements that are found in both IntSets. */
+        union(bm : IntSet) : IntSet;
 
-        /** Returns a bitmap containing all the elements in either bitmap. */
-        intersection(bm : Bitmap) : Bitmap;
+        /** Returns an IntSet containing all the elements in either IntSet. */
+        intersection(bm : IntSet) : IntSet;
 
         /** Returns true if the iterators produce identical results. */
-        equals(bm : Bitmap) : boolean;
+        equals(bm : IntSet) : boolean;
     }
 
     /** Packs bits in 32-bit unsigned ints.   */
-    export interface PackedBitmap extends Bitmap {
+    export interface PackedIntSet extends IntSet {
 
         /** Equals Math.floor(min()/32). */
         minBits() : number;
@@ -171,16 +171,16 @@ module ozone {
         /** Equals Math.floor(min()/32). */
         maxBits() : number;
 
-        /** If true, the PackedBitmap methods are not just available, but preferred. */
+        /** If true, the PackedIntSet methods are not just available, but preferred. */
         isPacked : boolean;
     }
 
-    /** Most Bitmap class objects should be BitmapBuilding to provide a factory method. */
-    export interface BitmapBuilding {
+    /** Most IntSet class objects should be IntSetBuilding to provide a factory method. */
+    export interface IntSetBuilding {
         /**
-         * The returned Reducer is meant to be used once, to build exactly one Bitmap.  A call to onItem()
+         * The returned Reducer is meant to be used once, to build exactly one IntSet.  A call to onItem()
          * sets a bit, and calls should be done in order from lowest to highest.
          */
-        builder(min? : number, max?: number) : Reducer<number,Bitmap>
+        builder(min? : number, max?: number) : Reducer<number,IntSet>
     }
 }

@@ -5,12 +5,8 @@
 
 module ozone.columnStore {
 
-    import ArrayIndexBitmap = ozone.bitmap.ArrayIndexBitmap;
-    import RangeBitmap = ozone.bitmap.RangeBitmap;
-
-
     export interface ColumnStoreInterface extends RandomAccessStore {
-        bitmap() : Bitmap;
+        intSet() : IntSet;
     }
 
     export class ColumnStore implements ColumnStoreInterface {
@@ -30,8 +26,8 @@ module ozone.columnStore {
             }
         }
 
-        bitmap() : Bitmap {
-            return new RangeBitmap(0, this.length);
+        intSet() : IntSet {
+            return new ozone.intSet.RangeIntSet(0, this.length);
         }
 
         fields() : Field<any>[] {
