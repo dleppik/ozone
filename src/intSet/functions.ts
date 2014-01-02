@@ -78,6 +78,18 @@ module ozone.intSet {
         return builder.onEnd();
     }
 
+    export function unionOfIntSets(...intSets : IntSet[]) : IntSet {
+        if (intSets.length === 0) {
+            return empty;
+        }
+
+        var result = intSets[0];
+        for (var i=1; i<intSets.length; i++) {
+            result = result.union(intSets[i]);
+        }
+        return result;
+    }
+
     /** Return a IntSet containing only the numbers provided by all of the iterators. */
     export function intersectionOfOrderedIterators(...iterators : OrderedIterator<number>[]) : IntSet {
         if (iterators.length === 0) {
@@ -113,5 +125,19 @@ module ozone.intSet {
             it.skipTo(currentValue);
         }
         return builder.onEnd();
+    }
+
+    export function intersectionOfIntSets(...intSets : IntSet[]) : IntSet {
+        if (intSets.length === 0) {
+            return empty;
+        }
+
+        // Eventually we may want to do something more clever, such as sort by length or type
+
+        var result = intSets[0];
+        for (var i=1; i<intSets.length; i++) {
+            result = result.intersection(intSets[i]);
+        }
+        return result;
     }
 }

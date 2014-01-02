@@ -359,7 +359,7 @@ var ozone;
 
             var oldFilters = oldStore.filters();
             var filtersForIteration = [];
-            var filtersForBitwiseOr = [];
+            var intSetFilters = [];
             deduplicate:
             for (var i = 0; i < filtersToAdd.length; i++) {
                 var newFilter = filtersToAdd[i];
@@ -373,49 +373,44 @@ var ozone;
                 if (newFilter instanceof ozone.ValueFilter) {
                     var fieldId = (newFilter).fieldDescriptor.identifier;
                     if (source.field(fieldId) instanceof columnStore.IntSetField) {
-                        filterTarget = filtersForBitwiseOr;
+                        filterTarget = intSetFilters;
                     }
                 }
                 filterTarget.push(newFilter);
             }
-            if (filtersForIteration.length + filtersForBitwiseOr.length === 0) {
+            if (filtersForIteration.length + intSetFilters.length === 0) {
                 return oldStore;
             }
 
             // IntSet filtering
             var set = oldStore.intSet();
 
-            for (var i = 0; i < filtersForBitwiseOr.length; i++) {
-                var filter = newFilter;
-                var fieldId = filter.fieldDescriptor.identifier;
-                var field = source.field(fieldId);
-                var fieldIntSet = field.intSetForValue(filter.value);
-                // TODO
-                // TODO  merge IntSets
-                // TODO
+            if (intSetFilters.length > 0) {
+                for (var i = 0; i < intSetFilters.length; i++) {
+                    var intSetFilter = intSetFilters[i];
+                    var fieldId = intSetFilter.fieldDescriptor.identifier;
+                    var field = source.field(fieldId);
+                    var fieldIntSet = field.intSetForValue(intSetFilter.value);
+
+                    set = ozone.intSet.intersectionOfIntSets(set, fieldIntSet);
+                }
             }
 
-            // TODO
-            // TODO  Use the IntSets generated above
-            // TODO
-            // Iterative filtering
-            var setBuilder = ozone.intSet.ArrayIndexIntSet.builder(set.min(), set.max());
-
-            // TODO
-            // TODO Use an iterator, so we can skip
-            // TODO
-            oldStore.eachRow(function (rowToken) {
-                for (var i = 0; i < filtersForIteration.length; i++) {
-                    var filter = filtersForIteration[i];
-                    if (!filter.matches(oldStore, rowToken)) {
-                        return;
+            if (filtersForIteration.length > 0) {
+                var setBuilder = ozone.intSet.builder(set.min(), set.max());
+                set.each(function (rowToken) {
+                    for (var i = 0; i < filtersForIteration.length; i++) {
+                        var filter = filtersForIteration[i];
+                        if (!filter.matches(oldStore, rowToken)) {
+                            return;
+                        }
+                        setBuilder.onItem(rowToken);
                     }
-                    setBuilder.onItem(rowToken);
-                }
-            });
-            set = setBuilder.onEnd();
+                });
+                set = setBuilder.onEnd();
+            }
 
-            var newFilters = oldStore.filters().concat(filtersForIteration);
+            var newFilters = oldStore.filters().concat(filtersForIteration, intSetFilters);
             newFilters.sort(compareFilterByName);
             return new FilteredColumnStore(source, newFilters, set);
         }
@@ -697,6 +692,23 @@ var ozone;
         }
         intSet.unionOfIterators = unionOfIterators;
 
+        function unionOfIntSets() {
+            var intSets = [];
+            for (var _i = 0; _i < (arguments.length - 0); _i++) {
+                intSets[_i] = arguments[_i + 0];
+            }
+            if (intSets.length === 0) {
+                return intSet.empty;
+            }
+
+            var result = intSets[0];
+            for (var i = 1; i < intSets.length; i++) {
+                result = result.union(intSets[i]);
+            }
+            return result;
+        }
+        intSet.unionOfIntSets = unionOfIntSets;
+
         /** Return a IntSet containing only the numbers provided by all of the iterators. */
         function intersectionOfOrderedIterators() {
             var iterators = [];
@@ -736,6 +748,24 @@ var ozone;
             return builder.onEnd();
         }
         intSet.intersectionOfOrderedIterators = intersectionOfOrderedIterators;
+
+        function intersectionOfIntSets() {
+            var intSets = [];
+            for (var _i = 0; _i < (arguments.length - 0); _i++) {
+                intSets[_i] = arguments[_i + 0];
+            }
+            if (intSets.length === 0) {
+                return intSet.empty;
+            }
+
+            // Eventually we may want to do something more clever, such as sort by length or type
+            var result = intSets[0];
+            for (var i = 1; i < intSets.length; i++) {
+                result = result.intersection(intSets[i]);
+            }
+            return result;
+        }
+        intSet.intersectionOfIntSets = intersectionOfIntSets;
     })(ozone.intSet || (ozone.intSet = {}));
     var intSet = ozone.intSet;
 })(ozone || (ozone = {}));
