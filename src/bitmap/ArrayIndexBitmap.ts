@@ -91,11 +91,6 @@ module ozone.bitmap {
             if (bm instanceof RangeBitmap && bm.min() <= this.min() && bm.max() >= this.max()) {
                 return bm;
             }
-            console.log("ArrayIndexBitmap union with:"); // XXX
-            console.log(bm); // XXX
-            console.log("min: "+bm.min()+" vs. "+this.min()); // XXX
-            console.log("max: "+bm.max()+" vs. "+this.max()); // XXX
-
             return unionOfIterators(this.iterator(), bm.iterator());
         }
 
