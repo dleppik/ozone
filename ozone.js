@@ -12,8 +12,8 @@
 var ozone;
 (function (ozone) {
     /**
-    * Minimum, maximum, and whether every number is an integer.  For our purposes, an integer is defined according to
-    * Mozilla's Number.isInteger polyfill and ECMA Harmony specification, namely:
+    * Minimum and maximum values (inclusive), and whether every number is an integer.  For our purposes, an integer is
+    * defined according to Mozilla's Number.isInteger polyfill and ECMA Harmony specification, namely:
     *
     * typeof nVal === "number" && isFinite(nVal) && nVal > -9007199254740992 && nVal < 9007199254740992 && Math.floor(nVal) === nVal;
     *
@@ -58,6 +58,80 @@ var ozone;
         return AbstractReducer;
     })();
     ozone.AbstractReducer = AbstractReducer;
+
+    /**
+    * Combine all descriptors, with later ones overwriting values provided by earlier ones.  All non-inherited
+    * properties are copied over, plus all FieldDescribing (inherited or otherwise).
+    * If range and distinctValueEstimate are functions, the result's function calls the original object's function.
+    * If they are not functions, the result's function returns the value.
+    */
+    function mergeFieldDescriptors() {
+        var descriptors = [];
+        for (var _i = 0; _i < (arguments.length - 0); _i++) {
+            descriptors[_i] = arguments[_i + 0];
+        }
+        return mergeObjects(["identifier", "displayName", "typeOfValue", "typeConstructor"], ["range", "distinctValueEstimate"], descriptors);
+    }
+    ozone.mergeFieldDescriptors = mergeFieldDescriptors;
+
+    function mergeObjects(fields, functions, items) {
+        if (items.length === 0) {
+            return null;
+        }
+
+        var result = {};
+        for (var i = 0; i < items.length; i++) {
+            var item = items[i];
+
+            for (var k in item) {
+                if (item.hasOwnProperty(k)) {
+                    result[k] = k;
+                }
+            }
+
+            for (var j = 0; j < fields.length; j++) {
+                var key = fields[j];
+                if (typeof item[key] !== "undefined") {
+                    result[key] = item[key];
+                }
+            }
+            for (j = 0; j < functions.length; j++) {
+                var key = functions[j];
+                if (typeof item[key] === "function") {
+                    (function (f) {
+                        result[key] = function () {
+                            f();
+                        };
+                    })(item[key]);
+                } else if (typeof item[key] !== "undefined") {
+                    (function (value) {
+                        result[key] = function () {
+                            return value;
+                        };
+                    })(item[key]);
+                }
+            }
+        }
+        return result;
+    }
+
+    function convert(item, descriptor) {
+        if (item === null) {
+            return null;
+        }
+
+        if (descriptor.typeOfValue === "number") {
+            if (typeof item === "string") {
+                return Number(item);
+            }
+        } else if (descriptor.typeOfValue === "string") {
+            if (typeof item === "number") {
+                return "" + item;
+            }
+        }
+        return item;
+    }
+    ozone.convert = convert;
 })(ozone || (ozone = {}));
 /**
 * Copyright 2013 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
@@ -133,23 +207,49 @@ var ozone;
     /// <reference path='../_all.ts' />
     (function (columnStore) {
         /**
-        * This is the recommended way to generate a ColumnStore unless you wish to override the default heuristics for
-        * choosing field implementations.
+        * This is the recommended way to generate a ColumnStore.
+        *
+        * @params  provides optional arguments:
+        *
+        *          fields:  maps from field identifiers in the source to field-specific params.  All FieldDescribing
+        *                  properties and Builder parameters can be specified here.
+        *
+        *                   class: a Field class, such as ArrayField, or other object with a "builder" method.
+        *
+        *          buildAllFields: boolean, default is true.  If false, any fields not listed under 'Fields' are ignored.
         */
-        function buildFromStore(source) {
+        function buildFromStore(source, params) {
+            if (typeof params === "undefined") { params = {}; }
             var builders = {};
             var sourceFields = source.fields();
+            var buildAllFields = !(params.buildAllFields === false);
+
             for (var i = 0; i < sourceFields.length; i++) {
                 var sourceField = sourceFields[i];
                 var sourceFieldIsUnary = typeof (sourceField["value"]) === "function";
 
-                var newBuilder;
-                if (sourceFieldIsUnary && sourceField.distinctValueEstimate() > 500) {
-                    newBuilder = columnStore.ArrayField.builder(sourceField);
-                } else {
-                    newBuilder = columnStore.IntSetField.builder(sourceField);
+                var newBuilder = null;
+
+                var fieldParams = {};
+                var buildThisField = buildAllFields;
+                if (params.fields && params.fields[sourceField.identifier]) {
+                    buildThisField = true;
+                    fieldParams = params.fields[sourceField.identifier];
+                    if (fieldParams["class"]) {
+                        newBuilder = fieldParams["class"]["builder"](sourceField, fieldParams);
+                    }
                 }
-                builders[sourceField.identifier] = newBuilder;
+
+                if (newBuilder === null && buildThisField) {
+                    if (sourceFieldIsUnary && sourceField.distinctValueEstimate() > 500) {
+                        newBuilder = columnStore.ArrayField.builder(sourceField, fieldParams);
+                    } else {
+                        newBuilder = columnStore.IntSetField.builder(sourceField, fieldParams);
+                    }
+                }
+                if (newBuilder !== null) {
+                    builders[sourceField.identifier] = newBuilder;
+                }
             }
             var length = 0;
             source.eachRow(function (rowToken) {
@@ -208,7 +308,7 @@ var ozone;
             * Returns a reducer that can be run on a source DataStore to reproduce a sourceField.
             *
             * @param sourceField  the field which will be replicated
-            * @param params       additional parameters:
+            * @param params       may override any FieldDescribing field, plus additional parameters:
             *                     nullValues   -- if provided, this is a list of values equivalent to null.
             *                     nullProxy    -- if provided, this is used instead of null for storing null values.  This
             *                                     may allow the JavaScript implementation to use an array of primitives.
@@ -226,9 +326,11 @@ var ozone;
                     nullMap["" + nv] = nv;
                 }
 
+                var descriptor = ozone.mergeFieldDescriptors(sourceField, params);
+
                 return {
                     onItem: function (indexedRowToken) {
-                        var value = sourceField.value(indexedRowToken.rowToken);
+                        var value = ozone.convert(sourceField.value(indexedRowToken.rowToken), descriptor);
                         if (nullValues.length > 0 && nullMap["" + value] === value) {
                             value = nullProxy;
                         }
@@ -247,7 +349,7 @@ var ozone;
                         }
                     },
                     onEnd: function () {
-                        return new ArrayField(sourceField, array, offset, nullProxy);
+                        return new ArrayField(descriptor, array, offset, nullProxy);
                     }
                 };
             };
@@ -509,13 +611,20 @@ var ozone;
             */
             function (sourceField, params) {
                 if (typeof params === "undefined") { params = {}; }
+                var descriptor = ozone.mergeFieldDescriptors(sourceField, params);
+
                 var addValues = !params.values;
-                var valueList = (addValues) ? [] : params.values.concat();
+                var valueList = [];
+                if (params.values) {
+                    for (var i = 0; i < params.values.length; i++) {
+                        valueList.push(ozone.convert(params.values[i], descriptor));
+                    }
+                }
 
                 var intSetSource = (params.intSetSource) ? params.intSetSource : ozone.intSet.ArrayIndexIntSet;
                 var intSetBuilders = {};
                 for (var i = 0; i < valueList.length; i++) {
-                    var value = valueList[i];
+                    var value = ozone.convert(valueList[i], descriptor);
                     intSetBuilders[value.toString()] = intSetSource.builder();
                 }
 
@@ -523,7 +632,7 @@ var ozone;
                     onItem: function (indexedRowToken) {
                         var values = sourceField.values(indexedRowToken.rowToken);
                         for (var i = 0; i < values.length; i++) {
-                            var value = values[i];
+                            var value = ozone.convert(values[i], descriptor);
                             var builder = intSetBuilders[value.toString()];
                             if (typeof (builder) === "undefined" && addValues) {
                                 builder = intSetSource.builder();
@@ -553,7 +662,7 @@ var ozone;
                             var value = valueList[i];
                             valueMap[value.toString()] = intSetBuilders[value].onEnd();
                         }
-                        return new IntSetField(sourceField, valueList, valueMap);
+                        return new IntSetField(descriptor, valueList, valueMap);
                     }
                 };
             };

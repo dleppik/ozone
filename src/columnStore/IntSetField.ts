@@ -30,15 +30,23 @@ module ozone.columnStore {
          *                                     characteristics of sourceField.
          */
         public static builder<T>(sourceField : Field<T>, params : any = {} ) : Reducer<IndexedRowToken,IntSetField<T>> {
+            var descriptor : FieldDescribing = mergeFieldDescriptors(sourceField, params);
+
             var addValues =  ! params.values;
-            var valueList : T[] = (addValues) ? [] : params.values.concat();
+            var valueList : T[] = []; // (addValues) ? [] : params.values.concat();
+            if (params.values) {
+                for (var i=0; i<params.values.length; i++) {
+                    valueList.push(ozone.convert(params.values[i], descriptor));
+                }
+            }
+
 
             var intSetSource : IntSetBuilding = (params.intSetSource)
                 ? params.intSetSource
                 : ozone.intSet.ArrayIndexIntSet;
             var intSetBuilders : any = {};
             for (var i=0; i<valueList.length; i++) {
-                var value = valueList[i];
+                var value = ozone.convert(valueList[i], descriptor);
                 intSetBuilders[value.toString()] = intSetSource.builder();
             }
 
@@ -46,7 +54,7 @@ module ozone.columnStore {
                 onItem: function(indexedRowToken : IndexedRowToken) {
                     var values = sourceField.values(indexedRowToken.rowToken);
                     for (var i=0; i<values.length; i++) {
-                        var value = <any> values[i];
+                        var value = <any> ozone.convert(values[i], descriptor);
                         var builder : Reducer<number,IntSet> = intSetBuilders[value.toString()];
                         if (typeof(builder) === "undefined"  &&  addValues) {
                             builder = intSetSource.builder();
@@ -75,7 +83,7 @@ module ozone.columnStore {
                         var value = valueList[i];
                         valueMap[value.toString()] = intSetBuilders[value].onEnd();
                     }
-                    return new IntSetField<T>(sourceField, valueList, valueMap);
+                    return new IntSetField<T>(descriptor, valueList, valueMap);
                 }
             };
         }

@@ -11,8 +11,8 @@
 module ozone {
 
     /**
-     * Minimum, maximum, and whether every number is an integer.  For our purposes, an integer is defined according to
-     * Mozilla's Number.isInteger polyfill and ECMA Harmony specification, namely:
+     * Minimum and maximum values (inclusive), and whether every number is an integer.  For our purposes, an integer is
+     * defined according to Mozilla's Number.isInteger polyfill and ECMA Harmony specification, namely:
      *
      * typeof nVal === "number" && isFinite(nVal) && nVal > -9007199254740992 && nVal < 9007199254740992 && Math.floor(nVal) === nVal;
      *
@@ -51,5 +51,76 @@ module ozone {
             this.reset();
             return result;
         }
+    }
+
+
+    /**
+     * Combine all descriptors, with later ones overwriting values provided by earlier ones.  All non-inherited
+     * properties are copied over, plus all FieldDescribing (inherited or otherwise).
+     * If range and distinctValueEstimate are functions, the result's function calls the original object's function.
+     * If they are not functions, the result's function returns the value.
+     */
+    export function mergeFieldDescriptors(...descriptors : FieldDescribing[]) : FieldDescribing {
+        return mergeObjects(
+            ["identifier", "displayName", "typeOfValue", "typeConstructor"],
+            ["range", "distinctValueEstimate"],
+            descriptors);
+    }
+
+
+    function mergeObjects(fields : string[], functions : string[], items : any[]) : any {
+        if (items.length === 0) {
+            return null;
+        }
+
+        var result = {};
+        for (var i=0; i<items.length; i++) {
+            var item = items[i];
+
+            for (var k in item) {
+                if (item.hasOwnProperty(k)) {
+                    result[k] = k;
+                }
+            }
+
+            for (var j=0; j<fields.length; j++) {
+                var key = fields[j];
+                if (typeof item[key] !== "undefined") {
+                    result[key] = item[key];
+                }
+            }
+            for (j=0; j<functions.length; j++) {
+                var key = functions[j];
+                if (typeof item[key] === "function") {
+                    (function(f) {
+                        result[key] = function() { f() };
+                    })(item[key]);
+                }
+                else if (typeof item[key] !== "undefined") {
+                    (function(value) {
+                        result[key] = function() { return value; };
+                    })(item[key]);
+                }
+            }
+        }
+        return result;
+    }
+
+    export function convert(item : any, descriptor : FieldDescribing) : any {
+        if (item===null) {
+            return null;
+        }
+
+        if (descriptor.typeOfValue === "number") {
+            if (typeof item === "string") {
+                return Number(item);
+            }
+        }
+        else if (descriptor.typeOfValue === "string") {
+            if (typeof item === "number") {
+                return ""+item;
+            }
+        }
+        return item;
     }
 }

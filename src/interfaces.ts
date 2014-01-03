@@ -77,7 +77,7 @@ module ozone {
         /** The name users see for the field. */
             displayName : string;
 
-        /** The data type of T. */
+        /** The data type of T;  the result of calling "typeof" on an item. */
             typeOfValue : string;
 
         /** The prototype for T, for identifying types when typeOfValue='object'. */
@@ -130,17 +130,24 @@ module ozone {
     }
 
     /**
-     * Our favorite column storage type is a IntSet for each value, with each bit representing a row index.  For
-     * browser compatibility, and to test performance, we allow for many implementations.  These are read-only.
+     * An unchanging list of non-negative integers.  To work well under a variety of circumstances, we allow for many
+     * implementations.  The interface is written as if it were from a low-level, non-JavaScript language in the hopes
+     * that we can coerce JavaScript implementations to compile it into something extremely efficient.
      */
     export interface IntSet {
 
         get(index : number) : boolean;
 
-        /** The lowest value for which get() returns true, or -1 if size === 0. */
+        /**
+         * The lowest value for which get() returns true, or -1 if size === 0.  This should be extremely fast.
+         * The behavior when size === 0 may change in future versions.
+         */
         min() : number;
 
-        /** The highest value for which get() returns true, or -1 if size === 0. */
+        /**
+         * The highest value for which get() returns true, or -1 if size === 0. This should be extremely fast.
+         * The behavior when size === 0 may change in future versions.
+         */
         max() : number;
 
         /** The number of values for which get() returns true. */
@@ -162,7 +169,7 @@ module ozone {
         equals(bm : IntSet) : boolean;
     }
 
-    /** Packs bits in 32-bit unsigned ints.   */
+    /** An IntSet which stores its values as bits in 32-bit unsigned ints.   */
     export interface PackedIntSet extends IntSet {
 
         /** Equals Math.floor(min()/32). */
@@ -179,7 +186,7 @@ module ozone {
     export interface IntSetBuilding {
         /**
          * The returned Reducer is meant to be used once, to build exactly one IntSet.  A call to onItem()
-         * sets a bit, and calls should be done in order from lowest to highest.
+         * sets a value, and calls should be done in order from lowest to highest.
          */
         builder(min? : number, max?: number) : Reducer<number,IntSet>
     }

@@ -7,24 +7,49 @@
 module ozone.columnStore {
 
     /**
-     * This is the recommended way to generate a ColumnStore unless you wish to override the default heuristics for
-     * choosing field implementations.
+     * This is the recommended way to generate a ColumnStore.
+     *
+     * @params  provides optional arguments:
+     *
+     *          fields:  maps from field identifiers in the source to field-specific params.  All FieldDescribing
+     *                  properties and Builder parameters can be specified here.
+     *
+     *                   class: a Field class, such as ArrayField, or other object with a "builder" method.
+     *
+     *          buildAllFields: boolean, default is true.  If false, any fields not listed under 'Fields' are ignored.
      */
-    export function buildFromStore(source : DataStore)  : ColumnStore {
+    export function buildFromStore(source : DataStore, params: any = {})  : ColumnStore {
         var builders : any = {};
         var sourceFields = source.fields();
+        var buildAllFields = ! (params.buildAllFields === false);
+
         for (var i=0; i< sourceFields.length; i++) {
             var sourceField = sourceFields[i];
             var sourceFieldIsUnary = typeof(sourceField["value"]) === "function";
 
-            var newBuilder;
-            if (sourceFieldIsUnary  &&  sourceField.distinctValueEstimate() > 500) {  // 500 is somewhat arbitrary
-                newBuilder = ArrayField.builder(<UnaryField>sourceField);
+            var newBuilder : any = null;
+
+            var fieldParams = {};
+            var buildThisField = buildAllFields;
+            if (params.fields  &&  params.fields[sourceField.identifier]) {
+                buildThisField = true;
+                fieldParams = params.fields[sourceField.identifier];
+                if (fieldParams["class"]) {
+                    newBuilder = fieldParams["class"]["builder"](sourceField, fieldParams);
+                }
             }
-            else {
-                newBuilder = IntSetField.builder(sourceField);
+
+            if (newBuilder === null && buildThisField ) {
+                if (sourceFieldIsUnary  &&  sourceField.distinctValueEstimate() > 500) {  // 500 is arbitrary
+                    newBuilder = ArrayField.builder(<UnaryField>sourceField, fieldParams);
+                }
+                else {
+                    newBuilder = IntSetField.builder(sourceField, fieldParams);
+                }
             }
-            builders[sourceField.identifier] = newBuilder;
+            if (newBuilder !== null) {
+                builders[sourceField.identifier] = newBuilder;
+            }
         }
         var length = 0;
         source.eachRow(function(rowToken) {

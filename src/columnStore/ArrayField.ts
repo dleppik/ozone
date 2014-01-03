@@ -14,7 +14,7 @@ module ozone.columnStore {
          * Returns a reducer that can be run on a source DataStore to reproduce a sourceField.
          *
          * @param sourceField  the field which will be replicated
-         * @param params       additional parameters:
+         * @param params       may override any FieldDescribing field, plus additional parameters:
          *                     nullValues   -- if provided, this is a list of values equivalent to null.
          *                     nullProxy    -- if provided, this is used instead of null for storing null values.  This
          *                                     may allow the JavaScript implementation to use an array of primitives.
@@ -31,9 +31,12 @@ module ozone.columnStore {
                 nullMap[""+nv] = nv;
             }
 
+            var descriptor : FieldDescribing = mergeFieldDescriptors(sourceField, params);
+
+
             return {
                 onItem: function(indexedRowToken : IndexedRowToken) {
-                    var value : T = sourceField.value(indexedRowToken.rowToken);
+                    var value : T = ozone.convert(sourceField.value(indexedRowToken.rowToken), descriptor);
                     if (nullValues.length > 0  &&  nullMap[""+value] === value) {
                         value = nullProxy;
                     }
@@ -53,7 +56,7 @@ module ozone.columnStore {
                     }
                 },
                 onEnd: function() : ArrayField<T> {
-                    return new ArrayField(sourceField, array, offset, nullProxy);
+                    return new ArrayField(descriptor, array, offset, nullProxy);
                 }
             };
         }
