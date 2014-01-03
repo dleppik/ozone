@@ -26,7 +26,8 @@ The major differences between Ozone and a traditional SQL database (most of thes
 Usage
 -----
 
-Ozone is currently under development.  More details will arrive when they are available.
+Ozone is currently under development.  More details will arrive when they are available.  For now, see the sample code
+in the test directory.
 
 Getting data into Ozone
 -----------------------
@@ -51,24 +52,48 @@ Ozone will never be a "Big Data" tool, if by Big Data you mean it should handle 
 History
 -------
 
-Ozone is an TypeScript rewrite of portions of [Vocal Laboratories'](http://www.vocalabs.com/) proprietary reporting engine.  The fact that Ozone shares data formats with Vocalabs's server-side Java/Scala-based engine simplifies data transfer between client and server.
+Ozone is an TypeScript rewrite of portions of [Vocal Laboratories'](http://www.vocalabs.com/) proprietary JVM-based reporting engine.
 
 TODO
 ----
 
-- [ ] Internal filter/slice API
+*Milestones*
 
-- [ ] External (jQuery-like) filter/slice API
+- [X] Load a CSV file and do simple ad-hoc filtering via internal API
+
+- [ ] External API makes it easy to load a CSV file and do simple ad-hoc filtering
+
+- [ ] NPM module
+
+- [ ] NPM-integrated conversion from CSV into column-oriented JSON.
+
+- [ ] NPM-integrated conversion from CSV into bitmaps
+
+- [ ] Binary format
+
+- [ ] Improve external API based on real-world usage
+
+- [ ] Improve efficiency (Multi-threaded API?  WebCL API?)
+
+*Specific tasks*
+
+- [X] Internal filter API
+
+- [ ] Internal dice API (filter on all values at once)
+
+- [ ] External (jQuery-like) filter/dice API
+
+- [ ] External API for filtering on a range or via a user-supplied function
 
 - [ ] Column-oriented JSON writer
 
-- [X] Simple array bitmap
+- [X] Simple array sets
 
-- [ ] Bitmap-based column-oriented fields (implemented, not fully tested-- see bootstrap-demo.js)
+- [ ] Array set-based column-oriented fields (implemented, not fully tested-- see bootstrap-demo.js)
 
-- [ ] Packed bitmaps using Array.  (Fallback for older browsers, and may be faster for filtering.)
+- [ ] Bitmaps using Array.  (Fallback for older browsers, and may be faster for filtering.)
 
-- [ ] Packed bitmaps using Uint32Array.
+- [ ] Bitmaps using Uint32Array.
 
 - [ ] Simple array-based UnaryFields, for when bitmaps would be inefficient
 
