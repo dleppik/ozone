@@ -77,6 +77,37 @@ module ozone.columnStore {
         return 0;
     }
 
+    export function partitionColumnStore(store : ColumnStoreInterface, field : RandomAccessField<any>)
+        : { [value: string]: RandomAccessStore; }
+    {
+        if (store.length === 0) {
+            return {};
+        }
+
+        var indexedField;
+        if (field instanceof IntSetField) {
+            indexedField = <IntSetField> field;
+        }
+        else {
+            var indexedFieldBuilder = IntSetField.builder(field);
+            store.eachRow(function(row) {
+                indexedFieldBuilder.onItem({index:row, rowToken:row});
+            });
+            indexedField = <IntSetField> indexedFieldBuilder.onEnd();
+        }
+
+        var result = {};
+        var allValues = indexedField.allValues();
+        for (var i=0; i<allValues.length; i++) {
+            var value = allValues[i];
+            var filtered = store.filter(new ozone.ValueFilter(field, value));
+            if (filtered.length > 0) {
+                result[""+value] = filtered;
+            }
+        }
+        return result;
+    }
+
     export class FilteredColumnStore extends StoreProxy implements ColumnStoreInterface {
 
         length : number;
@@ -119,6 +150,10 @@ module ozone.columnStore {
                 result = result.filter(newFilters[i]);
             }
             return result;
+        }
+
+        partition(fieldKey : string) {
+            return partitionColumnStore(this, <RandomAccessField<any>> this.field(fieldKey));
         }
 
     }

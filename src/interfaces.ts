@@ -37,11 +37,6 @@ module ozone {
      * implementations (e.g. unions of stores) may use something else for IDs.
      */
     export interface RandomAccessStore extends DataStore {
-        // TODO
-        // TODO  User-friendly API for filtering and slicing;  something that's as compact as jQuery and as .
-        // TODO  This is going to be the really cool part of this project when I get to it...
-        // TODO
-
         /** Returns a proxy with the filter applied.  Applying the same filter twice has no effect. */
         // TODO overload this with filter-building shortcuts.
         filter(filter : Filter) : RandomAccessStore;
@@ -63,6 +58,13 @@ module ozone {
          * itself.
          */
         removeFilter(filter : Filter) : RandomAccessStore;
+
+        /**
+         * Filters on all values of a Field at once, returns a map from value strings to filtered RandomAccessStores.
+         * Does not return any values with empty Stores.
+         */
+        // TODO overload this to take a Field and not just its name
+        partition(fieldName : string) : { [value: string]: RandomAccessStore; };
 
         /** The number of elements in the DataStore. */
         length : number;
@@ -91,9 +93,11 @@ module ozone {
 
         /**
          * An estimate of the number of distinct values that this has.  It is intended to be used to determine how (or
-         * whether) another Store will store its values.  If the number of values is expected to be small (under
-         * 1000), it should give an exact count.  If the number is expected to be large (over a tenth of the total
-         * number of records), it is reasonable to return Number.POSITIVE_INFINITY.
+         * whether) another Store will store its values or what kind of selection tool a UI will present.  Thus an
+         * exact value is of diminishing importance the more distinct values there are.
+         * If the number of values is expected to be small (under 1000), it should give an exact count.  If the number
+         * is expected to be large (over a tenth of the total number of records), it is reasonable to return
+         * Number.POSITIVE_INFINITY.
          */
         distinctValueEstimate() : number;
     }

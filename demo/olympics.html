@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="../ozone.js" charset="utf-8"></script>
+    <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+    <title>Ozone Olympics D3 demo</title>
+</head>
+<style type="text/css">
+
+    h1 {
+        font-size: 18px;
+    }
+
+    .chart {
+        display: block;
+        margin: auto;
+        font-size: 11px;
+    }
+
+    rect {
+        stroke: #eee;
+        fill: #aaa;
+        fill-opacity: .8;
+    }
+
+    rect.parent {
+        cursor: pointer;
+        fill: steelblue;
+    }
+
+    text {
+        pointer-events: none;
+    }
+
+</style>
+<body>
+
+    <div style="float: right; width: 25%">
+        Filter:
+        <div id="fieldMenu" style="display: inline-block"></div>
+        <div id="valueMenu" style="display: inline-block"></div>
+    </div>
+
+    <h1>Summer Olympic Medals</h1>
+
+
+    <div>
+        <p>
+            This is a demo of <a href="https://github.com/dleppik/ozone/">Ozone,</a> an open source JavaScript database
+            for data visualization.  A spreadsheet of all summer olympics medalists (in CSV format) is loaded and
+            converted into Ozone's high-performance format.  Once that is done, adding and removing filters is fast.
+        </p>
+    </div>
+
+    <div id="visContainer">
+    </div>
+
+    <p>
+        Click or tap to zoom in, click/tap on the leftmost block to zoom back out.
+        The partitioning visualization is based on
+        <a href="http://mbostock.github.io/d3/talk/20111018/partition.html">this demo.</a>
+    </p>
+
+    <script>
+        // We need to create a global variable to make ozone visible within functions.
+        // Ozone uses the AMD module format, so you can use it with require.js ( http://requirejs.org/ )
+        // for asynchronous loading.
+        var o3 = ozone;
+
+        var w = 1120,
+            h = 700,
+            x = d3.scale.linear().range([0, w]),
+            y = d3.scale.linear().range([0, h]);
+
+        var vis = d3.select("#visContainer").append("div")
+                .attr("class", "chart")
+                .style("width", w + "px")
+                .style("height", h + "px")
+                .append("svg:svg")
+                .attr("width", w)
+                .attr("height", h);
+
+        var fieldsInVisualization = ['Edition', 'Gender', 'Medal', 'NOC', "Athlete"];
+
+        var fieldMenu = d3.select("#fieldMenu").append("select");
+        var noFieldOptName = "Choose a Field";
+        var fieldsByDisplayName = {};
+        var fieldOptions = [];
+        var valueMenu = d3.select("#valueMenu").append("select");
+        var valueOptions = [];
+
+        var onFieldChange = function() {
+            valueMenu.selectAll("option").remove();
+            var field = selectedField();
+            if (field === null) {
+                valueMenu.selectAll("option").data([]);
+            }
+            else {
+                valueMenu.selectAll("option")
+                        .data(field.allValues())
+                        .enter().append("option")
+                            .text(function(d) {return d});
+
+                valueMenu.on("change", updateUsingMenus);
+                updateUsingMenus();
+            }
+        };
+
+        var selectedField = function() {
+            var fieldName = fieldMenu.property("value");
+            if (fieldName === noFieldOptName) {
+                return null;
+            }
+            return fieldsByDisplayName[fieldName];
+        };
+
+        var selectedValue = function() {
+            return valueMenu.property("value");
+        };
+
+        var updateUsingMenus = function() {
+            var field = selectedField();
+            var data;
+            if (field===null) {
+                data = {name: "Select a field to filter"};
+            }
+            var value = selectedValue();
+            var filteredDb = db.filter(new ozone.ValueFilter(field, value));
+            if (filteredDb.length === 0) {
+                data = {name: "Empty Data set"};
+            }
+            else {
+                data = partitionForD3(value, filteredDb, fieldsInVisualization);
+            }
+            setupPartitionVis(data);
+        };
+
+        var db;
+
+        d3.text("../test/SummerOlympicMedallists1896to2008.csv", function(rawData) {
+
+            // Because data files can be large, you want to discard raw data and intermediate data
+            // as quickly as possible.  We don't create intermediate variables if we can avoid it,
+            // and we don't define any callbacks inside this function or inside any function
+            // called from here.
+            db = o3.columnStore.buildFromStore(o3.rowStore.buildFromCsv(rawData));
+
+            // Field/value filtering
+
+            fieldOptions = (function() {
+                var result = [noFieldOptName];
+                for (var i=0; i<db.fields().length; i++) {
+                    var field = db.fields()[i];
+                    if (field instanceof o3.columnStore.IntSetField) {
+                        result.push(field.displayName);
+                        fieldsByDisplayName[field.displayName] = field;
+                    }
+                }
+                return result;
+            })();
+
+            fieldMenu.selectAll("option")
+                    .data(fieldOptions)
+                    .enter().append("option")
+                        .text(function(d) { return d; });
+
+            fieldMenu.on("change", onFieldChange);
+
+
+
+            var o3Partition = partitionForD3("Olympics", db, fieldsInVisualization);
+            setupPartitionVis(o3Partition);
+        });
+
+        // Partition demo based on http://mbostock.github.io/d3/talk/20111018/partition.html
+        function setupPartitionVis(o3Partition) {
+
+            vis.selectAll("g").remove();
+
+            var partition = d3.layout.partition()
+                    .value(function(d) { return d.size; });
+
+
+
+            var g = vis.selectAll("g")
+                    .data(partition.nodes(o3Partition))
+                    .enter().append("svg:g")
+                    .attr("transform", function(d) { return "translate(" + x(d.y) + "," + y(d.x) + ")"; })
+                    .on("click", click);
+
+
+            var kx = w / o3Partition.dx,
+                    ky = h / 1;
+
+            g.append("svg:rect")
+                    .attr("width", o3Partition.dy * kx)
+                    .attr("height", function(d) { return d.dx * ky; })
+                    .attr("class", function(d) { return d.children ? "parent" : "child"; });
+
+            g.append("svg:text")
+                    .attr("transform", transform)
+                    .attr("dy", ".35em")
+                    .style("opacity", function(d) { return d.dx * ky > 12 ? 1 : 0; })
+                    .text(function(d) { return d.name; });
+
+            d3.select(window)
+                    .on("click", function() { click(o3Partition); });
+
+
+            function click(d) {
+                if (!d.children) return;
+
+                kx = (d.y ? w - 40 : w) / (1 - d.y);
+                ky = h / d.dx;
+                x.domain([d.y, 1]).range([d.y ? 40 : 0, w]);
+                y.domain([d.x, d.x + d.dx]);
+
+                var t = g.transition()
+                        .duration(d3.event.altKey ? 7500 : 750)
+                        .attr("transform", function(d) { return "translate(" + x(d.y) + "," + y(d.x) + ")"; });
+
+                t.select("rect")
+                        .attr("width", d.dy * kx)
+                        .attr("height", function(d) { return d.dx * ky; });
+
+                t.select("text")
+                        .attr("transform", transform)
+                        .style("opacity", function(d) { return d.dx * ky > 12 ? 1 : 0; });
+
+                d3.event.stopPropagation();
+            }
+
+            function transform(d) {
+                return "translate(8," + d.dx * ky / 2 + ")";
+            }
+        }
+
+        function partitionForD3(name, data, fieldNames, depth) {
+            if (typeof depth  === 'undefined') {
+                depth = 0;
+            }
+
+            var result = {
+                name: name+" ("+numberWithCommas(data.length)+")",
+                size: data.length
+            };
+
+            if (fieldNames.length > 0) {
+                var fieldName = fieldNames[0];
+                var remainingFields = fieldNames.slice(1);
+                var field = data.field(fieldName);
+
+                if (depth < 2 || field.distinctValueEstimate() <= 50  ||  data.length <= 5) {
+                    var subDbs = data.partition(fieldName);
+
+                    result.children = [];
+                    for (var valueName in subDbs) {
+                        if (subDbs.hasOwnProperty(valueName)) {
+                            var subDb = subDbs[valueName];
+                            result.children.push( partitionForD3(valueName, subDb, remainingFields, depth+1) );
+                        }
+                    }
+                }
+            }
+            return result;
+        }
+
+        // From Elias Zamaria's answer at
+        // http://stackoverflow.com/questions/2901102/how-to-print-a-number-with-commas-as-thousands-separators-in-javascript
+        function numberWithCommas(x) {
+            return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        }
+
+    </script>
+
+</body>
+</html>

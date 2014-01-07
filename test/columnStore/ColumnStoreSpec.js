@@ -23,7 +23,7 @@ describe("ColumnStore", function() {
         }
     };
 
-    var    rowStore = ozone.rowStore.buildCsv(data);
+    var    rowStore = ozone.rowStore.buildFromCsv(data);
     var columnStore = ozone.columnStore.buildFromStore( rowStore, storeParams );
     var   nameField = columnStore.field("name");
     var  colorField = columnStore.field("color");

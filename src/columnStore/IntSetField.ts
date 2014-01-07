@@ -40,7 +40,6 @@ module ozone.columnStore {
                 }
             }
 
-
             var intSetSource : IntSetBuilding = (params.intSetSource)
                 ? params.intSetSource
                 : ozone.intSet.ArrayIndexIntSet;
@@ -53,9 +52,11 @@ module ozone.columnStore {
             return {
                 onItem: function(indexedRowToken : IndexedRowToken) {
                     var values = sourceField.values(indexedRowToken.rowToken);
+
                     for (var i=0; i<values.length; i++) {
                         var value = <any> ozone.convert(values[i], descriptor);
                         var builder : Reducer<number,IntSet> = intSetBuilders[value.toString()];
+
                         if (typeof(builder) === "undefined"  &&  addValues) {
                             builder = intSetSource.builder();
                             intSetBuilders[value.toString()] = builder;

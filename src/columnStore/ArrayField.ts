@@ -73,6 +73,10 @@ module ozone.columnStore {
             this.valueEstimate   = descriptor.distinctValueEstimate();
             this.rangeValue      = descriptor.range();
 
+            if (typeof(this.valueEstimate) !== "number" || isNaN(this.valueEstimate) || this.valueEstimate > array.length) {
+                this.valueEstimate = array.length;
+            }
+
             if (array.length > 0  &&  (array[0] === nullProxy  || array[array.length-1] === nullProxy) ) {
                 throw new Error("Array must be trimmed");
             }
@@ -89,7 +93,11 @@ module ozone.columnStore {
         value(rowToken):T {
             var index = (<number> rowToken)-this.offset;
             var result : T = this.array[index];
-            return (typeof(result) === null || result === this.nullProxy)  ?  null  :  result;
+            return (this.isNull(result))  ?  null  :  result;
+        }
+
+        private isNull(item : T) : boolean {
+            return (typeof(item) === null || typeof(item) === 'undefined' || item === this.nullProxy);
         }
 
         values(rowToken):T[] {

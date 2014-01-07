@@ -300,6 +300,10 @@ var ozone;
                 this.valueEstimate = descriptor.distinctValueEstimate();
                 this.rangeValue = descriptor.range();
 
+                if (typeof (this.valueEstimate) !== "number" || isNaN(this.valueEstimate) || this.valueEstimate > array.length) {
+                    this.valueEstimate = array.length;
+                }
+
                 if (array.length > 0 && (array[0] === nullProxy || array[array.length - 1] === nullProxy)) {
                     throw new Error("Array must be trimmed");
                 }
@@ -357,7 +361,11 @@ var ozone;
             ArrayField.prototype.value = function (rowToken) {
                 var index = (rowToken) - this.offset;
                 var result = this.array[index];
-                return (typeof (result) === null || result === this.nullProxy) ? null : result;
+                return (this.isNull(result)) ? null : result;
+            };
+
+            ArrayField.prototype.isNull = function (item) {
+                return (typeof (item) === null || typeof (item) === 'undefined' || item === this.nullProxy);
             };
 
             ArrayField.prototype.values = function (rowToken) {
@@ -424,6 +432,10 @@ var ozone;
 
             ColumnStore.prototype.removeFilter = function (filter) {
                 return this;
+            };
+
+            ColumnStore.prototype.partition = function (fieldKey) {
+                return columnStore.partitionColumnStore(this, this.field(fieldKey));
             };
 
             ColumnStore.prototype.eachRow = function (rowAction) {
@@ -526,6 +538,35 @@ var ozone;
             return 0;
         }
 
+        function partitionColumnStore(store, field) {
+            if (store.length === 0) {
+                return {};
+            }
+
+            var indexedField;
+            if (field instanceof columnStore.IntSetField) {
+                indexedField = field;
+            } else {
+                var indexedFieldBuilder = columnStore.IntSetField.builder(field);
+                store.eachRow(function (row) {
+                    indexedFieldBuilder.onItem({ index: row, rowToken: row });
+                });
+                indexedField = indexedFieldBuilder.onEnd();
+            }
+
+            var result = {};
+            var allValues = indexedField.allValues();
+            for (var i = 0; i < allValues.length; i++) {
+                var value = allValues[i];
+                var filtered = store.filter(new ozone.ValueFilter(field, value));
+                if (filtered.length > 0) {
+                    result["" + value] = filtered;
+                }
+            }
+            return result;
+        }
+        columnStore.partitionColumnStore = partitionColumnStore;
+
         var FilteredColumnStore = (function (_super) {
             __extends(FilteredColumnStore, _super);
             function FilteredColumnStore(source, filterArray, filterBits) {
@@ -568,6 +609,10 @@ var ozone;
                     result = result.filter(newFilters[i]);
                 }
                 return result;
+            };
+
+            FilteredColumnStore.prototype.partition = function (fieldKey) {
+                return partitionColumnStore(this, this.field(fieldKey));
             };
             return FilteredColumnStore;
         })(ozone.StoreProxy);
@@ -631,9 +676,11 @@ var ozone;
                 return {
                     onItem: function (indexedRowToken) {
                         var values = sourceField.values(indexedRowToken.rowToken);
+
                         for (var i = 0; i < values.length; i++) {
                             var value = ozone.convert(values[i], descriptor);
                             var builder = intSetBuilders[value.toString()];
+
                             if (typeof (builder) === "undefined" && addValues) {
                                 builder = intSetSource.builder();
                                 intSetBuilders[value.toString()] = builder;
@@ -1160,7 +1207,7 @@ var ozone;
     /// <reference path="../_all.ts" />
     (function (rowStore) {
         /** Build from a CSV file, with all resulting Fields treated as strings. */
-        function buildCsv(csv) {
+        function buildFromCsv(csv) {
             var dataArray = csv.split(/(\r\n|\n|\r)/);
             var reader = new rowStore.CsvReader();
             var fieldInfo = (function () {
@@ -1175,7 +1222,7 @@ var ozone;
 
             return build(fieldInfo, dataArray, reader);
         }
-        rowStore.buildCsv = buildCsv;
+        rowStore.buildFromCsv = buildFromCsv;
 
         /**
         * Build a RowStore.

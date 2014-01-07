@@ -47,6 +47,9 @@ module ozone.columnStore {
 
         removeFilter(filter : Filter) : RandomAccessStore { return this; }
 
+        partition(fieldKey : string) {
+            return partitionColumnStore(this, <RandomAccessField<any>> this.field(fieldKey));
+        }
 
         eachRow(rowAction:Function) {
             for (var i=0; i<this.length; i++) {

@@ -4,9 +4,10 @@
  */
 var fs = require('fs');
 eval(fs.readFileSync('../ozone.js', {encoding: 'utf-8'}));
-var filename = 'Credit_card_complaints.csv';
-filename = "SummerOlympicMedallists1896to2008.csv";
-var rowStore = ozone.rowStore.buildCsv(fs.readFileSync(filename, {encoding: 'utf-8'}));
+
+
+var filename = "SummerOlympicMedallists1896to2008.csv";
+var rowStore = ozone.rowStore.buildFromCsv(fs.readFileSync(filename, {encoding: 'utf-8'}));
 var columnStore = ozone.columnStore.buildFromStore(rowStore);
 
 var o3 = ozone;
@@ -18,8 +19,8 @@ var fieldInfo = function(db, fieldName) {
 
     var result = "";
     var field = db.field(fieldName);
-    var allValues = field.allValues();
     if (field) {
+        var allValues = field.allValues();
         for (var i=0; i<allValues.length; i++) {
             var value = allValues[i];
             var filtered = db.filter(new o3.ValueFilter(field, value));

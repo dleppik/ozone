@@ -6,7 +6,7 @@
 module ozone.rowStore {
 
     /** Build from a CSV file, with all resulting Fields treated as strings. */
-    export function buildCsv(csv : string) : RowStore {
+    export function buildFromCsv(csv : string) : RowStore {
         var dataArray = csv.split(/(\r\n|\n|\r)/);
         var reader = new CsvReader();
         var fieldInfo = (function() {
