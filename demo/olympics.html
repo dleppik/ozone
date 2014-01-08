@@ -15,6 +15,20 @@
         font-size: 18px;
     }
 
+    .menuTitle {
+        display: inline-block;
+        width: 200px;
+        text-align: right;
+    }
+
+    .menu {
+        display: inline-block;
+    }
+
+    #visContainer {
+        margin-top: 16px;
+    }
+
     .chart {
         display: block;
         margin: auto;
@@ -31,6 +45,7 @@
         cursor: pointer;
         fill: steelblue;
     }
+
 
     text {
         pointer-events: none;
@@ -53,9 +68,17 @@
     </div>
 
     <div>
-        Filter:
-        <div id="fieldMenu" style="display: inline-block"></div>
-        <div id="valueMenu" style="display: inline-block"></div>
+        <div class="menuTitle">Filter:</div>
+        <div id="fieldMenu" class="menu"></div>
+        <div id="valueMenu" class="menu"></div>
+    </div>
+    <div>
+        <div class="menuTitle">Hierarchy Levels:</div>
+        <div id="fieldHierarchyMenu0" class="menu"></div>
+        <div id="fieldHierarchyMenu1" class="menu"></div>
+        <div id="fieldHierarchyMenu2" class="menu"></div>
+        <div id="fieldHierarchyMenu3" class="menu"></div>
+        <div id="fieldHierarchyMenu4" class="menu"></div>
     </div>
 
     <div id="visContainer">
@@ -73,8 +96,9 @@
         // for asynchronous loading.
         var o3 = ozone;
 
+        var defaultFieldsInVisualization = ['Edition', 'Gender', 'Medal', 'NOC', "Athlete"];
 
-        var fieldsInVisualization = ['Edition', 'Gender', 'Medal', 'NOC', "Athlete"];
+        var fieldsInVisualization = defaultFieldsInVisualization;
 
         var fieldMenu = d3.select("#fieldMenu").append("select");
         var noFieldOptName = "Choose a Field";
@@ -112,9 +136,55 @@
             return valueMenu.property("value");
         };
 
+        var initHierarchyMenus = function() {
+            for (var i=0; i<defaultFieldsInVisualization.length; i++) {
+                var defaultFieldId = defaultFieldsInVisualization[i];
+                var fields = [];
+                for (var j=0; j<db.fields().length; j++) {
+                    var field = db.fields()[j];
+                    if (field  && (i > 2 || field.distinctValueEstimate() < 200)) {
+                        fields.push(field.displayName);
+                    }
+                }
+                fields.sort();
+                console.log(fields);
+
+                d3.select("#fieldHierarchyMenu"+i).append("select")
+                        .selectAll("option")
+                        .data(fields)
+                        .enter().append("option")
+                            .attr("value", fieldIdForName)
+                            .text(function(d) {return d;});
+
+                d3.select("#fieldHierarchyMenu"+i+" select").on("change", updateUsingMenus);
+
+                d3.selectAll("#fieldHierarchyMenu"+i+" option[value='"+defaultFieldId+"']").attr("selected", "selected");
+            }
+        };
+
+        var fieldIdForName = function(name) {
+            var f = fieldsByDisplayName[name];
+            return (f) ? f.identifier : name;
+        };
+
         var updateUsingMenus = function() {
+            fieldsInVisualization = [];
+            for (var i=0; i<defaultFieldsInVisualization.length; i++) {
+                console.log("#fieldHierarchyMenu"+i+" select");
+                var fieldId = d3.select("#fieldHierarchyMenu"+i+" select").property("value");
+                console.log(fieldId);
+                if (fieldId && db.field(fieldId)) {
+                    fieldsInVisualization.push(fieldId);
+                }
+            }
+            if (fieldsInVisualization.length === 0) {
+                fieldsInVisualization = defaultFieldsInVisualization;
+            }
+
             var field = selectedField();
             var data;
+
+
             if (field===null) {
                 data = partitionForD3("Olympics", db, fieldsInVisualization);
             }
@@ -170,8 +240,7 @@
                         .text(function(d) { return d; });
 
             fieldMenu.on("change", onFieldChange);
-
-
+            initHierarchyMenus();
 
             var o3Partition = partitionForD3("Olympics", db, fieldsInVisualization);
             setupPartitionVis(o3Partition);
