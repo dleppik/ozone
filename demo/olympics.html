@@ -9,10 +9,16 @@
 
     body {
         font-family: "Helvetica", "Arial";
+        background: #eee;
     }
 
     h1 {
         font-size: 18px;
+    }
+
+    .menuBar {
+        margin: 4px 0;
+        font-size: 12px;
     }
 
     .menuTitle {
@@ -25,8 +31,14 @@
         display: inline-block;
     }
 
+    .note {
+        float: right;
+        width: 300px;
+        font-style: oblique;
+    }
+
     #visContainer {
-        margin-top: 16px;
+        margin-top: 8px;
     }
 
     .chart {
@@ -54,8 +66,6 @@
 </style>
 <body>
 
-
-
     <h1>Summer Olympic Medals</h1>
 
 
@@ -67,18 +77,22 @@
         </p>
     </div>
 
-    <div>
+    <div class="menuBar">
         <div class="menuTitle">Filter:</div>
         <div id="fieldMenu" class="menu"></div>
         <div id="valueMenu" class="menu"></div>
     </div>
-    <div>
+    <div class="menuBar">
         <div class="menuTitle">Hierarchy Levels:</div>
         <div id="fieldHierarchyMenu0" class="menu"></div>
         <div id="fieldHierarchyMenu1" class="menu"></div>
         <div id="fieldHierarchyMenu2" class="menu"></div>
         <div id="fieldHierarchyMenu3" class="menu"></div>
         <div id="fieldHierarchyMenu4" class="menu"></div>
+
+        <div class="note">
+            The hierarchy display is trimmed to keep the animation fast.  To show more detail, add a filter.
+        </div>
     </div>
 
     <div id="visContainer">
@@ -208,9 +222,7 @@
             var metaData = {
                 fields: {
                     Edition: { displayName: "Year" },
-                    NOC:     { displayName: "Country" },
-                    Athlete: { distinctValueEstimate: Number.POSITIVE_INFINITY  /* Don't bother to calculate */ },
-                    Event:   { distinctValueEstimate: Number.POSITIVE_INFINITY  /* Don't bother to calculate */ }
+                    NOC:     { displayName: "Country" }
                 }
             };
 
