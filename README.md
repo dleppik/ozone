@@ -29,15 +29,6 @@ Usage
 Ozone is currently under development.  More details will arrive when they are available.  For now, see the sample code
 in the test directory.
 
-Getting data into Ozone
------------------------
-
-Although Ozone supports many different data formats, querying is only supported from column-oriented formats.  For more than a trivial amount of data, the browser should read the data in a column-oriented format.  Ozone provides a node.js-based interface for converting more common row-oriented files into Ozone's native column-oriented formats.  The native formats are intended to be easy to write to from a variety of server-side languages.
-
-For maximum efficiency, rows should be sorted on at least one column.
-
-*To Do:*  That interface hasn't been written yet, although there is sample code in the test directory.  For now, look at the demos.
-
 Querying Ozone
 --------------
 
@@ -47,11 +38,90 @@ Start with a database:
 var db = ozone.columnStore.buildFromStore(o3.rowStore.buildFromCsv(rawData));
 ```
 
-Filter to create a subset of the database, which can itself be queried:
+Filter or partition to create a subset of the database, which can be treated as its own database:
 
 ```JavaScript
+var dbOfWomen = db.filter('Gender', 'F');
 var dbOfMaleGermans = db.filter('Gender', 'M').filter('Country', 'Germany');
+var numberOfMaleGermans = dbOfMaleGermans.size;
+
+var genderDbs = db.partition('Gender');
+if (genderDbs['F'].size === dbOfWomen.size) {
+   console.log("It works!");
+}
+if (genderDbs['F'].filter('Country', 'Germany').size === dbOfMaleGermans.size) {
+   console.log("It works!");
+}
 ```
+
+Field objects can be used to describe the data, and also as identifiers for filters.  Fields from filtered views
+can be used interchangeably with fields from the original database.
+
+```JavaScript
+
+var genderField = db.field('Gender');
+
+var itWorks = genderField.identifier  === 'Gender'  &&
+              genderField.displayName === 'Participant Gender' &&
+              genderField.typeOfValue === 'string';
+
+var filteringByFieldWorks = dbOfWomen.size === db.filter(genderField, 'F') &&
+                            dbOfWomen.size === db.filter(dbOfMaleGermans.field('Gender', 'F'));
+```
+
+Use field.distinctValueEstimate() to determine how to present the fields
+
+```JavaScript
+
+var fields = db.fields();
+for (var i=0; i<fields.length; i++) {
+    var field = fields[i];
+    var selector;
+    if (field.distinctValueEstimate() < 5) {
+       selector = "checkbox";
+    }
+    else if (field.distinctValueEstimate() < 100 ) {
+       selector = "drop-down menu";
+    }
+    else {
+       selector = "search field";
+    }
+    console.log("I will use a "+ selector +" to choose the "+ field.displayName);
+}
+
+```
+
+
+You cannot access rows directly.  Instead, filter down to the size that you want and then iterate over the rows via the eachRow function.
+
+```JavaScript
+
+var ageField  = db.field('Age');
+var nameField = db.field('Name');
+var q8Field   = db.field('Question8Responses');
+dbOfMaleGermans.eachRow(function(row) {
+    console.log( nameField.value(row) + ", age " + ageField.value(row) + " has these responses to question 8:");
+
+    // Question 8 is multiple choice, so q8Field doesn't have a value function.
+
+    var responses = q8Field.values(row);
+    for (var i=0 i<responses.length; i++) {
+        console.log(responses[i]);
+    }
+});
+
+```
+
+
+Getting data into Ozone
+-----------------------
+
+Although Ozone supports many different data formats, querying is only supported from column-oriented formats.  For more than a trivial amount of data, the browser should read the data in a column-oriented format.  Ozone provides a node.js-based interface for converting more common row-oriented files into Ozone's native column-oriented formats.  The native formats are intended to be easy to write to from a variety of server-side languages.
+
+For maximum efficiency, rows should be sorted on at least one column.
+
+*To Do:*  That interface hasn't been written yet, although there is sample code in the test directory.  For now, look at the demos.
+
 
 
 

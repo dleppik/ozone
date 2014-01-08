@@ -28,7 +28,8 @@ module ozone {
 
 
     /**
-     * A DataStore that can be queried.  Also the result of most queries.
+     * A DataStore that can be queried.  Also the result of most queries.  Fields from filtered views can be used
+     * interchangeably with fields from the original database.
      *
      * More technically:
      *

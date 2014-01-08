@@ -8,7 +8,7 @@ module ozone {
 
     /**
      * An OLAP dimension.  Similar to a column in a database table, except that Fields may have multiple values per row.
-     * Filtered stores may reuse fields from the unfiltered view.
+     * Filtered stores should reuse fields from the unfiltered view.
      */
     export interface Field<T> extends FieldDescribing {
 
