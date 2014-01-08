@@ -23,11 +23,6 @@ The major differences between Ozone and a traditional SQL database (most of thes
 
 * Ozone does not support multiple tables within a single database.  A database is treated as one giant table, equivalent to joining several tables together.
 
-Usage
------
-
-Ozone is currently under development.  More details will arrive when they are available.  For now, see the sample code
-in the test directory.
 
 Querying Ozone
 --------------
@@ -96,11 +91,10 @@ You cannot access rows directly.  Instead, filter down to the size that you want
 
 ```JavaScript
 
-var ageField  = db.field('Age');
 var nameField = db.field('Name');
 var q8Field   = db.field('Question8Responses');
 dbOfMaleGermans.eachRow(function(row) {
-    console.log( nameField.value(row) + ", age " + ageField.value(row) + " has these responses to question 8:");
+    console.log( nameField.value(row) + " has these responses to question 8:");
 
     // Question 8 is multiple choice, so q8Field doesn't have a value function.
 
