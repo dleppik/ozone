@@ -1,8 +1,11 @@
 /**
- * Copyright 2013 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
+ * Copyright 2013-2014 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
  */
 /// <reference path='_all.ts' />
 
+/*
+ *  This is the best place to start for an overview of the API.
+ */
 module ozone {
 
     /**
@@ -37,10 +40,12 @@ module ozone {
      * implementations (e.g. unions of stores) may use something else for IDs.
      */
     export interface RandomAccessStore extends DataStore {
-        /** Returns a proxy with the filter applied.  Applying the same filter twice has no effect. */
-        // TODO overload this with filter-building shortcuts.
-        filter(filter : Filter) : RandomAccessStore;
 
+        /** Returns a subset of this DataStore with the filter applied.  Applying the same filter twice has no effect. */
+        filter(filter  : Filter)                  : RandomAccessStore;
+        /** Creates an applies a ValueFilter. */
+        filter(fieldId : string,     value : any) : RandomAccessStore;
+        filter(field   : Field<any>, value : any) : RandomAccessStore;
 
         /** Returns all filters that have been applied, even if some are redundant. */
         filters() : Filter[];
@@ -48,8 +53,7 @@ module ozone {
         /**
          * Returns all filters that have been applied, with redundant ones merged.  This is optional, and meant for
          * user-friendly display, so it should only be applied if filters are redundant by definition.  For example,
-         * an Or/Intersection filter may be removed when one of the intersected Filters is returned by filters().
-         * Or a Month filter may be removed if it is redundant with a Date filter.
+         * an Or/Intersection filter may be removed when one of the intersected Filters is applied separately.
          */
         simplifiedFilters() : Filter[];
 
@@ -63,11 +67,10 @@ module ozone {
          * Filters on all values of a Field at once, returns a map from value strings to filtered RandomAccessStores.
          * Does not return any values with empty Stores.
          */
-        // TODO overload this to take a Field and not just its name
-        partition(fieldName : string) : { [value: string]: RandomAccessStore; };
+        partition(fieldId : string) : { [value: string]: RandomAccessStore; };
 
         /** The number of elements in the DataStore. */
-        length : number;
+        size : number;
     }
 
 

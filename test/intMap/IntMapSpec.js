@@ -118,8 +118,8 @@ describe("RangeIntSet", function() {
             expect(iterator.hasNext()).toBe(nonEmpty);
 
             var first = iterator.next();
-            var count = 1;
             var last = first;
+            var count = 1;
             while(iterator.hasNext()) {
                 last = iterator.next();
                 count++;
@@ -143,6 +143,39 @@ describe("RangeIntSet", function() {
         it.skipTo(7);  expect(it.next()).toBe( 9);
         it.skipTo(10); expect(it.next()).toBe(10);
         it.skipTo(11); expect(it.next()).toBeUndefined();
+    });
+
+
+    it("Iterates via 'each' with proper min, max, and length", function() {
+        for (var i=0; i<intSets.length; i++) {
+            var intSet = intSets[i];
+            var mml = minMaxLengths[i];
+            var nonEmpty = mml[2] > 0;
+
+            var first = "Not set";
+            var last  = "Not set";
+            var count = 0;
+            var onFirst = true;
+            intSet.each(function(item) {
+                if (onFirst) {
+                    first = item;
+                    onFirst = false;
+                }
+                last = item;
+                count++;
+            });
+
+            if (nonEmpty) {
+                expect(first).toBe(intSet.min());
+                expect(last).toBe(intSet.max());
+                expect(count).toBe(intSet.size);
+            }
+            else {
+                expect(first).toBe("Not set");
+                expect(last).toBe("Not set");
+                expect(count).toBe(0);
+            }
+        }
     });
 
     it("Unions with itself produce itself", function() {

@@ -7,7 +7,7 @@ A JavaScript database for realtime data analysis and visualization
 
 Ozone is a special-purpose database for filtering and counting. It's good for answering questions of the form "how many... in each...?"  And it's particularly good as a client-side back end for data visualization libraries such as [D3](http://d3js.org/).  Because Ozone runs in the web browser, data visualizations can avoid querying the server when adding or removing filters.  Ozone consists of two components:
 
-  * An API for OLAP-style (counting/filtering/slicing) queries from JavaScript, similar to jQuery and D3--and intended for use with D3 or jQuery.
+  * An API for OLAP-style (counting/filtering/partitioning) queries from JavaScript, similar in style to jQuery and D3—and intended for use with D3 or jQuery.
 
   * Back-end [TypeScript](http://www.typescriptlang.org/) interfaces which separate the views of the underlying data from the data format.  Well-defined interfaces make it easy to convert data from one format to another, or to provide multiple query implementations.  Multiple implementations simplify support for browsers with different features or performance characteristics.  This component is typically used with node.js to generate Ozone-ready data files.
 
@@ -32,14 +32,27 @@ in the test directory.
 Getting data into Ozone
 -----------------------
 
-Although Ozone supports many different data formats, querying is only supported from column-oriented formats.  For more than a trivial amount of data, the browser should read the data in a column-oriented format.  Ozone provides a node.js-based interface for converting more common row-oriented files into Ozone's column-oriented native formats.
+Although Ozone supports many different data formats, querying is only supported from column-oriented formats.  For more than a trivial amount of data, the browser should read the data in a column-oriented format.  Ozone provides a node.js-based interface for converting more common row-oriented files into Ozone's native column-oriented formats.  The native formats are intended to be easy to write to from a variety of server-side languages.
 
 For maximum efficiency, rows should be sorted on at least one column.
 
-*To Do:*  That interface hasn't been written yet, although there is sample code in the test directory.
+*To Do:*  That interface hasn't been written yet, although there is sample code in the test directory.  For now, look at the demos.
 
 Querying Ozone
 --------------
+
+Start with a database:
+
+```JavaScript
+var db = ozone.columnStore.buildFromStore(o3.rowStore.buildFromCsv(rawData));
+```
+
+Filter to create a subset of the database, which can itself be queried:
+
+```JavaScript
+var dbOfMaleGermans = db.filter('Gender', 'M').filter('Country', 'Germany');
+```
+
 
 
 Performance
@@ -73,15 +86,17 @@ TODO
 
 - [ ] Improve external API based on real-world usage
 
+- [ ] External callback API for seamlessly mixing client-side and server-side queries
+
 - [ ] Improve efficiency (Multi-threaded API?  WebCL API?)
 
 *Specific tasks*
 
 - [X] Internal filter API
 
-- [ ] Internal dice API (filter on all values at once)
+- [X] Internal partitioning API (filter on all values at once)
 
-- [ ] External (jQuery-like) filter/dice API
+- [ ] External filter/partition API (jQuery-like: functional with overloaded do-what-I-mean functions)
 
 - [ ] External API for filtering on a range or via a user-supplied function
 

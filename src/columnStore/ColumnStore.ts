@@ -18,7 +18,7 @@ module ozone.columnStore {
         private fieldMap : { [key: string]: Field<any>; } ;
 
 
-        constructor( public length: number, private fieldArray : Field<any>[] ) {
+        constructor( public size: number, private fieldArray : Field<any>[] ) {
             this.fieldMap = {};
             for (var i=0; i<fieldArray.length; i++) {
                 var field = fieldArray[i];
@@ -27,7 +27,7 @@ module ozone.columnStore {
         }
 
         intSet() : IntSet {
-            return new ozone.intSet.RangeIntSet(0, this.length);
+            return new ozone.intSet.RangeIntSet(0, this.size);
         }
 
         fields() : Field<any>[] {
@@ -38,8 +38,8 @@ module ozone.columnStore {
             return this.fieldMap[key];
         }
 
-        filter(filter : Filter) : RandomAccessStore {
-            return filterColumnStore(this, this, filter);
+        filter(fieldNameOrFilter : any, value? : any) : RandomAccessStore {
+            return filterColumnStore(this, this, createFilter(this, fieldNameOrFilter, value));
         }
 
         filters()           : Filter[] { return []; }
@@ -52,7 +52,7 @@ module ozone.columnStore {
         }
 
         eachRow(rowAction:Function) {
-            for (var i=0; i<this.length; i++) {
+            for (var i=0; i<this.size; i++) {
                 rowAction(i);
             }
         }

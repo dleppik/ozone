@@ -8,18 +8,30 @@ module ozone {
 
     /**
      * An OLAP dimension.  Similar to a column in a database table, except that Fields may have multiple values per row.
+     * Filtered stores may reuse fields from the unfiltered view.
      */
     export interface Field<T> extends FieldDescribing {
 
         /**
          * Returns all values for this row.  Never returns null.  This is called within DataStore.eachRow(), and uses
          * the token provided by that function.
+         *
+         * Filtered stores may reuse fields from the unfiltered view, resulting in erroneous results if called outside
+         * of DataStore.eachRow().
          */
         values(rowToken : any) : T[];
     }
 
     /** All fields in a RandomAccessStore are RandomAccessFields. */
     export interface RandomAccessField<T> extends Field<T> {
+
+        /**
+         * Used to implement filtering and access methods within a RandomAccessStore;  it should only be called using
+         * tokens supplied by its store.
+         *
+         * Filtered stores may reuse fields from the unfiltered view, resulting in erroneous results if called outside
+         * of DataStore.eachRow().
+         */
         rowHasValue(rowToken : any, value : any) : boolean;
     }
 

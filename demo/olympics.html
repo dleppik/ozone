@@ -67,18 +67,6 @@
         // for asynchronous loading.
         var o3 = ozone;
 
-        var w = 1120,
-            h = 700,
-            x = d3.scale.linear().range([0, w]),
-            y = d3.scale.linear().range([0, h]);
-
-        var vis = d3.select("#visContainer").append("div")
-                .attr("class", "chart")
-                .style("width", w + "px")
-                .style("height", h + "px")
-                .append("svg:svg")
-                .attr("width", w)
-                .attr("height", h);
 
         var fieldsInVisualization = ['Edition', 'Gender', 'Medal', 'NOC', "Athlete"];
 
@@ -102,8 +90,8 @@
                             .text(function(d) {return d});
 
                 valueMenu.on("change", updateUsingMenus);
-                updateUsingMenus();
             }
+            updateUsingMenus();
         };
 
         var selectedField = function() {
@@ -122,15 +110,17 @@
             var field = selectedField();
             var data;
             if (field===null) {
-                data = {name: "Select a field to filter"};
-            }
-            var value = selectedValue();
-            var filteredDb = db.filter(new ozone.ValueFilter(field, value));
-            if (filteredDb.length === 0) {
-                data = {name: "Empty Data set"};
+                data = partitionForD3("Olympics", db, fieldsInVisualization);
             }
             else {
-                data = partitionForD3(value, filteredDb, fieldsInVisualization);
+                var value = selectedValue();
+                var filteredDb = db.filter(field, value);
+                if (filteredDb.size === 0) {
+                    data = {name: "Empty Data set"};
+                }
+                else {
+                    data = partitionForD3(value, filteredDb, fieldsInVisualization);
+                }
             }
             setupPartitionVis(data);
         };
@@ -172,8 +162,31 @@
             setupPartitionVis(o3Partition);
         });
 
+        var vis;
+
         // Partition demo based on http://mbostock.github.io/d3/talk/20111018/partition.html
         function setupPartitionVis(o3Partition) {
+
+
+            // Reset:  this is a little heavy handed, but I was having trouble doing it via d3.
+            if (vis) {
+                while(document.getElementById("visContainer").lastChild) {
+                    document.getElementById("visContainer").removeChild(document.getElementById("visContainer").lastChild);
+                }
+            }
+
+            var w = 1120,
+                    h = 700,
+                    x = d3.scale.linear().range([0, w]),
+                    y = d3.scale.linear().range([0, h]);
+
+            vis = d3.select("#visContainer").append("div")
+                    .attr("class", "chart")
+                    .style("width", w + "px")
+                    .style("height", h + "px")
+                    .append("svg:svg")
+                    .attr("width", w)
+                    .attr("height", h);
 
             vis.selectAll("g").remove();
 
@@ -241,8 +254,8 @@
             }
 
             var result = {
-                name: name+" ("+numberWithCommas(data.length)+")",
-                size: data.length
+                name: name+" ("+numberWithCommas(data.size)+")",
+                size: data.size
             };
 
             if (fieldNames.length > 0) {
@@ -250,7 +263,7 @@
                 var remainingFields = fieldNames.slice(1);
                 var field = data.field(fieldName);
 
-                if (depth < 2 || field.distinctValueEstimate() <= 50  ||  data.length <= 5) {
+                if (depth < 2 || field.distinctValueEstimate() <= 50  ||  data.size <= 5) {
                     var subDbs = data.partition(fieldName);
 
                     result.children = [];

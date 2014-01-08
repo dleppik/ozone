@@ -1,5 +1,5 @@
 /**
-* Copyright 2013 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
+* Copyright 2013-2014 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
 */
 /// <reference path='_all.ts' />
 /**
@@ -381,8 +381,12 @@ var ozone;
                 return this.valueEstimate;
             };
 
-            ArrayField.prototype.rowHasValue = function (index, value) {
-                return this.array[index] === value;
+            ArrayField.prototype.rowHasValue = function (rowToken, value) {
+                var actualValue = this.value(rowToken);
+                if (value === 108) {
+                    console.log("rowHasValue: " + rowToken + " found value " + actualValue + ", comparing to " + value);
+                }
+                return actualValue === value;
             };
             return ArrayField;
         })();
@@ -398,8 +402,8 @@ var ozone;
     /// <reference path='../_all.ts' />
     (function (columnStore) {
         var ColumnStore = (function () {
-            function ColumnStore(length, fieldArray) {
-                this.length = length;
+            function ColumnStore(size, fieldArray) {
+                this.size = size;
                 this.fieldArray = fieldArray;
                 this.fieldMap = {};
                 for (var i = 0; i < fieldArray.length; i++) {
@@ -408,7 +412,7 @@ var ozone;
                 }
             }
             ColumnStore.prototype.intSet = function () {
-                return new ozone.intSet.RangeIntSet(0, this.length);
+                return new ozone.intSet.RangeIntSet(0, this.size);
             };
 
             ColumnStore.prototype.fields = function () {
@@ -419,8 +423,8 @@ var ozone;
                 return this.fieldMap[key];
             };
 
-            ColumnStore.prototype.filter = function (filter) {
-                return columnStore.filterColumnStore(this, this, filter);
+            ColumnStore.prototype.filter = function (fieldNameOrFilter, value) {
+                return columnStore.filterColumnStore(this, this, columnStore.createFilter(this, fieldNameOrFilter, value));
             };
 
             ColumnStore.prototype.filters = function () {
@@ -439,7 +443,7 @@ var ozone;
             };
 
             ColumnStore.prototype.eachRow = function (rowAction) {
-                for (var i = 0; i < this.length; i++) {
+                for (var i = 0; i < this.size; i++) {
                     rowAction(i);
                 }
             };
@@ -462,6 +466,21 @@ var ozone;
     */
     /// <reference path='../_all.ts' />
     (function (columnStore) {
+        function createFilter(store, fieldNameOrFilter, value) {
+            if (typeof fieldNameOrFilter === "string") {
+                return new ozone.ValueFilter(store.field(fieldNameOrFilter), value);
+            } else if (typeof fieldNameOrFilter === "object") {
+                if (typeof fieldNameOrFilter.distinctValueEstimate === "function" && typeof fieldNameOrFilter.identifier === "string") {
+                    return new ozone.ValueFilter(fieldNameOrFilter, value);
+                }
+                if (typeof fieldNameOrFilter.matches === "function") {
+                    return fieldNameOrFilter;
+                }
+            }
+            throw "Not a filter: " + fieldNameOrFilter;
+        }
+        columnStore.createFilter = createFilter;
+
         function filterColumnStore(source, oldStore) {
             var filtersToAdd = [];
             for (var _i = 0; _i < (arguments.length - 2); _i++) {
@@ -539,7 +558,7 @@ var ozone;
         }
 
         function partitionColumnStore(store, field) {
-            if (store.length === 0) {
+            if (store.size === 0) {
                 return {};
             }
 
@@ -559,7 +578,7 @@ var ozone;
             for (var i = 0; i < allValues.length; i++) {
                 var value = allValues[i];
                 var filtered = store.filter(new ozone.ValueFilter(field, value));
-                if (filtered.length > 0) {
+                if (filtered.size > 0) {
                     result["" + value] = filtered;
                 }
             }
@@ -574,7 +593,7 @@ var ozone;
                 this.source = source;
                 this.filterArray = filterArray;
                 this.filterBits = filterBits;
-                this.length = filterBits.size;
+                this.size = filterBits.size;
             }
             FilteredColumnStore.prototype.intSet = function () {
                 return this.filterBits;
@@ -584,8 +603,8 @@ var ozone;
                 this.filterBits.each(rowAction);
             };
 
-            FilteredColumnStore.prototype.filter = function (filter) {
-                return filterColumnStore(this.source, this, filter);
+            FilteredColumnStore.prototype.filter = function (fieldNameOrFilter, value) {
+                return filterColumnStore(this.source, this, createFilter(this, fieldNameOrFilter, value));
             };
 
             FilteredColumnStore.prototype.filters = function () {
@@ -1110,9 +1129,8 @@ var ozone;
             };
 
             RangeIntSet.prototype.each = function (action) {
-                var max = this.max();
-                for (var i = this.minValue; i < max; i++) {
-                    action(i);
+                for (var i = 0; i < this.size; i++) {
+                    action(i + this.minValue);
                 }
             };
 

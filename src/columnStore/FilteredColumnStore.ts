@@ -5,6 +5,21 @@
 
 module ozone.columnStore {
 
+    export function createFilter(store : ColumnStoreInterface, fieldNameOrFilter : any, value? : any) : Filter {
+    if (typeof fieldNameOrFilter === "string") {
+        return new ozone.ValueFilter(store.field(fieldNameOrFilter), value);
+    }
+    else if (typeof fieldNameOrFilter === "object") {
+        if (typeof fieldNameOrFilter.distinctValueEstimate === "function" && typeof fieldNameOrFilter.identifier === "string") {
+            return new ozone.ValueFilter(fieldNameOrFilter, value);
+        }
+        if (typeof fieldNameOrFilter.matches === "function") {
+            return <Filter> fieldNameOrFilter;
+        }
+    }
+    throw "Not a filter: "+fieldNameOrFilter;
+}
+
     export function filterColumnStore(source : ColumnStore, oldStore : ColumnStoreInterface, ...filtersToAdd : Filter[]) : ColumnStoreInterface {
         if (filtersToAdd.length === 0) {
             return oldStore;
@@ -80,7 +95,7 @@ module ozone.columnStore {
     export function partitionColumnStore(store : ColumnStoreInterface, field : RandomAccessField<any>)
         : { [value: string]: RandomAccessStore; }
     {
-        if (store.length === 0) {
+        if (store.size === 0) {
             return {};
         }
 
@@ -101,7 +116,7 @@ module ozone.columnStore {
         for (var i=0; i<allValues.length; i++) {
             var value = allValues[i];
             var filtered = store.filter(new ozone.ValueFilter(field, value));
-            if (filtered.length > 0) {
+            if (filtered.size > 0) {
                 result[""+value] = filtered;
             }
         }
@@ -110,11 +125,11 @@ module ozone.columnStore {
 
     export class FilteredColumnStore extends StoreProxy implements ColumnStoreInterface {
 
-        length : number;
+        size : number;
 
         constructor( public source : ColumnStore, private filterArray : Filter[], private filterBits : IntSet) {
             super(source);
-            this.length = filterBits.size;
+            this.size = filterBits.size;
         }
 
         intSet() : IntSet {
@@ -125,8 +140,8 @@ module ozone.columnStore {
             this.filterBits.each(rowAction);
         }
 
-        filter(filter : Filter) : ColumnStoreInterface {
-            return filterColumnStore(this.source, this, filter);
+        filter(fieldNameOrFilter : any, value? : any) : RandomAccessStore {
+            return filterColumnStore(this.source, this, createFilter(this, fieldNameOrFilter, value));
         }
 
         filters() : Filter[] {

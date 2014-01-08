@@ -50,9 +50,8 @@ module ozone.intSet {
         }
 
         each(action : (index : number) => void) {
-            var max = this.max();
-            for (var i=this.minValue; i<max; i++) {
-                action(i);
+            for (var i=0; i<this.size; i++) {
+                action(i+this.minValue);
             }
         }
 
