@@ -7,6 +7,10 @@
 </head>
 <style type="text/css">
 
+    body {
+        font-family: "Helvetica", "Arial";
+    }
+
     h1 {
         font-size: 18px;
     }
@@ -35,11 +39,7 @@
 </style>
 <body>
 
-    <div style="float: right; width: 25%">
-        Filter:
-        <div id="fieldMenu" style="display: inline-block"></div>
-        <div id="valueMenu" style="display: inline-block"></div>
-    </div>
+
 
     <h1>Summer Olympic Medals</h1>
 
@@ -50,6 +50,12 @@
             for data visualization.  A spreadsheet of all summer olympics medalists (in CSV format) is loaded and
             converted into Ozone's high-performance format.  Once that is done, adding and removing filters is fast.
         </p>
+    </div>
+
+    <div>
+        Filter:
+        <div id="fieldMenu" style="display: inline-block"></div>
+        <div id="valueMenu" style="display: inline-block"></div>
     </div>
 
     <div id="visContainer">
@@ -129,11 +135,20 @@
 
         d3.text("../test/SummerOlympicMedallists1896to2008.csv", function(rawData) {
 
+            var metaData = {
+                fields: {
+                    Edition: { displayName: "Year" },
+                    NOC:     { displayName: "Country" },
+                    Athlete: { distinctValueEstimate: Number.POSITIVE_INFINITY  /* Don't bother to calculate */ },
+                    Event:   { distinctValueEstimate: Number.POSITIVE_INFINITY  /* Don't bother to calculate */ }
+                }
+            };
+
             // Because data files can be large, you want to discard raw data and intermediate data
             // as quickly as possible.  We don't create intermediate variables if we can avoid it,
             // and we don't define any callbacks inside this function or inside any function
             // called from here.
-            db = o3.columnStore.buildFromStore(o3.rowStore.buildFromCsv(rawData));
+            db = o3.columnStore.buildFromStore(o3.rowStore.buildFromCsv(rawData), metaData);
 
             // Field/value filtering
 
