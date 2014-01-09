@@ -3,7 +3,7 @@
 <head>
     <script src="../ozone.js" charset="utf-8"></script>
     <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
-    <title>Ozone Olympics D3 demo</title>
+    <title>Ozone Olympics Demo</title>
 </head>
 <style type="text/css">
 
@@ -32,13 +32,14 @@
     }
 
     .note {
-        float: right;
-        width: 300px;
+        /* float: right; */
+        /* width: 300px; */
+        padding: 4px 0 4px 200px;
         font-style: oblique;
     }
 
     #visContainer {
-        margin-top: 8px;
+        margin: 8px 0;
     }
 
     .chart {
@@ -66,16 +67,7 @@
 </style>
 <body>
 
-    <h1>Summer Olympic Medals</h1>
-
-
-    <div>
-        <p>
-            This is a demo of <a href="https://github.com/dleppik/ozone/">Ozone,</a> an open source JavaScript database
-            for data visualization.  A spreadsheet of all summer olympics medalists (in CSV format) is loaded and
-            converted into Ozone's high-performance format.  Once that is done, adding and removing filters is fast.
-        </p>
-    </div>
+    <h1>Counts of Summer Olympic Medals</h1>
 
     <div class="menuBar">
         <div class="menuTitle">Filter:</div>
@@ -98,11 +90,19 @@
     <div id="visContainer">
     </div>
 
-    <p>
+    <div class="note">
         Click or tap to zoom in, click/tap on the leftmost block to zoom back out.
         The partitioning visualization is based on
         <a href="http://mbostock.github.io/d3/talk/20111018/partition.html">this demo.</a>
-    </p>
+    </div>
+
+    <div>
+        <p>
+            This is a demo of <a href="https://github.com/dleppik/ozone/">Ozone,</a> an open source JavaScript database
+            for data visualization.  A spreadsheet of all summer olympics medalists (in CSV format) is loaded and
+            converted into Ozone's high-performance format.  Once that is done, adding and removing filters is fast.
+        </p>
+    </div>
 
     <script>
         // We need to create a global variable to make ozone visible within functions.
@@ -344,9 +344,12 @@
             }
         }
 
-        function partitionForD3(name, data, fieldNames, depth) {
-            if (typeof depth  === 'undefined') {
-                depth = 0;
+        function partitionForD3(name, data, fieldNames, partitionsSoFar) {
+            var maxPartitionsForRecursion = 2000;
+            var maxValuesForGuaranteedRecursion = 10;
+
+            if (typeof partitionsSoFar  === 'undefined') {
+                partitionsSoFar = 1;
             }
 
             var result = {
@@ -358,15 +361,24 @@
                 var fieldName = fieldNames[0];
                 var remainingFields = fieldNames.slice(1);
                 var field = data.field(fieldName);
-
-                if (depth < 2 || field.distinctValueEstimate() <= 50  ||  data.size <= 5) {
+                if (partitionsSoFar <= maxPartitionsForRecursion*maxValuesForGuaranteedRecursion) {
                     var subDbs = data.partition(fieldName);
 
-                    result.children = [];
+                    var valueCount = 0;
                     for (var valueName in subDbs) {
                         if (subDbs.hasOwnProperty(valueName)) {
-                            var subDb = subDbs[valueName];
-                            result.children.push( partitionForD3(valueName, subDb, remainingFields, depth+1) );
+                            valueCount++;
+                        }
+                    }
+                    var nextPartitionCount = partitionsSoFar*valueCount;
+
+                    if (nextPartitionCount <= maxPartitionsForRecursion || valueCount <= maxValuesForGuaranteedRecursion) {
+                        result.children = [];
+                        for (valueName in subDbs) {
+                            if (subDbs.hasOwnProperty(valueName)) {
+                                var subDb = subDbs[valueName];
+                                result.children.push( partitionForD3(valueName, subDb, remainingFields, nextPartitionCount) );
+                            }
                         }
                     }
                 }
