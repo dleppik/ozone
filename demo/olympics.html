@@ -32,10 +32,14 @@
     }
 
     .note {
-        /* float: right; */
-        /* width: 300px; */
         padding: 4px 0 4px 200px;
         font-style: oblique;
+    }
+
+    .loading {
+        height: 408px;
+        padding-top: 300px;
+        text-align: center;
     }
 
     #visContainer {
@@ -88,6 +92,9 @@
     </div>
 
     <div id="visContainer">
+        <div class="loading">
+            Loading and converting the 2.4 megabyte Summer Olympics metal data...
+        </div>
     </div>
 
     <div class="note">
@@ -265,10 +272,8 @@
 
 
             // Reset:  this is a little heavy handed, but I was having trouble doing it via d3.
-            if (vis) {
-                while(document.getElementById("visContainer").lastChild) {
-                    document.getElementById("visContainer").removeChild(document.getElementById("visContainer").lastChild);
-                }
+            while(document.getElementById("visContainer").lastChild) {
+                document.getElementById("visContainer").removeChild(document.getElementById("visContainer").lastChild);
             }
 
             var w = 1120,
