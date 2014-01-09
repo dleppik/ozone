@@ -48,7 +48,7 @@ var genderDbs = db.partition('Gender');
 if (genderDbs['F'].size === dbOfWomen.size) {
    console.log("It works!");
 }
-if (genderDbs['F'].filter('Country', 'Germany').size === dbOfMaleGermans.size) {
+if (genderDbs['M'].filter('Country', 'Germany').size === dbOfMaleGermans.size) {
    console.log("It works!");
 }
 ```
