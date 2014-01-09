@@ -23,6 +23,10 @@ The major differences between Ozone and a traditional SQL database (most of thes
 
 * Ozone does not support multiple tables within a single database.  A database is treated as one giant table, equivalent to joining several tables together.
 
+Demo
+----
+
+[Summer Olympics Medals](http://www.vocalabs.com/open-source/ozone/demo/olympics.html)
 
 Querying Ozone
 --------------
