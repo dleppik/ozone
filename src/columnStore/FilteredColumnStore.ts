@@ -58,7 +58,7 @@ module ozone.columnStore {
             for (var i=0; i<intSetFilters.length; i++) {
                 var intSetFilter = <ValueFilter> intSetFilters[i];
                 var fieldId = intSetFilter.fieldDescriptor.identifier;
-                var field = <IntSetField> source.field(fieldId);
+                var field = <IntSetField<any>> source.field(fieldId);
                 var fieldIntSet = field.intSetForValue(intSetFilter.value);
 
                 set = ozone.intSet.intersectionOfIntSets(set, fieldIntSet);
@@ -101,17 +101,17 @@ module ozone.columnStore {
 
         var indexedField;
         if (field instanceof IntSetField) {
-            indexedField = <IntSetField> field;
+            indexedField = <IntSetField<any>> field;
         }
         else {
             var indexedFieldBuilder = IntSetField.builder(field);
             store.eachRow(function(row) {
                 indexedFieldBuilder.onItem({index:row, rowToken:row});
             });
-            indexedField = <IntSetField> indexedFieldBuilder.onEnd();
+            indexedField = <IntSetField<any>> indexedFieldBuilder.onEnd();
         }
 
-        var result = {};
+        var result : { [value: string]: RandomAccessStore; } = {};
         var allValues = indexedField.allValues();
         for (var i=0; i<allValues.length; i++) {
             var value = allValues[i];

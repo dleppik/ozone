@@ -199,11 +199,11 @@ var ozone;
     })();
     ozone.StoreProxy = StoreProxy;
 })(ozone || (ozone = {}));
+/**
+* Copyright 2013 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
+*/
 var ozone;
 (function (ozone) {
-    /**
-    * Copyright 2013 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
-    */
     /// <reference path='../_all.ts' />
     (function (columnStore) {
         /**
@@ -242,9 +242,9 @@ var ozone;
 
                 if (newBuilder === null && buildThisField) {
                     if (sourceFieldIsUnary && sourceField.distinctValueEstimate() > 500) {
-                        newBuilder = columnStore.ArrayField.builder(sourceField, fieldParams);
+                        newBuilder = ozone.columnStore.ArrayField.builder(sourceField, fieldParams);
                     } else {
-                        newBuilder = columnStore.IntSetField.builder(sourceField, fieldParams);
+                        newBuilder = ozone.columnStore.IntSetField.builder(sourceField, fieldParams);
                     }
                 }
                 if (newBuilder !== null) {
@@ -270,18 +270,18 @@ var ozone;
                     resultFields.push(builder.onEnd());
                 }
             }
-            return new columnStore.ColumnStore(length, resultFields);
+            return new ozone.columnStore.ColumnStore(length, resultFields);
         }
         columnStore.buildFromStore = buildFromStore;
     })(ozone.columnStore || (ozone.columnStore = {}));
     var columnStore = ozone.columnStore;
 })(ozone || (ozone = {}));
+/**
+* Copyright 2013 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
+*/
+/// <reference path='../_all.ts' />
 var ozone;
 (function (ozone) {
-    /**
-    * Copyright 2013 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
-    */
-    /// <reference path='../_all.ts' />
     (function (columnStore) {
         /**
         * Stores the entire column in a single dense array.
@@ -308,7 +308,7 @@ var ozone;
                     throw new Error("Array must be trimmed");
                 }
             }
-            ArrayField.builder = /**
+            /**
             * Returns a reducer that can be run on a source DataStore to reproduce a sourceField.
             *
             * @param sourceField  the field which will be replicated
@@ -318,7 +318,7 @@ var ozone;
             *                                     may allow the JavaScript implementation to use an array of primitives.
             *                                     (Haven't yet checked to see if any JS implementations actually do this.)
             */
-            function (sourceField, params) {
+            ArrayField.builder = function (sourceField, params) {
                 if (typeof params === "undefined") { params = {}; }
                 var array = [];
                 var offset = 0;
@@ -359,7 +359,7 @@ var ozone;
             };
 
             ArrayField.prototype.value = function (rowToken) {
-                var index = (rowToken) - this.offset;
+                var index = rowToken - this.offset;
                 var result = this.array[index];
                 return (this.isNull(result)) ? null : result;
             };
@@ -383,9 +383,6 @@ var ozone;
 
             ArrayField.prototype.rowHasValue = function (rowToken, value) {
                 var actualValue = this.value(rowToken);
-                if (value === 108) {
-                    console.log("rowHasValue: " + rowToken + " found value " + actualValue + ", comparing to " + value);
-                }
                 return actualValue === value;
             };
             return ArrayField;
@@ -394,12 +391,12 @@ var ozone;
     })(ozone.columnStore || (ozone.columnStore = {}));
     var columnStore = ozone.columnStore;
 })(ozone || (ozone = {}));
+/**
+* Copyright 2013 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
+*/
+/// <reference path='../_all.ts' />
 var ozone;
 (function (ozone) {
-    /**
-    * Copyright 2013 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
-    */
-    /// <reference path='../_all.ts' />
     (function (columnStore) {
         var ColumnStore = (function () {
             function ColumnStore(size, fieldArray) {
@@ -424,7 +421,7 @@ var ozone;
             };
 
             ColumnStore.prototype.filter = function (fieldNameOrFilter, value) {
-                return columnStore.filterColumnStore(this, this, columnStore.createFilter(this, fieldNameOrFilter, value));
+                return ozone.columnStore.filterColumnStore(this, this, ozone.columnStore.createFilter(this, fieldNameOrFilter, value));
             };
 
             ColumnStore.prototype.filters = function () {
@@ -439,7 +436,7 @@ var ozone;
             };
 
             ColumnStore.prototype.partition = function (fieldKey) {
-                return columnStore.partitionColumnStore(this, this.field(fieldKey));
+                return ozone.columnStore.partitionColumnStore(this, this.field(fieldKey));
             };
 
             ColumnStore.prototype.eachRow = function (rowAction) {
@@ -453,6 +450,10 @@ var ozone;
     })(ozone.columnStore || (ozone.columnStore = {}));
     var columnStore = ozone.columnStore;
 })(ozone || (ozone = {}));
+/**
+* Copyright 2013 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
+*/
+/// <reference path='../_all.ts' />
 var __extends = this.__extends || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -461,10 +462,6 @@ var __extends = this.__extends || function (d, b) {
 };
 var ozone;
 (function (ozone) {
-    /**
-    * Copyright 2013 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
-    */
-    /// <reference path='../_all.ts' />
     (function (columnStore) {
         function createFilter(store, fieldNameOrFilter, value) {
             if (typeof fieldNameOrFilter === "string") {
@@ -504,8 +501,8 @@ var ozone;
                 }
                 var filterTarget = filtersForIteration;
                 if (newFilter instanceof ozone.ValueFilter) {
-                    var fieldId = (newFilter).fieldDescriptor.identifier;
-                    if (source.field(fieldId) instanceof columnStore.IntSetField) {
+                    var fieldId = newFilter.fieldDescriptor.identifier;
+                    if (source.field(fieldId) instanceof ozone.columnStore.IntSetField) {
                         filterTarget = intSetFilters;
                     }
                 }
@@ -529,6 +526,7 @@ var ozone;
                 }
             }
 
+            // Iterative filtering
             if (filtersForIteration.length > 0) {
                 var setBuilder = ozone.intSet.builder(set.min(), set.max());
                 set.each(function (rowToken) {
@@ -563,10 +561,10 @@ var ozone;
             }
 
             var indexedField;
-            if (field instanceof columnStore.IntSetField) {
+            if (field instanceof ozone.columnStore.IntSetField) {
                 indexedField = field;
             } else {
-                var indexedFieldBuilder = columnStore.IntSetField.builder(field);
+                var indexedFieldBuilder = ozone.columnStore.IntSetField.builder(field);
                 store.eachRow(function (row) {
                     indexedFieldBuilder.onItem({ index: row, rowToken: row });
                 });
@@ -639,12 +637,12 @@ var ozone;
     })(ozone.columnStore || (ozone.columnStore = {}));
     var columnStore = ozone.columnStore;
 })(ozone || (ozone = {}));
+/**
+* Copyright 2013 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
+*/
+/// <reference path='../_all.ts' />
 var ozone;
 (function (ozone) {
-    /**
-    * Copyright 2013 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
-    */
-    /// <reference path='../_all.ts' />
     (function (columnStore) {
         /**
         * A Field which consists of intSets for each Value.  Although values need not be strings, they are identified
@@ -662,7 +660,7 @@ var ozone;
                 this.typeConstructor = descriptor.typeConstructor;
                 this.rangeVal = descriptor.range();
             }
-            IntSetField.builder = /**
+            /**
             * Returns a reducer that can be run on a source DataStore to reproduce a sourceField.
             *
             * @param sourceField  the field which will be replicated
@@ -673,7 +671,7 @@ var ozone;
             *                                     change, and may be browser specific or determined based on the
             *                                     characteristics of sourceField.
             */
-            function (sourceField, params) {
+            IntSetField.builder = function (sourceField, params) {
                 if (typeof params === "undefined") { params = {}; }
                 var descriptor = ozone.mergeFieldDescriptors(sourceField, params);
 
@@ -715,7 +713,7 @@ var ozone;
                         if (addValues && valueList.length > 0) {
                             var firstValue = valueList[0];
                             if (typeof firstValue === "object") {
-                                if (firstValue["prototype"] === Date.prototype) {
+                                if (firstValue instanceof Date) {
                                     valueList.sort(function (a, b) {
                                         return a.getTime() - b.getTime();
                                     });
@@ -779,12 +777,12 @@ var ozone;
     })(ozone.columnStore || (ozone.columnStore = {}));
     var columnStore = ozone.columnStore;
 })(ozone || (ozone = {}));
+/**
+* Copyright 2013 by Vocal Laboratories, Inc.  Distributed under the Apache License 2.0.
+*/
+/// <reference path='../_all.ts' />
 var ozone;
 (function (ozone) {
-    /**
-    * Copyright 2013 by Vocal Laboratories, Inc.  Distributed under the Apache License 2.0.
-    */
-    /// <reference path='../_all.ts' />
     (function (intSet) {
         intSet.empty;
 
@@ -825,7 +823,7 @@ var ozone;
         function builder(min, max) {
             if (typeof min === "undefined") { min = 0; }
             if (typeof max === "undefined") { max = -1; }
-            return intSet.ArrayIndexIntSet.builder();
+            return ozone.intSet.ArrayIndexIntSet.builder();
         }
         intSet.builder = builder;
 
@@ -852,7 +850,7 @@ var ozone;
 
             values.sort(function (a, b) {
                 return a - b;
-            });
+            }); // Default sort function is alphabetical
 
             var builder = ozone.intSet.builder(values[0], values[values.length - 1]);
             var lastValue = NaN;
@@ -899,7 +897,7 @@ var ozone;
 
             // Cycle through the iterators round-robbin style, skipping to the highest element so far.  When we have N
             // iterators in a row giving us the same value, that element goes into the builder.
-            var builder = intSet.ArrayIndexIntSet.builder();
+            var builder = ozone.intSet.ArrayIndexIntSet.builder();
             var currentIteratorIndex = 0;
             var numIteratorsWithCurrentValue = 1;
             var previousValue = NaN;
@@ -914,7 +912,7 @@ var ozone;
                     }
                 } else {
                     previousValue = currentValue;
-                    numIteratorsWithCurrentValue = 1;
+                    numIteratorsWithCurrentValue = 1; // Always start with 1, for the current iterator
                 }
                 currentIteratorIndex = (currentIteratorIndex + 1) % iterators.length;
                 it = iterators[currentIteratorIndex];
@@ -944,12 +942,12 @@ var ozone;
     })(ozone.intSet || (ozone.intSet = {}));
     var intSet = ozone.intSet;
 })(ozone || (ozone = {}));
+/**
+* Copyright 2013 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
+*/
+/// <reference path='../_all.ts' />
 var ozone;
 (function (ozone) {
-    /**
-    * Copyright 2013 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
-    */
-    /// <reference path='../_all.ts' />
     (function (intSet) {
         /**
         * The most trivial of general-purpose IntSet implementations;  a sorted array of indexes.  This can work well for
@@ -963,19 +961,19 @@ var ozone;
                 this.indexes = indexes;
                 this.size = indexes.length;
             }
-            ArrayIndexIntSet.builder = /** Matches the API of other IntSet builders. */
-            function (min, max) {
+            /** Matches the API of other IntSet builders. */
+            ArrayIndexIntSet.builder = function (min, max) {
                 if (typeof min === "undefined") { min = 0; }
                 if (typeof max === "undefined") { max = -1; }
                 var array = [];
-                return ({
+                return {
                     onItem: function (item) {
                         array.push(item);
                     },
                     onEnd: function () {
                         return new ArrayIndexIntSet(array);
                     }
-                });
+                };
             };
 
             ArrayIndexIntSet.fromArray = function (elements) {
@@ -983,7 +981,7 @@ var ozone;
             };
 
             ArrayIndexIntSet.prototype.get = function (index) {
-                return intSet.search(index, this.indexes, 0, this.indexes.length - 1) >= 0;
+                return ozone.intSet.search(index, this.indexes, 0, this.indexes.length - 1) >= 0;
             };
 
             ArrayIndexIntSet.prototype.min = function () {
@@ -1008,7 +1006,7 @@ var ozone;
                 if (set === this) {
                     return true;
                 }
-                if (set instanceof intSet.RangeIntSet) {
+                if (set instanceof ozone.intSet.RangeIntSet) {
                     return set.equals(this);
                 }
                 if (this.size !== set.size || this.min() !== set.min() || this.max() !== set.max()) {
@@ -1036,14 +1034,14 @@ var ozone;
                 if (set.size === 0) {
                     return this;
                 }
-                if (set instanceof intSet.RangeIntSet && set.min() <= this.min() && set.max() >= this.max()) {
+                if (set instanceof ozone.intSet.RangeIntSet && set.min() <= this.min() && set.max() >= this.max()) {
                     return set;
                 }
-                return intSet.unionOfIterators(this.iterator(), set.iterator());
+                return ozone.intSet.unionOfIterators(this.iterator(), set.iterator());
             };
 
             ArrayIndexIntSet.prototype.intersection = function (set) {
-                return intSet.intersectionOfOrderedIterators(this.iterator(), set.iterator());
+                return ozone.intSet.intersectionOfOrderedIterators(this.iterator(), set.iterator());
             };
             return ArrayIndexIntSet;
         })();
@@ -1067,7 +1065,7 @@ var ozone;
                 if ((!this.hasNext()) || item <= this.array[this.nextIndex]) {
                     return;
                 }
-                var searchIndex = intSet.search(item, this.array, this.nextIndex, this.array.length);
+                var searchIndex = ozone.intSet.search(item, this.array, this.nextIndex, this.array.length);
                 this.nextIndex = (searchIndex < 0) ? ~searchIndex : searchIndex;
             };
             return OrderedArrayIterator;
@@ -1076,12 +1074,12 @@ var ozone;
     })(ozone.intSet || (ozone.intSet = {}));
     var intSet = ozone.intSet;
 })(ozone || (ozone = {}));
+/**
+* Copyright 2013 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
+*/
+/// <reference path='../_all.ts' />
 var ozone;
 (function (ozone) {
-    /**
-    * Copyright 2013 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
-    */
-    /// <reference path='../_all.ts' />
     (function (intSet) {
         /**
         * A trivial intSet which contains all values in a range.
@@ -1094,8 +1092,8 @@ var ozone;
                     this.minValue = -1;
                 }
             }
-            RangeIntSet.fromTo = /** Return a RangeIntSet from minValue to maxValue inclusive. */
-            function (minValue, maxValue) {
+            /** Return a RangeIntSet from minValue to maxValue inclusive. */
+            RangeIntSet.fromTo = function (minValue, maxValue) {
                 if (minValue === -1 && maxValue === -1) {
                     return ozone.intSet.empty;
                 }
@@ -1213,21 +1211,21 @@ var ozone;
         })();
         intSet.RangeIntSet = RangeIntSet;
 
-        intSet.empty = new RangeIntSet(-1, 0);
+        ozone.intSet.empty = new RangeIntSet(-1, 0);
     })(ozone.intSet || (ozone.intSet = {}));
     var intSet = ozone.intSet;
 })(ozone || (ozone = {}));
+/**
+* Copyright 2013 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
+*/
+/// <reference path="../_all.ts" />
 var ozone;
 (function (ozone) {
-    /**
-    * Copyright 2013 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
-    */
-    /// <reference path="../_all.ts" />
     (function (rowStore) {
         /** Build from a CSV file, with all resulting Fields treated as strings. */
         function buildFromCsv(csv) {
             var dataArray = csv.split(/(\r\n|\n|\r)/);
-            var reader = new rowStore.CsvReader();
+            var reader = new ozone.rowStore.CsvReader();
             var fieldInfo = (function () {
                 reader.onItem(dataArray[0]);
                 var result = {};
@@ -1267,27 +1265,27 @@ var ozone;
 
                     var fProto;
                     if (fd.multipleValuesPerRow)
-                        fProto = rowStore.JsonRowField;
-else
-                        fProto = rowStore.UnaryJsonRowField;
+                        fProto = ozone.rowStore.JsonRowField;
+                    else
+                        fProto = ozone.rowStore.UnaryJsonRowField;
                     var field = new fProto(fd.identifier, fd.displayName, fd.typeOfValue, null, fd.range(), fd.distinctValueEstimate());
                     fields.push(field);
                 }
             }
 
-            var result = new rowStore.RowStore(fields, data, rowTransformer);
+            var result = new ozone.rowStore.RowStore(fields, data, rowTransformer);
 
             if (toComputeDistinctValues.length > 0 || toComputeRange.length > 0) {
                 var rangeCalculators = {};
                 for (var i = 0; i < toComputeRange.length; i++) {
                     key = toComputeRange[i];
-                    rangeCalculators[key] = new rowStore.RangeCalculator(result.field(key));
+                    rangeCalculators[key] = new ozone.rowStore.RangeCalculator(result.field(key));
                 }
 
                 var valueCalculators = {};
                 for (var i = 0; i < toComputeDistinctValues.length; i++) {
                     key = toComputeDistinctValues[i];
-                    valueCalculators[key] = new rowStore.ValueFrequencyCalculator(result.field(key));
+                    valueCalculators[key] = new ozone.rowStore.ValueFrequencyCalculator(result.field(key));
                 }
 
                 result.eachRow(function (rowToken) {
@@ -1333,19 +1331,19 @@ else
 
         function proto(field) {
             if (typeof field["value"] === "function") {
-                return rowStore.UnaryJsonRowField;
+                return ozone.rowStore.UnaryJsonRowField;
             }
-            return rowStore.JsonRowField;
+            return ozone.rowStore.JsonRowField;
         }
     })(ozone.rowStore || (ozone.rowStore = {}));
     var rowStore = ozone.rowStore;
 })(ozone || (ozone = {}));
+/**
+* Copyright 2013 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
+*/
+/// <reference path='../_all.ts' />
 var ozone;
 (function (ozone) {
-    /**
-    * Copyright 2013 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
-    */
-    /// <reference path='../_all.ts' />
     (function (rowStore) {
         /** Converts CSV into simple JavaScript objects for use by RowStore.  The first row must provide column names. */
         var CsvReader = (function () {
@@ -1464,12 +1462,12 @@ var ozone;
     })(ozone.rowStore || (ozone.rowStore = {}));
     var rowStore = ozone.rowStore;
 })(ozone || (ozone = {}));
+/**
+* Copyright 2013 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
+*/
+/// <reference path="../_all.ts" />
 var ozone;
 (function (ozone) {
-    /**
-    * Copyright 2013 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
-    */
-    /// <reference path="../_all.ts" />
     (function (rowStore) {
         /**
         * A row-oriented DataStore that acts on an array of rows.  The interpretation of the rows is done entirely by
@@ -1629,6 +1627,7 @@ var ozone;
                         this.max = n;
                     }
 
+                    // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/isInteger
                     if (!(isFinite(n) && n > -9007199254740992 && n < 9007199254740992 && Math.floor(n) === n)) {
                         this.integerOnly = false;
                     }
@@ -1672,6 +1671,12 @@ var ozone;
 /// <reference path='_all.ts' />
 var ozone;
 (function (ozone) {
+    
+
+    
+
+    
+
     var FieldDescriptor = (function () {
         function FieldDescriptor(identifier, typeOfValue, typeConstructor, multipleValuesPerRow, displayName, precomputedRange, distinctValues, shouldCalculateDistinctValues) {
             this.identifier = identifier;
@@ -1683,7 +1688,7 @@ var ozone;
             this.distinctValues = distinctValues;
             this.shouldCalculateDistinctValues = shouldCalculateDistinctValues;
         }
-        FieldDescriptor.build = /**
+        /**
         * Factory method for building from AJAX.  The AJAX must contain typeOfValue.  If an identifier is not provided
         * separately, that must also be provided. Additionally it may provide displayName, precomputedRange,
         * distinctValues, and multipleValuesPerRow.  If "unlimitedValues" is true,
@@ -1691,7 +1696,7 @@ var ozone;
         *
         * The default for multipleValuesPerRow is false.
         */
-        function (ajax, identifier) {
+        FieldDescriptor.build = function (ajax, identifier) {
             if (typeof identifier === "undefined") { identifier = null; }
             var id = (identifier === null) ? ajax["identifier"] : identifier;
             var displayName = ajax["displayName"] ? ajax["displayName"] : id;

@@ -41,7 +41,7 @@ module ozone.columnStore {
 
             if (newBuilder === null && buildThisField ) {
                 if (sourceFieldIsUnary  &&  sourceField.distinctValueEstimate() > 500) {  // 500 is arbitrary
-                    newBuilder = ArrayField.builder(<UnaryField>sourceField, fieldParams);
+                    newBuilder = ArrayField.builder(<UnaryField<any>>sourceField, fieldParams);
                 }
                 else {
                     newBuilder = IntSetField.builder(sourceField, fieldParams);

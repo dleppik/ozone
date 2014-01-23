@@ -72,8 +72,8 @@ module ozone.columnStore {
                     if (addValues && valueList.length > 0) {
                         var firstValue = valueList[0];
                         if (typeof firstValue === "object") {
-                            if (firstValue["prototype"] === Date.prototype) {
-                                valueList.sort(function(a : Date, b : Date) { return a.getTime() - b.getTime()} );
+                            if (firstValue instanceof Date) {
+                                valueList.sort(function(a : any, b : any) { return a.getTime() - b.getTime()} );
                             }
                         }
                         else {

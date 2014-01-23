@@ -26,7 +26,7 @@ module ozone {
         }
 
         matches(store : RandomAccessStore, rowToken : any) : boolean {
-            var field = <RandomAccessField> store.field(this.fieldDescriptor.identifier);
+            var field = <RandomAccessField<any>> store.field(this.fieldDescriptor.identifier);
             return field.rowHasValue(rowToken, this.value);
         }
 

@@ -115,9 +115,6 @@ module ozone.columnStore {
 
         public rowHasValue(rowToken : number, value : any) : boolean {
             var actualValue = this.value(rowToken);
-            if (value===108) { // XXX
-                console.log("rowHasValue: "+rowToken+" found value "+actualValue+", comparing to "+value); // XXX
-            } // XXX
             return actualValue === value;
         }
     }

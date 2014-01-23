@@ -9,9 +9,9 @@ module ozone.rowStore {
     export function buildFromCsv(csv : string) : RowStore {
         var dataArray = csv.split(/(\r\n|\n|\r)/);
         var reader = new CsvReader();
-        var fieldInfo = (function() {
+        var fieldInfo  = (function() {
             reader.onItem(dataArray[0]);
-            var result = {};
+            var result : {[key : string] : any} = {};
             for (var index in reader.columnNames) {
                 result[reader.columnNames[index]] = {typeOfValue: "string"};
             }
