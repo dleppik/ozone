@@ -71,10 +71,8 @@ module ozone.columnStore {
                     var valueMap =  <{(valueId:string) : IntSet}>  {};
                     if (addValues && valueList.length > 0) {
                         var firstValue = valueList[0];
-                        if (typeof firstValue === "object") {
-                            if (firstValue instanceof Date) {
-                                valueList.sort(function(a : any, b : any) { return a.getTime() - b.getTime()} );
-                            }
+                        if (firstValue instanceof Date) {
+                            valueList.sort(function(a : any, b : any) { return a.getTime() - b.getTime()} );
                         }
                         else {
                             valueList.sort();
