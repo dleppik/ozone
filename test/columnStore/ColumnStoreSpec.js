@@ -18,7 +18,7 @@ describe("ColumnStore", function() {
             name: { class: ozone.columnStore.ArrayField },
             pin:  { class: ozone.columnStore.ArrayField,
                     typeOfValue: "number",
-                    range: new Range(101, 108, true)
+                    range: new ozone.Range(101, 108, true)
             }
         }
     };
@@ -62,7 +62,7 @@ describe("ColumnStore", function() {
         it("Has a builder which converts from strings to numbers", function() {
             var params = {
                 fields: {
-                    pin: { typeOfValue: "number", range: new Range(101,108,true) }
+                    pin: { typeOfValue: "number", range: new ozone.Range(101,108,true) }
                 },
                 buildAllFields: false
             };
