@@ -3,7 +3,7 @@ Ozone
 
 ![Ozone](icons/ozone-64.png "Ozone")
 
-A JavaScript database for realtime data analysis and visualization
+A JavaScript OLAP database for realtime data analysis and visualization
 
 Ozone is a special-purpose database for filtering and counting. It's good for answering questions of the form "how many... in each...?"  And it's particularly good as a client-side back end for data visualization libraries such as [D3](http://d3js.org/).  Because Ozone runs in the web browser, data visualizations can avoid querying the server when adding or removing filters.  Ozone consists of two components:
 
