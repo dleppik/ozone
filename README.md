@@ -31,7 +31,7 @@ Demo
 Querying Ozone
 --------------
 
-Start with a database:
+Start with a database, such as a CSV file:
 
 ```JavaScript
 var db = ozone.columnStore.buildFromStore(o3.rowStore.buildFromCsv(rawData));
@@ -64,8 +64,8 @@ var itWorks = genderField.identifier  === 'Gender'  &&
               genderField.displayName === 'Participant Gender' &&
               genderField.typeOfValue === 'string';
 
-var filteringByFieldWorks = dbOfWomen.size === db.filter(genderField, 'F') &&
-                            dbOfWomen.size === db.filter(dbOfMaleGermans.field('Gender', 'F'));
+var filteringByFieldWorks = dbOfWomen.size === db.filter(genderField, 'F').size &&
+                            dbOfWomen.size === db.filter(dbOfMaleGermans.field('Gender', 'F')).size;
 ```
 
 Use field.distinctValueEstimate() to determine how to present the fields
