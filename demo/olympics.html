@@ -4,71 +4,71 @@
     <script src="../ozone.js" charset="utf-8"></script>
     <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
     <title>Ozone Olympics Demo</title>
+    <style type="text/css">
+        body {
+            font-family: "Helvetica", "Arial", sans-serif;
+            background: #eee;
+        }
+
+        h1 {
+            font-size: 18px;
+        }
+
+        .menuBar {
+            margin: 4px 0;
+            font-size: 12px;
+        }
+
+        .menuTitle {
+            display: inline-block;
+            width: 200px;
+            text-align: right;
+        }
+
+        .menu {
+            display: inline-block;
+        }
+
+        .note {
+            padding: 4px 0 4px 200px;
+            font-style: oblique;
+        }
+
+        .loading {
+            height: 408px;
+            padding-top: 300px;
+            text-align: center;
+        }
+
+        #visContainer {
+            margin: 8px 0;
+        }
+
+        .chart {
+            display: block;
+            margin: auto;
+            font-size: 11px;
+        }
+
+        rect {
+            stroke: #eee;
+            fill: #aaa;
+            fill-opacity: .8;
+        }
+
+        rect.parent {
+            cursor: pointer;
+            fill: steelblue;
+        }
+
+
+        text {
+            pointer-events: none;
+        }
+
+    </style>
+
 </head>
-<style type="text/css">
-
-    body {
-        font-family: "Helvetica", "Arial";
-        background: #eee;
-    }
-
-    h1 {
-        font-size: 18px;
-    }
-
-    .menuBar {
-        margin: 4px 0;
-        font-size: 12px;
-    }
-
-    .menuTitle {
-        display: inline-block;
-        width: 200px;
-        text-align: right;
-    }
-
-    .menu {
-        display: inline-block;
-    }
-
-    .note {
-        padding: 4px 0 4px 200px;
-        font-style: oblique;
-    }
-
-    .loading {
-        height: 408px;
-        padding-top: 300px;
-        text-align: center;
-    }
-
-    #visContainer {
-        margin: 8px 0;
-    }
-
-    .chart {
-        display: block;
-        margin: auto;
-        font-size: 11px;
-    }
-
-    rect {
-        stroke: #eee;
-        fill: #aaa;
-        fill-opacity: .8;
-    }
-
-    rect.parent {
-        cursor: pointer;
-        fill: steelblue;
-    }
-
-
-    text {
-        pointer-events: none;
-    }
-
-</style>
 <body>
 
     <h1>Counts of Summer Olympic Medals</h1>
