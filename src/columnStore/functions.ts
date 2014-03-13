@@ -14,7 +14,7 @@ module ozone.columnStore {
      *          fields:  maps from field identifiers in the source to field-specific params.  All FieldDescribing
      *                  properties and Builder parameters can be specified here.
      *
-     *                   class: a Field class, such as ArrayField, or other object with a "builder" method.
+     *                   class: a Field class, such as UnIndexedField, or other object with a "builder" method.
      *
      *          buildAllFields: boolean, default is true.  If false, any fields not listed under 'Fields' are ignored.
      */
@@ -41,10 +41,10 @@ module ozone.columnStore {
 
             if (newBuilder === null && buildThisField ) {
                 if (sourceFieldIsUnary  &&  sourceField.distinctValueEstimate() > 500) {  // 500 is arbitrary
-                    newBuilder = ArrayField.builder(<UnaryField<any>>sourceField, fieldParams);
+                    newBuilder = UnIndexedField.builder(<UnaryField<any>>sourceField, fieldParams);
                 }
                 else {
-                    newBuilder = IntSetField.builder(sourceField, fieldParams);
+                    newBuilder = IndexedField.builder(sourceField, fieldParams);
                 }
             }
             if (newBuilder !== null) {

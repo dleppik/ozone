@@ -9,6 +9,21 @@ module ozone.columnStore {
         intSet() : IntSet;
     }
 
+    /**
+     * This is the native internal format for Ozone DataStores.  The ColumnStore is little more than a container for
+     * Fields.  IndexedFields are generally more efficient than UnIndexedFields-- with the assumption that
+     * Field.distinctValueEstimate() is usually low.
+     *
+     * <p>
+     *     Conceptually the DataStore represents a dense array of rows, and each row is identified by its array index.
+     *     In fact there is no such array;  the index exists to identify records across Fields.
+     * </p>
+     *
+     * <p>
+     *     Confusingly, "index" refers both to the map of values to row identifiers (i.e. a database index) and an
+     *     individual row identifier, since conceptually (but not literally) the DataStore is a dense array of rows.
+     * </p>
+     */
     export class ColumnStore implements ColumnStoreInterface {
 
         /**

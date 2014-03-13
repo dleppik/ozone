@@ -5,10 +5,10 @@
 /// <reference path='StoreProxy.ts' />
 
 /// <reference path='columnStore/functions.ts' />
-/// <reference path='columnStore/ArrayField.ts' />
+/// <reference path='columnStore/UnIndexedField.ts' />
 /// <reference path='columnStore/ColumnStore.ts' />
 /// <reference path='columnStore/FilteredColumnStore.ts' />
-/// <reference path='columnStore/IntSetField.ts' />
+/// <reference path='columnStore/IndexedField.ts' />
 
 /// <reference path='intSet/functions.ts' />
 /// <reference path='intSet/ArrayIndexIntSet.ts' />

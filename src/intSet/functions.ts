@@ -1,5 +1,5 @@
 /**
- * Copyright 2013 by Vocal Laboratories, Inc.  Distributed under the Apache License 2.0.
+ * Copyright 2013-2014 by Vocal Laboratories, Inc.  Distributed under the Apache License 2.0.
  */
 /// <reference path='../_all.ts' />
 

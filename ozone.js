@@ -214,7 +214,7 @@ var ozone;
         *          fields:  maps from field identifiers in the source to field-specific params.  All FieldDescribing
         *                  properties and Builder parameters can be specified here.
         *
-        *                   class: a Field class, such as ArrayField, or other object with a "builder" method.
+        *                   class: a Field class, such as UnIndexedField, or other object with a "builder" method.
         *
         *          buildAllFields: boolean, default is true.  If false, any fields not listed under 'Fields' are ignored.
         */
@@ -242,9 +242,9 @@ var ozone;
 
                 if (newBuilder === null && buildThisField) {
                     if (sourceFieldIsUnary && sourceField.distinctValueEstimate() > 500) {
-                        newBuilder = ozone.columnStore.ArrayField.builder(sourceField, fieldParams);
+                        newBuilder = ozone.columnStore.UnIndexedField.builder(sourceField, fieldParams);
                     } else {
-                        newBuilder = ozone.columnStore.IntSetField.builder(sourceField, fieldParams);
+                        newBuilder = ozone.columnStore.IndexedField.builder(sourceField, fieldParams);
                     }
                 }
                 if (newBuilder !== null) {
@@ -277,17 +277,18 @@ var ozone;
     var columnStore = ozone.columnStore;
 })(ozone || (ozone = {}));
 /**
-* Copyright 2013 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
+* Copyright 2013-2014 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
 */
 /// <reference path='../_all.ts' />
 var ozone;
 (function (ozone) {
     (function (columnStore) {
         /**
-        * Stores the entire column in a single dense array.
+        * A Field which is inefficient for filtering;  intended for columns where distinctValueEstimate is so large that
+        * an IndexedField would use an unreasonable amount of memory. Stores the entire column in a single dense array.
         */
-        var ArrayField = (function () {
-            function ArrayField(descriptor, array, offset, nullProxy) {
+        var UnIndexedField = (function () {
+            function UnIndexedField(descriptor, array, offset, nullProxy) {
                 if (typeof offset === "undefined") { offset = 0; }
                 if (typeof nullProxy === "undefined") { nullProxy = null; }
                 this.array = array;
@@ -318,7 +319,7 @@ var ozone;
             *                                     may allow the JavaScript implementation to use an array of primitives.
             *                                     (Haven't yet checked to see if any JS implementations actually do this.)
             */
-            ArrayField.builder = function (sourceField, params) {
+            UnIndexedField.builder = function (sourceField, params) {
                 if (typeof params === "undefined") { params = {}; }
                 var array = [];
                 var offset = 0;
@@ -353,41 +354,41 @@ var ozone;
                         }
                     },
                     onEnd: function () {
-                        return new ArrayField(descriptor, array, offset, nullProxy);
+                        return new UnIndexedField(descriptor, array, offset, nullProxy);
                     }
                 };
             };
 
-            ArrayField.prototype.value = function (rowToken) {
+            UnIndexedField.prototype.value = function (rowToken) {
                 var index = rowToken - this.offset;
                 var result = this.array[index];
                 return (this.isNull(result)) ? null : result;
             };
 
-            ArrayField.prototype.isNull = function (item) {
+            UnIndexedField.prototype.isNull = function (item) {
                 return (typeof (item) === null || typeof (item) === 'undefined' || item === this.nullProxy);
             };
 
-            ArrayField.prototype.values = function (rowToken) {
+            UnIndexedField.prototype.values = function (rowToken) {
                 var result = this.value(rowToken);
                 return (result === null) ? [] : [result];
             };
 
-            ArrayField.prototype.range = function () {
+            UnIndexedField.prototype.range = function () {
                 return this.rangeValue;
             };
 
-            ArrayField.prototype.distinctValueEstimate = function () {
+            UnIndexedField.prototype.distinctValueEstimate = function () {
                 return this.valueEstimate;
             };
 
-            ArrayField.prototype.rowHasValue = function (rowToken, value) {
+            UnIndexedField.prototype.rowHasValue = function (rowToken, value) {
                 var actualValue = this.value(rowToken);
                 return actualValue === value;
             };
-            return ArrayField;
+            return UnIndexedField;
         })();
-        columnStore.ArrayField = ArrayField;
+        columnStore.UnIndexedField = UnIndexedField;
     })(ozone.columnStore || (ozone.columnStore = {}));
     var columnStore = ozone.columnStore;
 })(ozone || (ozone = {}));
@@ -398,6 +399,21 @@ var ozone;
 var ozone;
 (function (ozone) {
     (function (columnStore) {
+        /**
+        * This is the native internal format for Ozone DataStores.  The ColumnStore is little more than a container for
+        * Fields.  IndexedFields are generally more efficient than UnIndexedFields-- with the assumption that
+        * Field.distinctValueEstimate() is usually low.
+        *
+        * <p>
+        *     Conceptually the DataStore represents a dense array of rows, and each row is identified by its array index.
+        *     In fact there is no such array;  the index exists to identify records across Fields.
+        * </p>
+        *
+        * <p>
+        *     Confusingly, "index" refers both to the map of values to row identifiers (i.e. a database index) and an
+        *     individual row identifier, since conceptually (but not literally) the DataStore is a dense array of rows.
+        * </p>
+        */
         var ColumnStore = (function () {
             function ColumnStore(size, fieldArray) {
                 this.size = size;
@@ -502,7 +518,7 @@ var ozone;
                 var filterTarget = filtersForIteration;
                 if (newFilter instanceof ozone.ValueFilter) {
                     var fieldId = newFilter.fieldDescriptor.identifier;
-                    if (source.field(fieldId) instanceof ozone.columnStore.IntSetField) {
+                    if (source.field(fieldId) instanceof ozone.columnStore.IndexedField) {
                         filterTarget = intSetFilters;
                     }
                 }
@@ -561,10 +577,10 @@ var ozone;
             }
 
             var indexedField;
-            if (field instanceof ozone.columnStore.IntSetField) {
+            if (field instanceof ozone.columnStore.IndexedField) {
                 indexedField = field;
             } else {
-                var indexedFieldBuilder = ozone.columnStore.IntSetField.builder(field);
+                var indexedFieldBuilder = ozone.columnStore.IndexedField.builder(field);
                 store.eachRow(function (row) {
                     indexedFieldBuilder.onItem({ index: row, rowToken: row });
                 });
@@ -645,13 +661,18 @@ var ozone;
 (function (ozone) {
     (function (columnStore) {
         /**
-        * A Field which consists of intSets for each Value.  Although values need not be strings, they are identified
-        * internally by their toString method.  It is legal for values to have empty intSets;  for example, a Month
+        * A Field which stores values in an index, and each value is mapped to a list of row identifiers.  This is similar
+        * to an SQL index on a column, except that SQL databases store both a row and (optionally) an index, whereas this
+        * Field only stores the index-- the row itself is nothing more than an identifying row number.
+        *
+        * <p><b>Although values need not be strings, they are identified internally by their toString method.</b></p>
+        *
+        * It is legal for values to have empty intSets;  for example, a Month
         * field might contain all the months of the year in order, even if only a few have any values, to guarantee that
         * the UI looks right.
         */
-        var IntSetField = (function () {
-            function IntSetField(descriptor, valueList, valueMap) {
+        var IndexedField = (function () {
+            function IndexedField(descriptor, valueList, valueMap) {
                 this.valueList = valueList;
                 this.valueMap = valueMap;
                 this.identifier = descriptor.identifier;
@@ -671,7 +692,7 @@ var ozone;
             *                                     change, and may be browser specific or determined based on the
             *                                     characteristics of sourceField.
             */
-            IntSetField.builder = function (sourceField, params) {
+            IndexedField.builder = function (sourceField, params) {
                 if (typeof params === "undefined") { params = {}; }
                 var descriptor = ozone.mergeFieldDescriptors(sourceField, params);
 
@@ -724,16 +745,16 @@ var ozone;
                             var value = valueList[i];
                             valueMap[value.toString()] = intSetBuilders[value].onEnd();
                         }
-                        return new IntSetField(descriptor, valueList, valueMap);
+                        return new IndexedField(descriptor, valueList, valueMap);
                     }
                 };
             };
 
-            IntSetField.prototype.allValues = function () {
+            IndexedField.prototype.allValues = function () {
                 return this.valueList.concat();
             };
 
-            IntSetField.prototype.values = function (rowToken) {
+            IndexedField.prototype.values = function (rowToken) {
                 var index = rowToken;
                 var result = [];
 
@@ -747,16 +768,16 @@ var ozone;
                 return result;
             };
 
-            IntSetField.prototype.range = function () {
+            IndexedField.prototype.range = function () {
                 return this.rangeVal;
             };
 
             /** Equivalent to allValues().length. */
-            IntSetField.prototype.distinctValueEstimate = function () {
+            IndexedField.prototype.distinctValueEstimate = function () {
                 return this.valueList.length;
             };
 
-            IntSetField.prototype.rowHasValue = function (index, value) {
+            IndexedField.prototype.rowHasValue = function (index, value) {
                 var intSet = this.valueMap[value.toString()];
                 if (intSet) {
                     return intSet.get(index);
@@ -765,18 +786,18 @@ var ozone;
             };
 
             /** Return the intSet matching value.toString(), or an empty intSet if the value is not found. */
-            IntSetField.prototype.intSetForValue = function (value) {
+            IndexedField.prototype.intSetForValue = function (value) {
                 var set = this.valueMap[value.toString()];
                 return (set) ? set : ozone.intSet.empty;
             };
-            return IntSetField;
+            return IndexedField;
         })();
-        columnStore.IntSetField = IntSetField;
+        columnStore.IndexedField = IndexedField;
     })(ozone.columnStore || (ozone.columnStore = {}));
     var columnStore = ozone.columnStore;
 })(ozone || (ozone = {}));
 /**
-* Copyright 2013 by Vocal Laboratories, Inc.  Distributed under the Apache License 2.0.
+* Copyright 2013-2014 by Vocal Laboratories, Inc.  Distributed under the Apache License 2.0.
 */
 /// <reference path='../_all.ts' />
 var ozone;
@@ -1669,10 +1690,10 @@ var ozone;
 /// <reference path='Filter.ts' />
 /// <reference path='StoreProxy.ts' />
 /// <reference path='columnStore/functions.ts' />
-/// <reference path='columnStore/ArrayField.ts' />
+/// <reference path='columnStore/UnIndexedField.ts' />
 /// <reference path='columnStore/ColumnStore.ts' />
 /// <reference path='columnStore/FilteredColumnStore.ts' />
-/// <reference path='columnStore/IntSetField.ts' />
+/// <reference path='columnStore/IndexedField.ts' />
 /// <reference path='intSet/functions.ts' />
 /// <reference path='intSet/ArrayIndexIntSet.ts' />
 /// <reference path='intSet/RangeIntSet.ts' />

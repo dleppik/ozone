@@ -39,7 +39,7 @@ module ozone.columnStore {
             var filterTarget = filtersForIteration;
             if (newFilter instanceof ValueFilter) {
                 var fieldId = (<ValueFilter> newFilter).fieldDescriptor.identifier;
-                if (source.field(fieldId) instanceof IntSetField) {
+                if (source.field(fieldId) instanceof IndexedField) {
                     filterTarget = intSetFilters;
                 }
             }
@@ -58,7 +58,7 @@ module ozone.columnStore {
             for (var i=0; i<intSetFilters.length; i++) {
                 var intSetFilter = <ValueFilter> intSetFilters[i];
                 var fieldId = intSetFilter.fieldDescriptor.identifier;
-                var field = <IntSetField<any>> source.field(fieldId);
+                var field = <IndexedField<any>> source.field(fieldId);
                 var fieldIntSet = field.intSetForValue(intSetFilter.value);
 
                 set = ozone.intSet.intersectionOfIntSets(set, fieldIntSet);
@@ -100,15 +100,15 @@ module ozone.columnStore {
         }
 
         var indexedField;
-        if (field instanceof IntSetField) {
-            indexedField = <IntSetField<any>> field;
+        if (field instanceof IndexedField) {
+            indexedField = <IndexedField<any>> field;
         }
         else {
-            var indexedFieldBuilder = IntSetField.builder(field);
+            var indexedFieldBuilder = IndexedField.builder(field);
             store.eachRow(function(row) {
                 indexedFieldBuilder.onItem({index:row, rowToken:row});
             });
-            indexedField = <IntSetField<any>> indexedFieldBuilder.onEnd();
+            indexedField = <IndexedField<any>> indexedFieldBuilder.onEnd();
         }
 
         var result : { [value: string]: RandomAccessStore; } = {};

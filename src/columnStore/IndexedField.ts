@@ -11,12 +11,17 @@ module ozone.columnStore {
     }
 
     /**
-     * A Field which consists of intSets for each Value.  Although values need not be strings, they are identified
-     * internally by their toString method.  It is legal for values to have empty intSets;  for example, a Month
+     * A Field which stores values in an index, and each value is mapped to a list of row identifiers.  This is similar
+     * to an SQL index on a column, except that SQL databases store both a row and (optionally) an index, whereas this
+     * Field only stores the index-- the row itself is nothing more than an identifying row number.
+     *
+     * <p><b>Although values need not be strings, they are identified internally by their toString method.</b></p>
+     *
+     * It is legal for values to have empty intSets;  for example, a Month
      * field might contain all the months of the year in order, even if only a few have any values, to guarantee that
      * the UI looks right.
      */
-    export class IntSetField<T> implements RandomAccessField<T> {
+    export class IndexedField<T> implements RandomAccessField<T> {
 
         /**
          * Returns a reducer that can be run on a source DataStore to reproduce a sourceField.
@@ -29,7 +34,7 @@ module ozone.columnStore {
          *                                     change, and may be browser specific or determined based on the
          *                                     characteristics of sourceField.
          */
-        public static builder<T>(sourceField : Field<T>, params : any = {} ) : Reducer<IndexedRowToken,IntSetField<T>> {
+        public static builder<T>(sourceField : Field<T>, params : any = {} ) : Reducer<IndexedRowToken,IndexedField<T>> {
             var descriptor : FieldDescribing = mergeFieldDescriptors(sourceField, params);
 
             var addValues =  ! params.values;
@@ -67,7 +72,7 @@ module ozone.columnStore {
                         }
                     }
                 },
-                onEnd: function() : IntSetField<T> {
+                onEnd: function() : IndexedField<T> {
                     var valueMap =  <{(valueId:string) : IntSet}>  {};
                     if (addValues && valueList.length > 0) {
                         var firstValue = valueList[0];
@@ -82,7 +87,7 @@ module ozone.columnStore {
                         var value = valueList[i];
                         valueMap[value.toString()] = intSetBuilders[value].onEnd();
                     }
-                    return new IntSetField<T>(descriptor, valueList, valueMap);
+                    return new IndexedField<T>(descriptor, valueList, valueMap);
                 }
             };
         }

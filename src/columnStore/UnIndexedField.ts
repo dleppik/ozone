@@ -1,14 +1,15 @@
 /**
- * Copyright 2013 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
+ * Copyright 2013-2014 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
  */
 /// <reference path='../_all.ts' />
 
 module ozone.columnStore {
 
     /**
-     * Stores the entire column in a single dense array.
+     * A Field which is inefficient for filtering;  intended for columns where distinctValueEstimate is so large that
+     * an IndexedField would use an unreasonable amount of memory. Stores the entire column in a single dense array.
      */
-    export class ArrayField<T> implements UnaryField<T>, RandomAccessField<T> {
+    export class UnIndexedField<T> implements UnaryField<T>, RandomAccessField<T> {
 
         /**
          * Returns a reducer that can be run on a source DataStore to reproduce a sourceField.
@@ -20,7 +21,7 @@ module ozone.columnStore {
          *                                     may allow the JavaScript implementation to use an array of primitives.
          *                                     (Haven't yet checked to see if any JS implementations actually do this.)
          */
-        public static builder<T>(sourceField : UnaryField<T>, params : any = {} ) : Reducer<IndexedRowToken,ArrayField<T>> {
+        public static builder<T>(sourceField : UnaryField<T>, params : any = {} ) : Reducer<IndexedRowToken,UnIndexedField<T>> {
             var array : T[] = [];
             var offset = 0;
             var nullValues = (typeof(params["nullValues"]) === "object" )  ?  params["nullValues"] : [];
@@ -55,8 +56,8 @@ module ozone.columnStore {
                         array[newIndex] = value;
                     }
                 },
-                onEnd: function() : ArrayField<T> {
-                    return new ArrayField(descriptor, array, offset, nullProxy);
+                onEnd: function() : UnIndexedField<T> {
+                    return new UnIndexedField(descriptor, array, offset, nullProxy);
                 }
             };
         }

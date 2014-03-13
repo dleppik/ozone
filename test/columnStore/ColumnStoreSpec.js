@@ -15,8 +15,8 @@ describe("ColumnStore", function() {
 
     var storeParams = {
         fields: {
-            name: { class: ozone.columnStore.ArrayField },
-            pin:  { class: ozone.columnStore.ArrayField,
+            name: { class: ozone.columnStore.UnIndexedField },
+            pin:  { class: ozone.columnStore.UnIndexedField,
                     typeOfValue: "number",
                     range: new ozone.Range(101, 108, true)
             }
@@ -40,10 +40,10 @@ describe("ColumnStore", function() {
             expect(field).toBe(columnStore.field(field.identifier));
         }
 
-        expect(  nameField instanceof ozone.columnStore.ArrayField ).toBe(true);
-        expect( colorField instanceof ozone.columnStore.IntSetField).toBe(true);
-        expect(animalField instanceof ozone.columnStore.IntSetField).toBe(true);
-        expect(   pinField instanceof ozone.columnStore.ArrayField ).toBe(true);
+        expect(  nameField instanceof ozone.columnStore.UnIndexedField ).toBe(true);
+        expect( colorField instanceof ozone.columnStore.IndexedField   ).toBe(true);
+        expect(animalField instanceof ozone.columnStore.IndexedField   ).toBe(true);
+        expect(   pinField instanceof ozone.columnStore.UnIndexedField ).toBe(true);
     });
 
     it("Builds ignoring fields when buildAllFields is false", function() {
@@ -58,7 +58,7 @@ describe("ColumnStore", function() {
         expect(db.field("pin")).toBeDefined();
     });
 
-    describe("IntSetField", function() {
+    describe("IndexedField", function() {
         it("Has a builder which converts from strings to numbers", function() {
             var params = {
                 fields: {
@@ -68,7 +68,7 @@ describe("ColumnStore", function() {
             };
             var db = ozone.columnStore.buildFromStore( rowStore, params);
             var f = db.field("pin");
-            expect(f instanceof ozone.columnStore.IntSetField).toBe(true);
+            expect(f instanceof ozone.columnStore.IndexedField).toBe(true);
             expect(f.values(0)[0]).toBe(101);
         });
 
@@ -83,7 +83,7 @@ describe("ColumnStore", function() {
         });
     });
 
-    describe("ArrayField", function() {
+    describe("UnIndexedField", function() {
 
         it("Has a builder which converts from strings to numbers", function() {
             expect(pinField.value(0)).toBe(101);
@@ -125,7 +125,7 @@ describe("ColumnStore", function() {
 
 
     describe("Filtering", function() {
-        it("Filters on a single IntSetField", function() {
+        it("Filters on a single IndexedField", function() {
             var redStore = columnStore.filter( new ValueFilter(colorField, "red") );
             expect(redStore.size).toBe(3);
 
@@ -133,7 +133,7 @@ describe("ColumnStore", function() {
             expect(blueStore.size).toBe(2);
         });
 
-        it("Filters multiple IntSetFields", function() {
+        it("Filters multiple IndexedFields", function() {
             var redDb = columnStore.filter(colorField, "red");
             var redCatDb = redDb.filter(animalField, "cat");
             expect(redCatDb.size).toBe(1);
@@ -142,7 +142,7 @@ describe("ColumnStore", function() {
             });
         });
 
-        it("Filters on a single ArrayField", function() {
+        it("Filters on a single UnIndexedField", function() {
             var frankDb = columnStore.filter(nameField, "Frank");
             expect(frankDb.size).toBe(1);
             frankDb.eachRow(function(rowToken) {
@@ -164,13 +164,13 @@ describe("ColumnStore", function() {
             });
         });
 
-        it("Filters on multiple ArrayFields", function() {
+        it("Filters on multiple UnIndexedFields", function() {
             var frankDb = columnStore.filter( new ValueFilter(nameField, "Frank") );
             expect(frankDb.filter(pinField, 106).size).toBe(1);
             expect(frankDb.filter(pinField, 105).size).toBe(0);
         });
 
-        it("Filters ArrayFields and IntSetFields together", function() {
+        it("Filters UnIndexedFields and IndexedFields together", function() {
             var db = columnStore
                 .filter(   nameField, "Frank")
                 .filter(  colorField, "blue")
@@ -181,14 +181,14 @@ describe("ColumnStore", function() {
     });
 
     describe("Partitioning", function() {
-        it("Partitions on a single IntSetField", function() {
+        it("Partitions on a single IndexedField", function() {
             var colorPartitions = columnStore.partition("color");
             expect(colorPartitions.  red.size ).toBe(3);
             expect(colorPartitions.green.size ).toBe(3);
             expect(colorPartitions. blue.size ).toBe(2);
         });
 
-        it("Partitions on a single ArrayField", function() {
+        it("Partitions on a single UnIndexedField", function() {
             var colorPartitions = columnStore.partition("pin");
             expect(colorPartitions[101].size ).toBe(1);
             expect(colorPartitions[102].size ).toBe(1);
