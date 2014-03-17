@@ -18,3 +18,6 @@
 /// <reference path='rowStore/CsvReader.ts' />
 /// <reference path='rowStore/RowStore.ts' />
 
+/// <reference path='serialization/jsonInterfaces.ts' />
+/// <reference path='serialization/functions.ts' />
+

@@ -999,6 +999,10 @@ var ozone;
                 return new ArrayIndexIntSet(elements.concat());
             };
 
+            ArrayIndexIntSet.prototype.toArray = function () {
+                return this.indexes.concat(0);
+            };
+
             ArrayIndexIntSet.prototype.get = function (index) {
                 return ozone.intSet.search(index, this.indexes, 0, this.indexes.length - 1) >= 0;
             };
@@ -1094,7 +1098,7 @@ var ozone;
     var intSet = ozone.intSet;
 })(ozone || (ozone = {}));
 /**
-* Copyright 2013 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
+* Copyright 2013-2014 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
 */
 /// <reference path='../_all.ts' />
 var ozone;
@@ -1684,6 +1688,108 @@ var ozone;
     })(ozone.rowStore || (ozone.rowStore = {}));
     var rowStore = ozone.rowStore;
 })(ozone || (ozone = {}));
+/**
+* Copyright 2013 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
+*/
+/// <reference path='../_all.ts' />
+/**
+* Copyright 2013-2014 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
+*/
+/// <reference path='../_all.ts' />
+var ozone;
+(function (ozone) {
+    (function (serialization) {
+        function readIntSet(jsonData) {
+            //
+            // Types generally mirror the IntSet implementations, but there is no requirement that they serialize
+            // one-to-one.
+            //
+            if (jsonData.hasOwnProperty("type")) {
+                var type = parseType(jsonData.type);
+                if (type.subTypes.length > 0) {
+                    throw new Error("Unknown subtypes: " + type.subTypes);
+                }
+                switch (type.mainType) {
+                    case "array":
+                        return ozone.intSet.ArrayIndexIntSet.fromArray(jsonData.data);
+                    case "empty":
+                        return ozone.intSet.empty;
+                    case "range":
+                        return ozone.intSet.RangeIntSet.fromTo(jsonData.min, jsonData.max);
+                    default:
+                        throw new Error("Unknown IntSet type: " + jsonData.type);
+                }
+            } else {
+                throw new Error("IntSet type not specified");
+            }
+        }
+        serialization.readIntSet = readIntSet;
+
+        function writeIntSet(toWrite) {
+            if (toWrite.size === 0)
+                return writeEmptyIntSet(toWrite);
+            if (toWrite instanceof ozone.intSet.RangeIntSet)
+                return writeRangeIntSet(toWrite);
+            return writeIntSetArrayData(toWrite);
+        }
+        serialization.writeIntSet = writeIntSet;
+
+        function writeEmptyIntSet(toWrite) {
+            return { type: "empty" };
+        }
+
+        function writeRangeIntSet(rangeIntSet) {
+            return {
+                type: "range",
+                min: rangeIntSet.min(),
+                max: rangeIntSet.max()
+            };
+        }
+
+        function writeIntSetArrayData(toWrite) {
+            var array = [];
+            if (toWrite instanceof ozone.intSet.ArrayIndexIntSet) {
+                array = toWrite.toArray();
+            } else {
+                toWrite.each(function (value) {
+                    array.push(value);
+                });
+            }
+            return {
+                type: "array",
+                data: array
+            };
+        }
+
+        function parseType(typeString) {
+            var hintSplit = typeString.split(";");
+            var nonHint = hintSplit[0];
+            var hints = hintSplit.slice(1);
+
+            var types = nonHint.split("/");
+            var mainType = types[0];
+            return new ParsedType(mainType, types.splice(1), hints);
+        }
+        serialization.parseType = parseType;
+
+        var ParsedType = (function () {
+            function ParsedType(mainType, subTypes, hints) {
+                this.mainType = mainType;
+                this.subTypes = subTypes;
+                this.hints = hints;
+            }
+            ParsedType.prototype.next = function () {
+                if (this.subTypes.length === 0) {
+                    return null;
+                }
+                return new ParsedType(this.subTypes[0], this.subTypes.slice(1), this.hints);
+            };
+            return ParsedType;
+        })();
+        serialization.ParsedType = ParsedType;
+    })(ozone.serialization || (ozone.serialization = {}));
+    var serialization = ozone.serialization;
+})(ozone || (ozone = {}));
 /// <reference path='interfaces.ts' />
 /// <reference path='util.ts' />
 /// <reference path='Field.ts' />
@@ -1700,6 +1806,8 @@ var ozone;
 /// <reference path='rowStore/functions.ts' />
 /// <reference path='rowStore/CsvReader.ts' />
 /// <reference path='rowStore/RowStore.ts' />
+/// <reference path='serialization/jsonInterfaces.ts' />
+/// <reference path='serialization/functions.ts' />
 /**
 * Copyright 2013 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
 */

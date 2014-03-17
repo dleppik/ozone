@@ -245,7 +245,7 @@
                 var result = [noFieldOptName];
                 for (var i=0; i<db.fields().length; i++) {
                     var field = db.fields()[i];
-                    if (field instanceof o3.columnStore.IntSetField) {
+                    if (field instanceof o3.columnStore.IndexedField) {
                         result.push(field.displayName);
                         fieldsByDisplayName[field.displayName] = field;
                     }

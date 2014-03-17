@@ -33,6 +33,10 @@ module ozone.intSet {
             this.size = indexes.length;
         }
 
+        public toArray() : number[] {
+            return this.indexes.concat(0);
+        }
+
         get(index : number) : boolean {
             return search(index, this.indexes, 0, this.indexes.length-1) >= 0;
         }
