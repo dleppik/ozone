@@ -23,9 +23,7 @@ module ozone.serialization {
                 default: throw new Error("Unknown IntSet type: "+jsonData.type)
             }
         }
-        else {
-            throw new Error("IntSet type not specified");
-        }
+        throw new Error("IntSet type not specified");
     }
 
     export function writeIntSet( toWrite : IntSet ) : IntSetMetaData {

@@ -34,7 +34,7 @@ module ozone.intSet {
         }
 
         public toArray() : number[] {
-            return this.indexes.concat(0);
+            return this.indexes.concat();
         }
 
         get(index : number) : boolean {

@@ -1000,7 +1000,7 @@ var ozone;
             };
 
             ArrayIndexIntSet.prototype.toArray = function () {
-                return this.indexes.concat(0);
+                return this.indexes.concat();
             };
 
             ArrayIndexIntSet.prototype.get = function (index) {
@@ -1719,9 +1719,8 @@ var ozone;
                     default:
                         throw new Error("Unknown IntSet type: " + jsonData.type);
                 }
-            } else {
-                throw new Error("IntSet type not specified");
             }
+            throw new Error("IntSet type not specified");
         }
         serialization.readIntSet = readIntSet;
 
