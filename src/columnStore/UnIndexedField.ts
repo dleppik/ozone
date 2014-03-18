@@ -72,7 +72,12 @@ module ozone.columnStore {
             this.typeOfValue     = descriptor.typeOfValue;
             this.typeConstructor = descriptor.typeConstructor;
             this.valueEstimate   = descriptor.distinctValueEstimate();
-            this.rangeValue      = descriptor.range();
+
+            var range : Range = descriptor.range();
+            if (typeof range === 'undefined' || descriptor.typeOfValue=== 'number') {
+                range = null;
+            }
+            this.rangeValue = range;
 
             if (typeof(this.valueEstimate) !== "number" || isNaN(this.valueEstimate) || this.valueEstimate > array.length) {
                 this.valueEstimate = array.length;
@@ -114,9 +119,19 @@ module ozone.columnStore {
             return this.valueEstimate;
         }
 
-        public rowHasValue(rowToken : number, value : any) : boolean {
+        rowHasValue(rowToken : number, value : any) : boolean {
             var actualValue = this.value(rowToken);
             return actualValue === value;
+        }
+
+        /** Returns the first rowToken;  this is for serialization and not intended for queries. */
+        firstRowToken() : number {
+            return this.offset;
+        }
+
+        /** Returns a copy of the data array for serialization; not intended for queries. */
+        dataArray() : any[] {
+            return this.array.concat();
         }
     }
 }

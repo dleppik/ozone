@@ -86,7 +86,7 @@ module ozone {
         /** The data type of T;  the result of calling "typeof" on an item. */
             typeOfValue : string;
 
-        /** The prototype for T, for identifying types when typeOfValue='object'. */
+        /** The prototype for T, for identifying types when typeOfValue='object'.  This is experimental and might go away.*/
             typeConstructor : any;
 
         /**

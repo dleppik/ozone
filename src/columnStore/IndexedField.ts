@@ -100,11 +100,15 @@ module ozone.columnStore {
         private rangeVal : Range;
 
         constructor(descriptor : FieldDescribing, private valueList : T[], private valueMap : {(valueId:string) : IntSet}) {
+            var range : Range = descriptor.range();
+            if (typeof range === 'undefined' || descriptor.typeOfValue=== 'number') {
+                range = null;
+            }
             this.identifier      = descriptor.identifier;
             this.displayName     = descriptor.displayName;
             this.typeOfValue     = descriptor.typeOfValue;
             this.typeConstructor = descriptor.typeConstructor;
-            this.rangeVal        = descriptor.range();
+            this.rangeVal        = range;
         }
 
         public allValues() : T[] {

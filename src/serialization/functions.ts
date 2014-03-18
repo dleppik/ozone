@@ -5,6 +5,75 @@
 
 module ozone.serialization {
 
+    export function readStore(storeData : StoreData) : columnStore.ColumnStore {
+        if (true) notWritten(); return null; // TODO
+    }
+
+    export function writeStore(store : columnStore.ColumnStore) : StoreData {
+        if (true) notWritten(); return null; // TODO
+    }
+
+    export function readField(fieldData : FieldMetaData) : RandomAccessField<any> {
+        if (true) notWritten(); return null; // TODO
+    }
+
+    export function writeField(f : RandomAccessField<any>) : FieldMetaData {
+        if (f instanceof columnStore.IndexedField)   return writeIndexedField(  <columnStore.IndexedField<any>>   f);
+        if (f instanceof columnStore.UnIndexedField) return writeUnIndexedField(<columnStore.UnIndexedField<any>> f);
+        throw new Error("Don't know how to write "+f.identifier);
+    }
+
+    function writeIndexedField(field : columnStore.IndexedField<any>) : IndexedFieldData {
+        var result = writeIndexMetaData(field, "indexed");
+        var values : ValueIndexData[] = [];
+        var fieldValues = field.allValues();
+        for (var i=0; i<fieldValues.length; i++) {
+            var key = fieldValues[i];
+            values[i] = {
+                value: key,
+                data : writeIntSet(field.intSetForValue(key.toString()))
+            };
+        }
+        result['values'] = values;
+        return <IndexedFieldData> result;
+    }
+
+    function writeUnIndexedField(field : columnStore.UnIndexedField<any>) : UnIndexedFieldData {
+        var result = writeIndexMetaData(field, "unindexed");
+        result['offset'] = field.firstRowToken();
+        result['dataArray'] = field.dataArray();
+        return <UnIndexedFieldData> result;
+    }
+
+    function writeIndexMetaData(f : RandomAccessField<any>, type: string) : FieldMetaData {
+        var result = {
+            type: type,
+            identifier: f.identifier,
+            displayName : f.displayName,
+            typeOfValue : f.typeOfValue,
+            distinctValueEstimate : f.distinctValueEstimate()
+        };
+        if (f.displayName === null) {
+            result.displayName = f.identifier;
+        }
+        if (f.typeConstructor !== null) {
+            result['typeConstructorName'] = f.typeConstructor.toString();
+        }
+        var range = f.range();
+        if (range !== null) {
+            result['range'] = {
+                min: range.max,
+                max: range.max,
+                integerOnly : range.integerOnly
+            };
+        }
+        return result;
+    }
+
+    function notWritten() : any {
+        throw new Error("Not written"); // TODO get rid of this
+    }
+
     export function readIntSet( jsonData : any) : IntSet {
         //
         // Types generally mirror the IntSet implementations, but there is no requirement that they serialize

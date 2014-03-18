@@ -299,7 +299,12 @@ var ozone;
                 this.typeOfValue = descriptor.typeOfValue;
                 this.typeConstructor = descriptor.typeConstructor;
                 this.valueEstimate = descriptor.distinctValueEstimate();
-                this.rangeValue = descriptor.range();
+
+                var range = descriptor.range();
+                if (typeof range === 'undefined' || descriptor.typeOfValue === 'number') {
+                    range = null;
+                }
+                this.rangeValue = range;
 
                 if (typeof (this.valueEstimate) !== "number" || isNaN(this.valueEstimate) || this.valueEstimate > array.length) {
                     this.valueEstimate = array.length;
@@ -385,6 +390,16 @@ var ozone;
             UnIndexedField.prototype.rowHasValue = function (rowToken, value) {
                 var actualValue = this.value(rowToken);
                 return actualValue === value;
+            };
+
+            /** Returns the first rowToken;  this is for serialization and not intended for queries. */
+            UnIndexedField.prototype.firstRowToken = function () {
+                return this.offset;
+            };
+
+            /** Returns a copy of the data array for serialization; not intended for queries. */
+            UnIndexedField.prototype.dataArray = function () {
+                return this.array.concat();
             };
             return UnIndexedField;
         })();
@@ -675,11 +690,15 @@ var ozone;
             function IndexedField(descriptor, valueList, valueMap) {
                 this.valueList = valueList;
                 this.valueMap = valueMap;
+                var range = descriptor.range();
+                if (typeof range === 'undefined' || descriptor.typeOfValue === 'number') {
+                    range = null;
+                }
                 this.identifier = descriptor.identifier;
                 this.displayName = descriptor.displayName;
                 this.typeOfValue = descriptor.typeOfValue;
                 this.typeConstructor = descriptor.typeConstructor;
-                this.rangeVal = descriptor.range();
+                this.rangeVal = range;
             }
             /**
             * Returns a reducer that can be run on a source DataStore to reproduce a sourceField.
@@ -1699,6 +1718,87 @@ var ozone;
 var ozone;
 (function (ozone) {
     (function (serialization) {
+        function readStore(storeData) {
+            if (true)
+                notWritten();
+            return null;
+        }
+        serialization.readStore = readStore;
+
+        function writeStore(store) {
+            if (true)
+                notWritten();
+            return null;
+        }
+        serialization.writeStore = writeStore;
+
+        function readField(fieldData) {
+            if (true)
+                notWritten();
+            return null;
+        }
+        serialization.readField = readField;
+
+        function writeField(f) {
+            if (f instanceof ozone.columnStore.IndexedField)
+                return writeIndexedField(f);
+            if (f instanceof ozone.columnStore.UnIndexedField)
+                return writeUnIndexedField(f);
+            throw new Error("Don't know how to write " + f.identifier);
+        }
+        serialization.writeField = writeField;
+
+        function writeIndexedField(field) {
+            var result = writeIndexMetaData(field, "indexed");
+            var values = [];
+            var fieldValues = field.allValues();
+            for (var i = 0; i < fieldValues.length; i++) {
+                var key = fieldValues[i];
+                values[i] = {
+                    value: key,
+                    data: writeIntSet(field.intSetForValue(key.toString()))
+                };
+            }
+            result['values'] = values;
+            return result;
+        }
+
+        function writeUnIndexedField(field) {
+            var result = writeIndexMetaData(field, "unindexed");
+            result['offset'] = field.firstRowToken();
+            result['dataArray'] = field.dataArray();
+            return result;
+        }
+
+        function writeIndexMetaData(f, type) {
+            var result = {
+                type: type,
+                identifier: f.identifier,
+                displayName: f.displayName,
+                typeOfValue: f.typeOfValue,
+                distinctValueEstimate: f.distinctValueEstimate()
+            };
+            if (f.displayName === null) {
+                result.displayName = f.identifier;
+            }
+            if (f.typeConstructor !== null) {
+                result['typeConstructorName'] = f.typeConstructor.toString();
+            }
+            var range = f.range();
+            if (range !== null) {
+                result['range'] = {
+                    min: range.max,
+                    max: range.max,
+                    integerOnly: range.integerOnly
+                };
+            }
+            return result;
+        }
+
+        function notWritten() {
+            throw new Error("Not written");
+        }
+
         function readIntSet(jsonData) {
             //
             // Types generally mirror the IntSet implementations, but there is no requirement that they serialize
