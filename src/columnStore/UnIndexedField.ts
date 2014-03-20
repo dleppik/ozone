@@ -74,7 +74,7 @@ module ozone.columnStore {
             this.valueEstimate   = descriptor.distinctValueEstimate();
 
             var range : Range = descriptor.range();
-            if (typeof range === 'undefined' || descriptor.typeOfValue=== 'number') {
+            if (typeof range === 'undefined' || descriptor.typeOfValue !== 'number') {
                 range = null;
             }
             this.rangeValue = range;

@@ -6,15 +6,41 @@
 module ozone.serialization {
 
     export function readStore(storeData : StoreData) : columnStore.ColumnStore {
-        if (true) notWritten(); return null; // TODO
+        return notWritten(); // TODO
     }
 
     export function writeStore(store : columnStore.ColumnStore) : StoreData {
-        if (true) notWritten(); return null; // TODO
+        return notWritten(); // TODO
     }
 
     export function readField(fieldData : FieldMetaData) : RandomAccessField<any> {
-        if (true) notWritten(); return null; // TODO
+        var type = parseType(fieldData.type);
+        if (type.subTypes.length > 0) {
+            throw new Error("Don't support subtypes for "+fieldData.type);
+        }
+        switch(type.mainType) {
+            case "indexed"   : return readIndexedField(<IndexedFieldData>     fieldData);
+            case "unindexed" : return readUnIndexedField(<UnIndexedFieldData> fieldData);
+            default          : throw new Error("Unknown field type: "+fieldData.type);
+        }
+    }
+
+    function readIndexedField(data : IndexedFieldData) : RandomAccessField<any> {
+        var descriptor = FieldDescriptor.build(data);
+        var valueList : any[] = [];
+        var valueMap = <{(valueId:string) : IntSet}> {};
+        for (var i=0; i< data.values.length; i++) {
+            var valueData = data.values[i];
+            valueList.push(valueData.value);
+            valueMap[valueData.value.toString()] = readIntSet(valueData.data);
+        }
+        return new ozone.columnStore.IndexedField(descriptor, valueList, valueMap);
+    }
+
+
+    function readUnIndexedField(data : UnIndexedFieldData) : RandomAccessField<any> {
+        var descriptor = FieldDescriptor.build(data);
+        return new columnStore.UnIndexedField(descriptor, data.dataArray, data.offset);
     }
 
     export function writeField(f : RandomAccessField<any>) : FieldMetaData {
@@ -61,17 +87,13 @@ module ozone.serialization {
         }
         var range = f.range();
         if (range !== null) {
-            result['range'] = {
-                min: range.max,
-                max: range.max,
-                integerOnly : range.integerOnly
-            };
+            result['range'] = range;
         }
         return result;
     }
 
     function notWritten() : any {
-        throw new Error("Not written"); // TODO get rid of this
+        throw new Error("This method hasn't been written yet"); // TODO get rid of this
     }
 
     export function readIntSet( jsonData : any) : IntSet {

@@ -167,9 +167,11 @@ module ozone.columnStore {
             return result;
         }
 
-        partition(fieldKey : string) {
-            return partitionColumnStore(this, <RandomAccessField<any>> this.field(fieldKey));
+        partition(fieldAny : any) {
+            var key : string = (typeof fieldAny === 'string') ? <string> fieldAny  : (<FieldDescriptor>fieldAny).identifier;
+            return partitionColumnStore(this, <RandomAccessField<any>> this.field(key));
         }
+
 
     }
 

@@ -57,7 +57,7 @@ module ozone {
         public static build(ajax : any, identifier : string = null) {
             var id = (identifier===null) ? ajax["identifier"] : identifier;
             var displayName : string = ajax["displayName"]  ?  ajax["displayName"]  :  id;
-            var precomputedRange : Range = ajax["range"] ? ajax["range"] : null ;
+            var precomputedRange : Range = ajax["range"] ? Range.build(ajax["range"]) : null ;
             var shouldCalculateDistinctValues = ( (!ajax["unlimitedValues"]) &&  typeof(ajax["distinctValues"]) !== "number");
             var distinctValues : number = (shouldCalculateDistinctValues || ajax["unlimitedValues"])
                 ?  Number.POSITIVE_INFINITY

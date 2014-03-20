@@ -6,6 +6,8 @@
 module ozone.columnStore {
 
     export interface ColumnStoreInterface extends RandomAccessStore {
+
+        /** Returns the row identifiers, which happen to be integers. */
         intSet() : IntSet;
     }
 
@@ -62,8 +64,9 @@ module ozone.columnStore {
 
         removeFilter(filter : Filter) : RandomAccessStore { return this; }
 
-        partition(fieldKey : string) {
-            return partitionColumnStore(this, <RandomAccessField<any>> this.field(fieldKey));
+        partition(fieldAny : any) {
+            var key : string = (typeof fieldAny === 'string') ? <string> fieldAny  : (<FieldDescriptor>fieldAny).identifier;
+            return partitionColumnStore(this, <RandomAccessField<any>> this.field(key));
         }
 
         eachRow(rowAction:Function) {

@@ -18,8 +18,18 @@ module ozone {
      *
      * ( https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/isInteger )
      *
+     * JSON.stringify(range) produces clean JSON that can be parsed back into an identical Range.
      */
     export class Range {
+
+        /**
+         * Build from JSON;  in most cases you could just use the AJAX directly, but calling this provides
+         * instanceof and toString().
+         */
+        public static build(ajax : any) : Range {
+            return new Range(ajax.min, ajax.max, ajax.integerOnly);
+        }
+
         constructor( public min: number, public max: number, public integerOnly : boolean) {}
 
         public toString() : string {

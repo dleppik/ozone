@@ -19,6 +19,7 @@ var ozone;
     *
     * ( https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/isInteger )
     *
+    * JSON.stringify(range) produces clean JSON that can be parsed back into an identical Range.
     */
     var Range = (function () {
         function Range(min, max, integerOnly) {
@@ -26,6 +27,14 @@ var ozone;
             this.max = max;
             this.integerOnly = integerOnly;
         }
+        /**
+        * Build from JSON;  in most cases you could just use the AJAX directly, but calling this provides
+        * instanceof and toString().
+        */
+        Range.build = function (ajax) {
+            return new Range(ajax.min, ajax.max, ajax.integerOnly);
+        };
+
         Range.prototype.toString = function () {
             var intStr = (this.integerOnly) ? "integer" : "decimal";
             return this.min + " to " + this.max + " " + intStr;
@@ -301,7 +310,7 @@ var ozone;
                 this.valueEstimate = descriptor.distinctValueEstimate();
 
                 var range = descriptor.range();
-                if (typeof range === 'undefined' || descriptor.typeOfValue === 'number') {
+                if (typeof range === 'undefined' || descriptor.typeOfValue !== 'number') {
                     range = null;
                 }
                 this.rangeValue = range;
@@ -466,8 +475,9 @@ var ozone;
                 return this;
             };
 
-            ColumnStore.prototype.partition = function (fieldKey) {
-                return ozone.columnStore.partitionColumnStore(this, this.field(fieldKey));
+            ColumnStore.prototype.partition = function (fieldAny) {
+                var key = (typeof fieldAny === 'string') ? fieldAny : fieldAny.identifier;
+                return ozone.columnStore.partitionColumnStore(this, this.field(key));
             };
 
             ColumnStore.prototype.eachRow = function (rowAction) {
@@ -659,8 +669,9 @@ var ozone;
                 return result;
             };
 
-            FilteredColumnStore.prototype.partition = function (fieldKey) {
-                return partitionColumnStore(this, this.field(fieldKey));
+            FilteredColumnStore.prototype.partition = function (fieldAny) {
+                var key = (typeof fieldAny === 'string') ? fieldAny : fieldAny.identifier;
+                return partitionColumnStore(this, this.field(key));
             };
             return FilteredColumnStore;
         })(ozone.StoreProxy);
@@ -1719,25 +1730,47 @@ var ozone;
 (function (ozone) {
     (function (serialization) {
         function readStore(storeData) {
-            if (true)
-                notWritten();
-            return null;
+            return notWritten();
         }
         serialization.readStore = readStore;
 
         function writeStore(store) {
-            if (true)
-                notWritten();
-            return null;
+            return notWritten();
         }
         serialization.writeStore = writeStore;
 
         function readField(fieldData) {
-            if (true)
-                notWritten();
-            return null;
+            var type = parseType(fieldData.type);
+            if (type.subTypes.length > 0) {
+                throw new Error("Don't support subtypes for " + fieldData.type);
+            }
+            switch (type.mainType) {
+                case "indexed":
+                    return readIndexedField(fieldData);
+                case "unindexed":
+                    return readUnIndexedField(fieldData);
+                default:
+                    throw new Error("Unknown field type: " + fieldData.type);
+            }
         }
         serialization.readField = readField;
+
+        function readIndexedField(data) {
+            var descriptor = ozone.FieldDescriptor.build(data);
+            var valueList = [];
+            var valueMap = {};
+            for (var i = 0; i < data.values.length; i++) {
+                var valueData = data.values[i];
+                valueList.push(valueData.value);
+                valueMap[valueData.value.toString()] = readIntSet(valueData.data);
+            }
+            return new ozone.columnStore.IndexedField(descriptor, valueList, valueMap);
+        }
+
+        function readUnIndexedField(data) {
+            var descriptor = ozone.FieldDescriptor.build(data);
+            return new ozone.columnStore.UnIndexedField(descriptor, data.dataArray, data.offset);
+        }
 
         function writeField(f) {
             if (f instanceof ozone.columnStore.IndexedField)
@@ -1786,17 +1819,13 @@ var ozone;
             }
             var range = f.range();
             if (range !== null) {
-                result['range'] = {
-                    min: range.max,
-                    max: range.max,
-                    integerOnly: range.integerOnly
-                };
+                result['range'] = range;
             }
             return result;
         }
 
         function notWritten() {
-            throw new Error("Not written");
+            throw new Error("This method hasn't been written yet");
         }
 
         function readIntSet(jsonData) {
@@ -1942,7 +1971,7 @@ var ozone;
             if (typeof identifier === "undefined") { identifier = null; }
             var id = (identifier === null) ? ajax["identifier"] : identifier;
             var displayName = ajax["displayName"] ? ajax["displayName"] : id;
-            var precomputedRange = ajax["range"] ? ajax["range"] : null;
+            var precomputedRange = ajax["range"] ? ozone.Range.build(ajax["range"]) : null;
             var shouldCalculateDistinctValues = ((!ajax["unlimitedValues"]) && typeof (ajax["distinctValues"]) !== "number");
             var distinctValues = (shouldCalculateDistinctValues || ajax["unlimitedValues"]) ? Number.POSITIVE_INFINITY : ajax["distinctValues"];
 
