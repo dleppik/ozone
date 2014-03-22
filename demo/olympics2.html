@@ -186,15 +186,19 @@ function drawVisualization() {
     for (var item in rawPartition) {
         partition.push({value : item, db : rawPartition[item]});
     }
-    console.log(partition.length);
+
     if (partition.length !== 0) {
         var svgContainer = d3.select(document.getElementById('visContainer')).append("svg")
                 .attr("width", 980)
                 .attr("height", 620);
 
-        var circles = svgContainer.selectAll(".chart")
+        var g = svgContainer.selectAll("g")
                 .data(partition)
                 .enter()
+                .append("g")
+                .classed("g", true);
+
+        var circles = g
                 .append("circle")
                 .attr("cx", function (d, i) {
                     return (i * 10 + 10) % 980;
@@ -208,9 +212,7 @@ function drawVisualization() {
                 })
                 .style("stroke", "black");
 
-        var text = svgContainer.selectAll(".chart")
-                .data(partition)
-                .enter()
+        var text = g
                 .append("text")
                 .attr("x", function (d, i) {
                     return (i * 10) % 980;
