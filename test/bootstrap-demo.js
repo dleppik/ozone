@@ -33,14 +33,11 @@ var fieldInfo = function(db, fieldName) {
 for (var i=0; i< columnStore.fields().length; i++) {
     var field = columnStore.fields()[i];
     console.log(field.displayName+" has "+field.distinctValueEstimate()+" distinct values.");
-    if (typeof(field.allValues) === "function") {
+    if (field.distinctValueEstimate() < 200) {
         console.log("Values:");
-        var values = field.allValues();
-        for (var j=0; j<values.length; j++) {
-            var value = values[j];
-            var filtered = columnStore.filter(new o3.ValueFilter(field, value));
-            var valueCount = filtered.length;
-            console.log("    "+values[j]+" \t "+valueCount+fieldInfo(filtered, "Medal"));
+        var valueMap = columnStore.partition(field.identifier);
+        for (var entry in valueMap) {
+            console.log("    " + entry + " \t" + valueMap[entry].size);
         }
     }
     else {

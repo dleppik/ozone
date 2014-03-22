@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="../ozone.js" charset="utf-8"></script>
+    <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+    <title>Ozone Olympics Demo</title>
+    <style type="text/css">
+        body {
+            font-family: "Helvetica", "Arial", sans-serif;
+            background: #eee;
+        }
+
+        h1 {
+            font-size: 18px;
+        }
+
+        .menuBar {
+            margin: 4px 0;
+            font-size: 12px;
+        }
+
+        .menuTitle {
+            display: inline-block;
+            width: 200px;
+            text-align: right;
+        }
+
+        .menu {
+            display: inline-block;
+            width: 200px;
+            left-margin: 100px;
+        }
+        .filterItem {
+            font-weight: bold;
+            border: 1px solid black;
+            padding: 8px;
+            background-color: #CCFFFF;
+        }
+
+        #visContainer {
+           margin: 8px 0;
+        }
+
+        rect {
+            stroke: #eee;
+            fill: #aaa;
+            fill-opacity: .8;
+        }
+
+        rect.parent {
+            cursor: pointer;
+            fill: steelblue;
+        }
+
+
+        text {
+            pointer-events: none;
+        }
+
+    </style>
+
+</head>
+<body>
+
+<h1>Counts of Summer Olympic Medals</h1>
+
+<div id = 'filter' class="menuBar">
+    <div id="fieldMenu" class="menu">
+    </div>
+</div>
+
+<div id="visContainer">
+</div>
+
+
+
+
+<script>
+
+var o3 = ozone;
+var fieldsByDisplayName = {}; //Empty object.
+var noFieldOptName = "Select a Field"; //Default setup.
+var filters = [];
+var currentDb;
+var indexedFields = [];
+
+function addFilterDropDown () {
+    var fields = ["Select a Field"].concat(indexedFields)
+
+    var filterDropDown = d3.select("#fieldMenu").append("select");
+
+    filterDropDown.selectAll("option")
+            .data(fields)
+            .enter().append("option")
+            .text(function (d) {
+                if (typeof d === "string")
+                    return d;
+                else
+                    return d.displayName;
+            })
+            .attr("value", function (d) {
+                if (typeof d === "string")
+                    return null;
+                else
+                    return d.identifier
+            });
+
+    filterDropDown.on("change", function () {
+        var selection = filterDropDown.property("value");
+        if (selection !== null)
+            addFilter(db.field(selection));
+    });
+}
+
+function addFilter (selectedField) {
+    var filterIndex = filters.length;
+    var selectedValue = selectedField.allValues()[0];
+    var filter = new ozone.ValueFilter(selectedField,selectedValue);
+
+    filters.push(filter);
+
+
+    var filterBox = d3.select("#fieldMenu").append("div")
+                        .classed("filterItem", true);
+
+    var fieldMenu = filterBox.append("div")
+                        .classed("fieldMenu", true)
+                        .text(selectedField.displayName);
+
+    var valueMenu = filterBox.append("select")
+                        .classed("valueMenu", true);
+
+    valueMenu.selectAll("option")
+            .data(selectedField.allValues())
+            .enter().append("option")
+            .text(function(d) {return d});
+
+    valueMenu.on("change", function() {
+        selectedValue = valueMenu.property("value");
+        filter = new ozone.ValueFilter(selectedField,selectedValue);
+        filters[filterIndex] = filter;
+        drawVisualization();
+    });
+}
+
+var db;
+
+d3.text("../test/SummerOlympicMedallists1896to2008.csv", function(rawData) {
+
+    var metaData = {
+        fields: {
+            Edition: { displayName: "Year" },
+            NOC:     { displayName: "Country" }
+        }
+    };
+
+    db = o3.columnStore.buildFromStore(o3.rowStore.buildFromCsv(rawData), metaData);
+
+    maxFields = db.fields().length;
+
+    for (var i=0; i<maxFields; i++) {
+        var field = db.fields()[i];
+        if (field instanceof o3.columnStore.IndexedField) {
+            indexedFields.push(field);
+        }
+    }
+
+    drawVisualization();
+    addFilterDropDown();
+
+});
+
+function drawVisualization() {
+    var currentDb = db;
+
+    for(i=0; i < filters.length; i++){
+        currentDb = currentDb.filter(filters[i]);
+    }
+
+    d3.select("#visContainer").selectAll("svg").remove();
+    d3.select("#visContainer").selectAll("text").remove();
+
+    var rawPartition = currentDb.partition("NOC");
+
+    var partition = [];
+    for (var item in rawPartition) {
+        partition.push({value : item, db : rawPartition[item]});
+    }
+    console.log(partition.length);
+    if (partition.length !== 0) {
+        var svgContainer = d3.select(document.getElementById('visContainer')).append("svg")
+                .attr("width", 980)
+                .attr("height", 620);
+
+        var circles = svgContainer.selectAll(".chart")
+                .data(partition)
+                .enter()
+                .append("circle")
+                .attr("cx", function (d, i) {
+                    return (i * 10 + 10) % 980;
+                })
+                .attr("cy", function (d) {
+                    return (d.db.size * 10) % 620;
+                })
+                .attr("r", 50)
+                .style("fill", function (d) {
+                    return createColors()
+                })
+                .style("stroke", "black");
+
+        var text = svgContainer.selectAll(".chart")
+                .data(partition)
+                .enter()
+                .append("text")
+                .attr("x", function (d, i) {
+                    return (i * 10) % 980;
+                })
+                .attr("y", function (d) {
+                    return (d.db.size * 10) % 620;
+                })
+                .text(function (d) {
+                    return d.value;
+                });
+    }
+    else svgContainer = d3.select(document.getElementById('visContainer')).append("text")
+            .text("You've selected too many filters! There's nothing left!");
+}
+
+function createColors() {
+    var red = (Math.random() - 1) * -255;
+    var green = (Math.random() - 1) * -255;
+    var blue = (Math.random() - 1) * -255;
+
+    return d3.rgb(red, green, blue);
+}
+
+
+
+
+
+</script>
+
+</body>
+</html>
