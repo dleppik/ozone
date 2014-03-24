@@ -168,7 +168,6 @@
                     }
                 }
                 fields.sort();
-                console.log(fields);
 
                 d3.select("#fieldHierarchyMenu"+i).append("select")
                         .selectAll("option")
@@ -191,9 +190,7 @@
         var updateUsingMenus = function() {
             fieldsInVisualization = [];
             for (var i=0; i<defaultFieldsInVisualization.length; i++) {
-                console.log("#fieldHierarchyMenu"+i+" select");
                 var fieldId = d3.select("#fieldHierarchyMenu"+i+" select").property("value");
-                console.log(fieldId);
                 if (fieldId && db.field(fieldId)) {
                     fieldsInVisualization.push(fieldId);
                 }
