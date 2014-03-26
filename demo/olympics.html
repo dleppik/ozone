@@ -223,19 +223,11 @@
 
         d3.json("SummerOlympicMedallists.json", function(rawData) {
 
-            var metaData = {
-                fields: {
-                    Edition: { displayName: "Year" },
-                    NOC:     { displayName: "Country" },
-                    Medal:   { values : ["Bronze", "Silver", "Gold"]}
-                }
-            };
-
             // Because data files can be large, you want to discard raw data and intermediate data
             // as quickly as possible.  We don't create intermediate variables if we can avoid it,
             // and we don't define any callbacks inside this function or inside any function
             // called from here.
-            db = o3.columnStore.buildFromStore(o3.serialization.readStore(rawData), metaData);
+            db = o3.serialization.readStore(rawData);
 
             // Field/value filtering
 
