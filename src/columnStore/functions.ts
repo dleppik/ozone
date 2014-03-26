@@ -62,7 +62,7 @@ module ozone.columnStore {
             }
         });
 
-        var resultFields : Field<any>[] = [];
+        var resultFields = <RandomAccessField<any>[]> [];
         for (i=0; i< sourceFields.length; i++) {
             sourceField = sourceFields[i];
             var builder = builders[sourceField.identifier];

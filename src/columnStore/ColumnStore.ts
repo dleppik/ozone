@@ -32,10 +32,10 @@ module ozone.columnStore {
          * ECMAScript doesn't require associative arrays to retain the order of their keys, although most
          * implementations do.  (Rhino doesn't.)  So a separate fieldArray isn't completely redundant.
          */
-        private fieldMap : { [key: string]: Field<any>; } ;
+        private fieldMap : { [key: string]: RandomAccessField<any>; } ;
 
 
-        constructor( public size: number, private fieldArray : Field<any>[] ) {
+        constructor( public size: number, private fieldArray : RandomAccessField<any>[] ) {
             this.fieldMap = {};
             for (var i=0; i<fieldArray.length; i++) {
                 var field = fieldArray[i];
@@ -47,11 +47,11 @@ module ozone.columnStore {
             return new ozone.intSet.RangeIntSet(0, this.size);
         }
 
-        fields() : Field<any>[] {
+        fields() : RandomAccessField<any>[] {
             return this.fieldArray;
         }
 
-        field(key:string) : Field<any> {
+        field(key:string) : RandomAccessField<any> {
             return this.fieldMap[key];
         }
 
@@ -66,7 +66,7 @@ module ozone.columnStore {
 
         partition(fieldAny : any) {
             var key : string = (typeof fieldAny === 'string') ? <string> fieldAny  : (<FieldDescriptor>fieldAny).identifier;
-            return partitionColumnStore(this, <RandomAccessField<any>> this.field(key));
+            return partitionColumnStore(this, this.field(key));
         }
 
         eachRow(rowAction:Function) {

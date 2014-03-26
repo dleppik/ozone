@@ -3,14 +3,30 @@
  */
 /// <reference path='../_all.ts' />
 
+
+/**
+ * Convert ColumnStores, IntSets, etc. to JSON-compatible data objects.
+ */
 module ozone.serialization {
 
     export function readStore(storeData : StoreData) : columnStore.ColumnStore {
-        return notWritten(); // TODO
+        var fields = <RandomAccessField<any>[]> [];
+        for (var i=0; i<storeData.fields.length; i++) {
+            fields[i] = readField(storeData.fields[i]);
+        }
+        return new columnStore.ColumnStore(storeData.size, fields);
     }
 
     export function writeStore(store : columnStore.ColumnStore) : StoreData {
-        return notWritten(); // TODO
+        var fieldData = <FieldMetaData[]> [];
+        var fields = store.fields();
+        for (var i=0; i< fields.length; i++) {
+            fieldData.push(writeField(fields[i]));
+        }
+        return {
+            size   : store.size,
+            fields : fieldData
+        };
     }
 
     export function readField(fieldData : FieldMetaData) : RandomAccessField<any> {
@@ -90,10 +106,6 @@ module ozone.serialization {
             result['range'] = range;
         }
         return result;
-    }
-
-    function notWritten() : any {
-        throw new Error("This method hasn't been written yet"); // TODO get rid of this
     }
 
     export function readIntSet( jsonData : any) : IntSet {

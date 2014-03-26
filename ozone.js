@@ -1728,14 +1728,29 @@ var ozone;
 /// <reference path='../_all.ts' />
 var ozone;
 (function (ozone) {
+    /**
+    * Convert ColumnStores, IntSets, etc. to JSON-compatible data objects.
+    */
     (function (serialization) {
         function readStore(storeData) {
-            return notWritten();
+            var fields = [];
+            for (var i = 0; i < storeData.fields.length; i++) {
+                fields[i] = readField(storeData.fields[i]);
+            }
+            return new ozone.columnStore.ColumnStore(storeData.size, fields);
         }
         serialization.readStore = readStore;
 
         function writeStore(store) {
-            return notWritten();
+            var fieldData = [];
+            var fields = store.fields();
+            for (var i = 0; i < fields.length; i++) {
+                fieldData.push(writeField(fields[i]));
+            }
+            return {
+                size: store.size,
+                fields: fieldData
+            };
         }
         serialization.writeStore = writeStore;
 
@@ -1822,10 +1837,6 @@ var ozone;
                 result['range'] = range;
             }
             return result;
-        }
-
-        function notWritten() {
-            throw new Error("This method hasn't been written yet");
         }
 
         function readIntSet(jsonData) {

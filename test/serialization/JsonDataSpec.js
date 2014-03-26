@@ -37,22 +37,46 @@ describe("JSON Serialization", function() {
     var animalField = columnStore.field("animal");
     var    pinField = columnStore.field("pin");
 
+    describe("ColumnStore", function() {
+        var readStore = ozone.serialization.readStore;
+        var writeStore = ozone.serialization.writeStore;
 
-    describe("Type string parsing", function() {
-        it ("Parses", function() {
-            var parse = ozone.serialization.parseType;
-            expect(parse( "a"     ).mainType).toEqual( "a" );
-            expect(parse( "a/b"   ).mainType).toEqual( "a" );
-            expect(parse( "a/b;c" ).mainType).toEqual( "a" );
-
-            expect(parse( "a"       ).subTypes).toEqual( [] );
-            expect(parse( "a/b"     ).subTypes).toEqual( ["b"] );
-            expect(parse( "a/b/c;d" ).subTypes).toEqual( ["b","c"] );
-
-            expect(parse( "a"       ).hints).toEqual( [] );
-            expect(parse( "a;b"     ).hints).toEqual( ["b"] );
-            expect(parse( "a/b;c;d" ).hints).toEqual( ["c", "d"] );
+        describe("Writing", function() {
+            var serialized = writeStore(columnStore);
+            expect(serialized.size).toBe(columnStore.size);
+            expect(serialized.fields.length).toBe(4);
+            for (var i=0; i<serialized.fields.length; i++) {
+                expect(serialized.fields[i].identifier).toBe(columnStore.fields()[i].identifier);
+            }
         });
+
+        //
+        // We'll just skip reading tests and go straight on to round trips;  there's not much
+        // to go wrong at this level.
+        //
+        describe("Round Trip", function() {
+            it("Writes to a string and reads back a Store", function() {
+                var serialized = JSON.stringify(writeStore(columnStore));
+                var deserialized = readStore(JSON.parse(serialized));
+
+                expect(deserialized.size).toBe(columnStore.size);
+                expect(deserialized.fields().length).toBe(columnStore.fields().length);
+                expect(deserialized.fields().length).toBe(4);
+                for (var i=0; i<deserialized.fields().length; i++) {
+                    var expectedField = columnStore.fields()[i];
+                    var actualField = deserialized.fields()[i];
+                    expect(expectedField.identifier).toBe(actualField.identifier);
+                    expect(expectedField.displayName).toBe(actualField.displayName);
+                }
+
+                expect(  deserialized.filter("animal", "cow").size)
+                    .toBe(columnStore.filter("animal", "cow").size);
+
+                // What we shouldn't check:
+                // columnStore.intSet() doesn't need to match
+            });
+        });
+
     });
 
     describe("Field", function() {
@@ -324,6 +348,23 @@ describe("JSON Serialization", function() {
                 var deserialized = readIntSet(serialized);
                 expect(deserialized).toEqual(initialSet);
             });
+        });
+    });
+
+    describe("Type string parsing", function() {
+        it ("Parses", function() {
+            var parse = ozone.serialization.parseType;
+            expect(parse( "a"     ).mainType).toEqual( "a" );
+            expect(parse( "a/b"   ).mainType).toEqual( "a" );
+            expect(parse( "a/b;c" ).mainType).toEqual( "a" );
+
+            expect(parse( "a"       ).subTypes).toEqual( [] );
+            expect(parse( "a/b"     ).subTypes).toEqual( ["b"] );
+            expect(parse( "a/b/c;d" ).subTypes).toEqual( ["b","c"] );
+
+            expect(parse( "a"       ).hints).toEqual( [] );
+            expect(parse( "a;b"     ).hints).toEqual( ["b"] );
+            expect(parse( "a/b;c;d" ).hints).toEqual( ["c", "d"] );
         });
     });
 });
