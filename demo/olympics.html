@@ -93,7 +93,7 @@
 
     <div id="visContainer">
         <div class="loading">
-            Loading and converting the 2.4 megabyte Summer Olympics metal data...
+            Loading the 2.3 megabyte Summer Olympics metal data...
         </div>
     </div>
 
@@ -221,7 +221,7 @@
 
         var db;
 
-        d3.text("../test/SummerOlympicMedallists1896to2008.csv", function(rawData) {
+        d3.json("SummerOlympicMedallists.json", function(rawData) {
 
             var metaData = {
                 fields: {
@@ -235,7 +235,7 @@
             // as quickly as possible.  We don't create intermediate variables if we can avoid it,
             // and we don't define any callbacks inside this function or inside any function
             // called from here.
-            db = o3.columnStore.buildFromStore(o3.rowStore.buildFromCsv(rawData), metaData);
+            db = o3.columnStore.buildFromStore(o3.serialization.readStore(rawData), metaData);
 
             // Field/value filtering
 
