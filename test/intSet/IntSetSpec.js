@@ -81,6 +81,41 @@ describe("IntSet functions", function() {
     });
 });
 
+describe("Bits", function() {
+    var bits = ozone.intSet.bits;
+
+    it ("Sets bits to true", function() {
+        expect(bits.setBit( 0, 0)).toBe(1);
+        expect(bits.setBit( 1, 0)).toBe(2);
+        expect(bits.setBit( 2, 0)).toBe(4);
+        expect(bits.setBit(31, 0)).toBe(-2147483648);
+        expect(bits.setBit(32, 0)).toBe(1);  // Wrap
+        expect("Unit test not written:  need test with nonzero input").toBe("Undefined");
+    });
+
+    it ("Un-sets bits (to false)", function() {
+        expect("Unit test not written").toBe("Undefined");
+    });
+
+    it ("Counts bits", function() {
+        expect(bits.countBits(0)).toBe(0);
+        expect(bits.countBits(1)).toBe(1);
+        expect(bits.countBits(2)).toBe(1);
+        expect(bits.countBits(3)).toBe(2);
+
+        expect(bits.countBits(parseInt( "111", 2))).toBe(3);
+        expect(bits.countBits(parseInt( "101", 2))).toBe(2);
+        expect(bits.countBits(parseInt( "0101011", 2))).toBe(4);
+        expect(bits.countBits(parseInt( "11111111111111111111111111111111", 2))).toBe(32);
+        expect(bits.countBits(parseInt( "11111111111111111111101111111111", 2))).toBe(31);
+        expect(bits.countBits(parseInt( "01111111111111111111111111111111", 2))).toBe(31);
+        expect(bits.countBits(parseInt( "10000000000000000000000000000000", 2))).toBe(1);
+    });
+
+    it ("Appends to an array", function() {
+        expect("Unit test not written").toBe("Undefined");
+    });
+});
 
 describe("RangeIntSet", function() {
     var RangeIntSet = ozone.intSet.RangeIntSet;
