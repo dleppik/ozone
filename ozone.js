@@ -834,7 +834,12 @@ var ozone;
     (function (intSet) {
         /// <reference path='../_all.ts' />
         /**
-        * Bitwise operations on numbers that represent unsigned 32-bit integers.   All higher bits should be 0.
+        * Bitwise operations on 32-bit numbers.  These match the asm.js standard for "int":  32-bit, unknown sign,
+        * intended for bitwise use only.  In practice, JavaScript bitwise operators convert numbers to 32-bit two's-complement,
+        * so that's what we use here.  We might actually use asm.js at some point, but hand coding it is a pain (see
+        * https://github.com/zbjornson/human-asmjs).
+        *
+        * See:  http://asmjs.org/spec/latest/
         */
         (function (_bits) {
             function singleBitMask(bitPos) {
@@ -843,13 +848,17 @@ var ozone;
 
             /** Return a number with the bit at num%32 set to true. */
             function setBit(num, bits) {
+                bits = bits | 0;
                 var mask = singleBitMask(num % 32);
-                return bits | mask;
+                var result = 0;
+                result = bits | mask;
+                return result;
             }
             _bits.setBit = setBit;
 
             /** Return a number with the bit at num%32 set to false. */
             function unsetBit(num, bits) {
+                bits = bits | 0;
                 var mask = ~singleBitMask(num % 32);
                 return bits & mask;
             }
@@ -857,8 +866,10 @@ var ozone;
 
             /** Returns the number of 1's set within the first 32-bits of this number. */
             function countBits(bits) {
+                bits = bits | 0;
                 var mask = 1;
-                var result = bits & mask;
+                var result = 0;
+                result = bits & mask;
                 while (bits !== 0) {
                     bits = bits >>> 1;
                     result += (bits & mask);
@@ -866,6 +877,15 @@ var ozone;
                 return result;
             }
             _bits.countBits = countBits;
+
+            /** Convert a string of 1's and 0's to a 32-bit number, throws an error if the string is too long. */
+            function base2ToBits(str) {
+                if (str.length > 32) {
+                    throw new Error("More than 32 bits: '" + str + "'");
+                }
+                return parseInt(str, 2) | 0;
+            }
+            _bits.base2ToBits = base2ToBits;
 
             /**
             * For each bit, add offset and append to the array, returning that array.
