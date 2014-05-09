@@ -20,7 +20,7 @@ module ozone.intSet.bits {
 
     /** Return a number with the bit at num%32 set to true. */
     export function setBit(num : number, bits : number) : number {
-        bits = bits | 0;
+        bits = bits | 0;  // JIT hint, same one used by asm.js to signify a bitwise int.  Also clears high bits.
         var mask = singleBitMask(num % 32);
         var result = 0; result = bits | mask;
         return result;
@@ -35,12 +35,11 @@ module ozone.intSet.bits {
 
     /** Returns the number of 1's set within the first 32-bits of this number. */
     export function countBits(bits : number) : number {
-        bits = bits | 0;
-        var mask = 1;
-        var result = 0; result = bits & mask;
-        while(bits !== 0) {
+        bits = bits | 0; // This is not just a JIT hint:  clears the high bits
+        var result = 0; result = bits & 1;
+        while (bits !== 0) {
             bits = bits >>> 1;
-            result += (bits & mask);
+            result += (bits & 1);
         }
         return result;
     }
