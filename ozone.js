@@ -827,6 +827,84 @@ var ozone;
     var columnStore = ozone.columnStore;
 })(ozone || (ozone = {}));
 /**
+* Copyright 2014 by Vocal Laboratories, Inc. All rights reserved.
+*/
+var ozone;
+(function (ozone) {
+    (function (intSet) {
+        /// <reference path='../_all.ts' />
+        /**
+        * Bitwise operations on 32-bit numbers.  These match the asm.js standard for "int":  32-bit, unknown sign,
+        * intended for bitwise use only.  In practice, JavaScript bitwise operators convert numbers to 32-bit two's-complement,
+        * so that's what we use here.  We might actually use asm.js at some point, but hand coding it is a pain (see
+        * https://github.com/zbjornson/human-asmjs).
+        *
+        * See:  http://asmjs.org/spec/latest/
+        */
+        (function (_bits) {
+            function singleBitMask(bitPos) {
+                return 1 << bitPos;
+            }
+
+            /** Return a number with the bit at num%32 set to true. */
+            function setBit(num, bits) {
+                bits = bits | 0; // JIT hint, same one used by asm.js to signify a bitwise int.  Also clears high bits.
+                var mask = singleBitMask(num % 32);
+                var result = 0;
+                result = bits | mask;
+                return result;
+            }
+            _bits.setBit = setBit;
+
+            /** Return a number with the bit at num%32 set to false. */
+            function unsetBit(num, bits) {
+                bits = bits | 0;
+                var mask = ~singleBitMask(num % 32);
+                return bits & mask;
+            }
+            _bits.unsetBit = unsetBit;
+
+            /** Returns the number of 1's set within the first 32-bits of this number. */
+            function countBits(bits) {
+                bits = bits | 0; // This is not just a JIT hint:  clears the high bits
+                var result = 0;
+                result = bits & 1;
+                while (bits !== 0) {
+                    bits = bits >>> 1;
+                    result += (bits & 1);
+                }
+                return result;
+            }
+            _bits.countBits = countBits;
+
+            /** Convert a string of 1's and 0's to a 32-bit number, throws an error if the string is too long. */
+            function base2ToBits(str) {
+                if (str.length > 32) {
+                    throw new Error("More than 32 bits: '" + str + "'");
+                }
+                return parseInt(str, 2) | 0;
+            }
+            _bits.base2ToBits = base2ToBits;
+
+            /**
+            * For each bit, add offset and append to the array, returning that array.
+            * Thus appendToArray(1, 32) returns [32] and appendToArray(3, 32) returns [32, 33].
+            */
+            function appendToArray(bits, offset, array) {
+                if (typeof array === "undefined") { array = []; }
+                return notWritten();
+            }
+            _bits.appendToArray = appendToArray;
+
+            function notWritten() {
+                throw new Error("This method has not been implemented yet.");
+            }
+        })(intSet.bits || (intSet.bits = {}));
+        var bits = intSet.bits;
+    })(ozone.intSet || (ozone.intSet = {}));
+    var intSet = ozone.intSet;
+})(ozone || (ozone = {}));
+/**
 * Copyright 2013-2014 by Vocal Laboratories, Inc.  Distributed under the Apache License 2.0.
 */
 /// <reference path='../_all.ts' />
@@ -1124,6 +1202,86 @@ var ozone;
             return OrderedArrayIterator;
         })();
         intSet.OrderedArrayIterator = OrderedArrayIterator;
+    })(ozone.intSet || (ozone.intSet = {}));
+    var intSet = ozone.intSet;
+})(ozone || (ozone = {}));
+/**
+* Copyright 2014 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
+*/
+/// <reference path='../_all.ts' />
+var ozone;
+(function (ozone) {
+    (function (intSet) {
+        /**
+        * Stores indexes in an Array of numbers, treating them as 32-bit unsigned integers.
+        */
+        var BitmapArrayIntSet = (function () {
+            function BitmapArrayIntSet(offset, bits) {
+                this.offset = offset;
+                this.bits = bits;
+                this.isPacked = true;
+            }
+            BitmapArrayIntSet.prototype.notWritten = function () {
+                throw new Error("This method has not been implemented yet.");
+            };
+
+            BitmapArrayIntSet.prototype.get = function (index) {
+                return this.notWritten();
+            };
+
+            /**
+            * The lowest value for which get() returns true, or -1 if size === 0.  This should be extremely fast.
+            * The behavior when size === 0 may change in future versions.
+            */
+            BitmapArrayIntSet.prototype.min = function () {
+                return this.notWritten();
+            };
+
+            /**
+            * The highest value for which get() returns true, or -1 if size === 0. This should be extremely fast.
+            * The behavior when size === 0 may change in future versions.
+            */
+            BitmapArrayIntSet.prototype.max = function () {
+                return this.notWritten();
+            };
+
+            /** Iterate over all "true" elements in order. */
+            BitmapArrayIntSet.prototype.each = function (action) {
+                return this.notWritten();
+            };
+
+            /** Iterate over all "true" elements in order. */
+            BitmapArrayIntSet.prototype.iterator = function () {
+                return this.notWritten();
+            };
+
+            /** Returns an IntSet containing only the elements that are found in both IntSets. */
+            BitmapArrayIntSet.prototype.union = function (bm) {
+                return this.notWritten();
+            };
+
+            /** Returns an IntSet containing all the elements in either IntSet. */
+            BitmapArrayIntSet.prototype.intersection = function (bm) {
+                return this.notWritten();
+            };
+
+            /** Returns true if the iterators produce identical results. */
+            BitmapArrayIntSet.prototype.equals = function (bm) {
+                return this.notWritten();
+            };
+
+            /** Equals Math.floor(min()/32). */
+            BitmapArrayIntSet.prototype.minBits = function () {
+                return this.notWritten();
+            };
+
+            /** Equals Math.floor(min()/32). */
+            BitmapArrayIntSet.prototype.maxBits = function () {
+                return this.notWritten();
+            };
+            return BitmapArrayIntSet;
+        })();
+        intSet.BitmapArrayIntSet = BitmapArrayIntSet;
     })(ozone.intSet || (ozone.intSet = {}));
     var intSet = ozone.intSet;
 })(ozone || (ozone = {}));
@@ -1939,8 +2097,10 @@ var ozone;
 /// <reference path='columnStore/ColumnStore.ts' />
 /// <reference path='columnStore/FilteredColumnStore.ts' />
 /// <reference path='columnStore/IndexedField.ts' />
+/// <reference path='intSet/bits.ts' />
 /// <reference path='intSet/functions.ts' />
 /// <reference path='intSet/ArrayIndexIntSet.ts' />
+/// <reference path='intSet/BitmapArrayIntSet.ts' />
 /// <reference path='intSet/RangeIntSet.ts' />
 /// <reference path='rowStore/functions.ts' />
 /// <reference path='rowStore/CsvReader.ts' />

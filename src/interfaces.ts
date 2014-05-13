@@ -99,11 +99,11 @@ module ozone {
         range() : Range;
 
         /**
-         * An estimate of the number of distinct values that this has.  It is intended to be used to determine how (or
-         * whether) another Store will store its values or what kind of selection tool a UI will present.  Thus an
-         * exact value is of diminishing importance the more distinct values there are.
-         * If the number of values is expected to be small (under 1000), it should give an exact count.  If the number
-         * is expected to be large (over a tenth of the total number of records), it is reasonable to return
+         * An estimate of the number of distinct values in the field (a.k.a. the attribute cardinality).  It
+         * is intended to be used to determine how (or whether) another Store will store its values or what kind of
+         * selection tool a UI will present.  Thus an exact value is of diminishing importance the more distinct values
+         * there are. If the number of values is expected to be small (under 1000), it should give an exact count.  If
+         * the number is expected to be large (over a tenth of the total number of records), it is reasonable to return
          * Number.POSITIVE_INFINITY.
          */
         distinctValueEstimate() : number;

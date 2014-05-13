@@ -10,8 +10,10 @@
 /// <reference path='columnStore/FilteredColumnStore.ts' />
 /// <reference path='columnStore/IndexedField.ts' />
 
+/// <reference path='intSet/bits.ts' />
 /// <reference path='intSet/functions.ts' />
 /// <reference path='intSet/ArrayIndexIntSet.ts' />
+/// <reference path='intSet/BitmapArrayIntSet.ts' />
 /// <reference path='intSet/RangeIntSet.ts' />
 
 /// <reference path='rowStore/functions.ts' />
