@@ -34,7 +34,7 @@ module ozone.intSet {
             }
         }
 
-        get(index:number):boolean {
+        has(index:number):boolean {
             return this.size > 0  &&  index >= this.minValue  && index <= this.max();
         }
 

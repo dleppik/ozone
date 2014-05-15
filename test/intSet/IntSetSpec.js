@@ -26,7 +26,7 @@ describe("IntSet functions", function() {
             var aExpected = [2, 3,4,5, 8, 16];
             expect(a.size).toBe(aExpected.length);
             for (var i=0; i<aExpected.length; i++) {
-                expect(a.get(aExpected[i])).toBe(true);
+                expect(a.has(aExpected[i])).toBe(true);
             }
 
             // Common no-overlap case:  elements in order
@@ -35,7 +35,7 @@ describe("IntSet functions", function() {
             var bExpected = [3,4,5,8,9,10];
             expect(b.size).toBe(bExpected.length);
             for (i=0; i<bExpected.length; i++) {
-                expect(b.get(bExpected[i])).toBe(true);
+                expect(b.has(bExpected[i])).toBe(true);
             }
         });
     });
@@ -56,7 +56,7 @@ describe("IntSet functions", function() {
             var aExpected = [4,5];
             expect(a.size).toBe(aExpected.length);
             for (var i=0; i<aExpected.length; i++) {
-                expect(a.get(aExpected[i])).toBe(true);
+                expect(a.has(aExpected[i])).toBe(true);
             }
 
             // Longer case
@@ -65,7 +65,7 @@ describe("IntSet functions", function() {
             var bExpected = [1,5,9];
             expect(b.size).toBe(bExpected.length);
             for (i=0; i<bExpected.length; i++) {
-                expect(b.get(bExpected[i])).toBe(true);
+                expect(b.has(bExpected[i])).toBe(true);
             }
 
             // Repeating elements
@@ -74,7 +74,7 @@ describe("IntSet functions", function() {
             var cExpected = bExpected;
             expect(c.size).toBe(cExpected.length);
             for (i=0; i<cExpected.length; i++) {
-                expect(c.get(cExpected[i])).toBe(true);
+                expect(c.has(cExpected[i])).toBe(true);
             }
 
         });
@@ -141,6 +141,15 @@ describe("Bits", function() {
         expect(bits.unsetBit(31, bitMap1)).toBe(bitMap1);
     });
 
+    it ("Knows if a bit is set to true", function() {
+        var bitMap1 = bits.base2ToBits("10101");
+        expect(bits.hasBit(0, bitMap1)).toBe(true);
+        expect(bits.hasBit(3, bitMap1)).toBe(false);
+        expect(bits.hasBit(4, bitMap1)).toBe(true);
+        expect(bits.hasBit(7, bitMap1)).toBe(false);
+        expect(bits.hasBit(34, bitMap1)).toBe(true); // Wrap
+    });
+
     it ("Counts bits", function() {
         expect(bits.countBits(0)).toBe(0);
         expect(bits.countBits(1)).toBe(1);
@@ -154,10 +163,6 @@ describe("Bits", function() {
         expect(bits.countBits(bits.base2ToBits( "11111111111111111111101111111111"))).toBe(31);
         expect(bits.countBits(bits.base2ToBits( "01111111111111111111111111111111"))).toBe(31);
         expect(bits.countBits(bits.base2ToBits( "10000000000000000000000000000000"))).toBe(1);
-    });
-
-    it ("Appends to an array", function() {
-        expect("Unit test not written").toBe("Undefined");
     });
 });
 
@@ -309,7 +314,7 @@ describe("RangeIntSet", function() {
         expect(aUnionB.min()).toBe(a.min());
         expect(aUnionB.max()).toBe(b.max());
         aUnionB.each(function(num) {
-            expect(a.get(num) || b.get(num)).toBe(true);
+            expect(a.has(num) || b.has(num)).toBe(true);
         });
     });
 
@@ -323,6 +328,31 @@ describe("RangeIntSet", function() {
         var expectedAAndC = RangeIntSet.fromTo(15, 20);
         expect(a.intersection(c).equals(expectedAAndC)).toBe(true);
         expect(c.intersection(a).equals(expectedAAndC)).toBe(true);
+    });
+});
+
+describe("Temporary BitmapArrayIntSet tests", function() {
+    it("Does has()", function() {
+        console.log("test");
+        // ["111000" , "101"] or "10100000000000000000000000000111000"
+        var bitmap = new ozone.intSet.BitmapArrayIntSet(0, [ 1|0]);
+
+        expect(bitmap.has( 0)).toBe(true);
+        expect(bitmap.has( 1)).toBe(false);
+
+        // ["111000" , "101"] or "10100000000000000000000000000111000"
+        var bitmap = new ozone.intSet.BitmapArrayIntSet(0, [ 56|0, 5|0]);
+
+        expect(bitmap.has( 0)).toBe(false);
+        expect(bitmap.has( 1)).toBe(false);
+        expect(bitmap.has( 3)).toBe(true);
+        expect(bitmap.has( 31)).toBe(false);
+        expect(bitmap.has( 32)).toBe(true);
+        expect(bitmap.has( 33)).toBe(false);
+        expect(bitmap.has( 34)).toBe(true);
+        expect(bitmap.has( 63)).toBe(false);
+        expect(bitmap.has( 64)).toBe(false);
+        expect(bitmap.has( 200 )).toBe( false );
     });
 });
 
@@ -347,7 +377,7 @@ describe("General-purpose IntSets", function() {
         [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 ]
     ];
 
-    var intSetClasses = [ ozone.intSet.ArrayIndexIntSet ];
+    var intSetClasses = [ ozone.intSet.ArrayIndexIntSet, ozone.intSet.BitmapArrayIntSet ];
 
     var forEachArray = function(beforeElements, onEachElement, afterElements) {
         for (var i=0; i< arrays.length; i++) {
@@ -423,13 +453,13 @@ describe("General-purpose IntSets", function() {
                     for (var arrayIndex=0; arrayIndex<array.length; arrayIndex++) {
                         var nextInArray = array[arrayIndex];
                         for (; element < nextInArray; element++) {
-                            expect(intSet.get(element)).toEqual(false);
+                            expect(intSet.has(element)).toEqual(false);
                         }
-                        expect(intSet.get(element)).toEqual(true);
+                        expect(intSet.has(element)).toEqual(true);
                         element++;
                     }
                     for (; element < nextInArray+33; element++) {  // Check past next packed bits
-                        expect(intSet.get(element)).toEqual(false);
+                        expect(intSet.has(element)).toEqual(false);
                     }
                 });
             });
@@ -450,7 +480,7 @@ describe("General-purpose IntSets", function() {
                         var it = intSet.iterator();
                         while (it.hasNext()) {
                             var element = it.next();
-                            expect(intSet.get(element)).toBe(true);
+                            expect(intSet.has(element)).toBe(true);
                         }
                     });
                 });
@@ -490,7 +520,7 @@ describe("General-purpose IntSets", function() {
                                 it = intSet.iterator();
                                 var skipTo = intSet.max()-1;
                                 it.skipTo(skipTo);
-                                var expectedNext = (intSet.get(skipTo)) ?  skipTo  :  intSet.max();
+                                var expectedNext = (intSet.has(skipTo)) ?  skipTo  :  intSet.max();
                                 expect(it.next()).toBe(expectedNext);
                             }
                         }

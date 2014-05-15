@@ -37,7 +37,7 @@ module ozone.intSet {
             return this.indexes.concat();
         }
 
-        get(index : number) : boolean {
+        has(index : number) : boolean {
             return search(index, this.indexes, 0, this.indexes.length-1) >= 0;
         }
 

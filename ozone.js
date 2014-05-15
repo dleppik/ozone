@@ -251,9 +251,9 @@ var ozone;
 
                 if (newBuilder === null && buildThisField) {
                     if (sourceFieldIsUnary && sourceField.distinctValueEstimate() > 500) {
-                        newBuilder = ozone.columnStore.UnIndexedField.builder(sourceField, fieldParams);
+                        newBuilder = columnStore.UnIndexedField.builder(sourceField, fieldParams);
                     } else {
-                        newBuilder = ozone.columnStore.IndexedField.builder(sourceField, fieldParams);
+                        newBuilder = columnStore.IndexedField.builder(sourceField, fieldParams);
                     }
                 }
                 if (newBuilder !== null) {
@@ -279,7 +279,7 @@ var ozone;
                     resultFields.push(builder.onEnd());
                 }
             }
-            return new ozone.columnStore.ColumnStore(length, resultFields);
+            return new columnStore.ColumnStore(length, resultFields);
         }
         columnStore.buildFromStore = buildFromStore;
     })(ozone.columnStore || (ozone.columnStore = {}));
@@ -461,7 +461,7 @@ var ozone;
             };
 
             ColumnStore.prototype.filter = function (fieldNameOrFilter, value) {
-                return ozone.columnStore.filterColumnStore(this, this, ozone.columnStore.createFilter(this, fieldNameOrFilter, value));
+                return columnStore.filterColumnStore(this, this, columnStore.createFilter(this, fieldNameOrFilter, value));
             };
 
             ColumnStore.prototype.filters = function () {
@@ -477,7 +477,7 @@ var ozone;
 
             ColumnStore.prototype.partition = function (fieldAny) {
                 var key = (typeof fieldAny === 'string') ? fieldAny : fieldAny.identifier;
-                return ozone.columnStore.partitionColumnStore(this, this.field(key));
+                return columnStore.partitionColumnStore(this, this.field(key));
             };
 
             ColumnStore.prototype.eachRow = function (rowAction) {
@@ -543,7 +543,7 @@ var ozone;
                 var filterTarget = filtersForIteration;
                 if (newFilter instanceof ozone.ValueFilter) {
                     var fieldId = newFilter.fieldDescriptor.identifier;
-                    if (source.field(fieldId) instanceof ozone.columnStore.IndexedField) {
+                    if (source.field(fieldId) instanceof columnStore.IndexedField) {
                         filterTarget = intSetFilters;
                     }
                 }
@@ -602,10 +602,10 @@ var ozone;
             }
 
             var indexedField;
-            if (field instanceof ozone.columnStore.IndexedField) {
+            if (field instanceof columnStore.IndexedField) {
                 indexedField = field;
             } else {
-                var indexedFieldBuilder = ozone.columnStore.IndexedField.builder(field);
+                var indexedFieldBuilder = columnStore.IndexedField.builder(field);
                 store.eachRow(function (row) {
                     indexedFieldBuilder.onItem({ index: row, rowToken: row });
                 });
@@ -791,7 +791,7 @@ var ozone;
                 for (var i = 0; i < this.valueList.length; i++) {
                     var value = this.valueList[i];
                     var intSet = this.valueMap[value.toString()];
-                    if (intSet.get(index)) {
+                    if (intSet.has(index)) {
                         result.push(value);
                     }
                 }
@@ -810,7 +810,7 @@ var ozone;
             IndexedField.prototype.rowHasValue = function (index, value) {
                 var intSet = this.valueMap[value.toString()];
                 if (intSet) {
-                    return intSet.get(index);
+                    return intSet.has(index);
                 }
                 return false;
             };
@@ -843,13 +843,13 @@ var ozone;
         */
         (function (_bits) {
             function singleBitMask(bitPos) {
-                return 1 << bitPos;
+                return 1 << (bitPos % 32);
             }
 
             /** Return a number with the bit at num%32 set to true. */
             function setBit(num, bits) {
                 bits = bits | 0; // JIT hint, same one used by asm.js to signify a bitwise int.  Also clears high bits.
-                var mask = singleBitMask(num % 32);
+                var mask = singleBitMask(num);
                 var result = 0;
                 result = bits | mask;
                 return result;
@@ -859,10 +859,20 @@ var ozone;
             /** Return a number with the bit at num%32 set to false. */
             function unsetBit(num, bits) {
                 bits = bits | 0;
-                var mask = ~singleBitMask(num % 32);
+                var mask = ~singleBitMask(num);
                 return bits & mask;
             }
             _bits.unsetBit = unsetBit;
+
+            /** Return true if the bit num%32 is set*/
+            function hasBit(num, bits) {
+                if (bits & singleBitMask(num)) {
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+            _bits.hasBit = hasBit;
 
             /** Returns the number of 1's set within the first 32-bits of this number. */
             function countBits(bits) {
@@ -885,20 +895,6 @@ var ozone;
                 return parseInt(str, 2) | 0;
             }
             _bits.base2ToBits = base2ToBits;
-
-            /**
-            * For each bit, add offset and append to the array, returning that array.
-            * Thus appendToArray(1, 32) returns [32] and appendToArray(3, 32) returns [32, 33].
-            */
-            function appendToArray(bits, offset, array) {
-                if (typeof array === "undefined") { array = []; }
-                return notWritten();
-            }
-            _bits.appendToArray = appendToArray;
-
-            function notWritten() {
-                throw new Error("This method has not been implemented yet.");
-            }
         })(intSet.bits || (intSet.bits = {}));
         var bits = intSet.bits;
     })(ozone.intSet || (ozone.intSet = {}));
@@ -950,7 +946,7 @@ var ozone;
         function builder(min, max) {
             if (typeof min === "undefined") { min = 0; }
             if (typeof max === "undefined") { max = -1; }
-            return ozone.intSet.ArrayIndexIntSet.builder();
+            return intSet.ArrayIndexIntSet.builder();
         }
         intSet.builder = builder;
 
@@ -1024,7 +1020,7 @@ var ozone;
 
             // Cycle through the iterators round-robbin style, skipping to the highest element so far.  When we have N
             // iterators in a row giving us the same value, that element goes into the builder.
-            var builder = ozone.intSet.ArrayIndexIntSet.builder();
+            var builder = intSet.ArrayIndexIntSet.builder();
             var currentIteratorIndex = 0;
             var numIteratorsWithCurrentValue = 1;
             var previousValue = NaN;
@@ -1111,8 +1107,8 @@ var ozone;
                 return this.indexes.concat();
             };
 
-            ArrayIndexIntSet.prototype.get = function (index) {
-                return ozone.intSet.search(index, this.indexes, 0, this.indexes.length - 1) >= 0;
+            ArrayIndexIntSet.prototype.has = function (index) {
+                return intSet.search(index, this.indexes, 0, this.indexes.length - 1) >= 0;
             };
 
             ArrayIndexIntSet.prototype.min = function () {
@@ -1137,7 +1133,7 @@ var ozone;
                 if (set === this) {
                     return true;
                 }
-                if (set instanceof ozone.intSet.RangeIntSet) {
+                if (set instanceof intSet.RangeIntSet) {
                     return set.equals(this);
                 }
                 if (this.size !== set.size || this.min() !== set.min() || this.max() !== set.max()) {
@@ -1165,14 +1161,14 @@ var ozone;
                 if (set.size === 0) {
                     return this;
                 }
-                if (set instanceof ozone.intSet.RangeIntSet && set.min() <= this.min() && set.max() >= this.max()) {
+                if (set instanceof intSet.RangeIntSet && set.min() <= this.min() && set.max() >= this.max()) {
                     return set;
                 }
-                return ozone.intSet.unionOfIterators(this.iterator(), set.iterator());
+                return intSet.unionOfIterators(this.iterator(), set.iterator());
             };
 
             ArrayIndexIntSet.prototype.intersection = function (set) {
-                return ozone.intSet.intersectionOfOrderedIterators(this.iterator(), set.iterator());
+                return intSet.intersectionOfOrderedIterators(this.iterator(), set.iterator());
             };
             return ArrayIndexIntSet;
         })();
@@ -1196,7 +1192,7 @@ var ozone;
                 if ((!this.hasNext()) || item <= this.array[this.nextIndex]) {
                     return;
                 }
-                var searchIndex = ozone.intSet.search(item, this.array, this.nextIndex, this.array.length);
+                var searchIndex = intSet.search(item, this.array, this.nextIndex, this.array.length);
                 this.nextIndex = (searchIndex < 0) ? ~searchIndex : searchIndex;
             };
             return OrderedArrayIterator;
@@ -1216,21 +1212,44 @@ var ozone;
         * Stores indexes in an Array of numbers, treating them as 32-bit unsigned integers.
         */
         var BitmapArrayIntSet = (function () {
+            /**
+            * Constructs a BitmapArrayIntSet
+            * @param offset    The number of leading 32 bit numbers which contain all zeros
+            * @param bits      The bitmap (not including the offset) as a number array
+            */
             function BitmapArrayIntSet(offset, bits) {
                 this.offset = offset;
                 this.bits = bits;
                 this.isPacked = true;
             }
+            BitmapArrayIntSet.builder = function (min, max) {
+                if (typeof min === "undefined") { min = 0; }
+                if (typeof max === "undefined") { max = -1; }
+                var array = [];
+                return {
+                    onItem: function (item) {
+                        array.push(item);
+                    },
+                    onEnd: function () {
+                        throw new Error("This method has not been implemented yet.");
+                    }
+                };
+            };
+
             BitmapArrayIntSet.prototype.notWritten = function () {
                 throw new Error("This method has not been implemented yet.");
             };
 
-            BitmapArrayIntSet.prototype.get = function (index) {
-                return this.notWritten();
+            BitmapArrayIntSet.prototype.has = function (index) {
+                var indexOffset = index - this.offset * 32;
+                if (indexOffset < 0) {
+                    return false;
+                }
+                return intSet.bits.hasBit(indexOffset % 32, this.bits[Math.findexOffset / 32]);
             };
 
             /**
-            * The lowest value for which get() returns true, or -1 if size === 0.  This should be extremely fast.
+            * The lowest value for which has() returns true, or -1 if size === 0.  This should be extremely fast.
             * The behavior when size === 0 may change in future versions.
             */
             BitmapArrayIntSet.prototype.min = function () {
@@ -1238,7 +1257,7 @@ var ozone;
             };
 
             /**
-            * The highest value for which get() returns true, or -1 if size === 0. This should be extremely fast.
+            * The highest value for which has() returns true, or -1 if size === 0. This should be extremely fast.
             * The behavior when size === 0 may change in future versions.
             */
             BitmapArrayIntSet.prototype.max = function () {
@@ -1306,11 +1325,11 @@ var ozone;
             /** Return a RangeIntSet from minValue to maxValue inclusive. */
             RangeIntSet.fromTo = function (minValue, maxValue) {
                 if (minValue === -1 && maxValue === -1) {
-                    return ozone.intSet.empty;
+                    return intSet.empty;
                 }
                 var length = 1 + maxValue - minValue;
                 if (length <= 0) {
-                    return ozone.intSet.empty;
+                    return intSet.empty;
                 }
                 if (maxValue < minValue) {
                     throw new Error("Max " + maxValue + " < " + " min " + minValue);
@@ -1322,7 +1341,7 @@ var ozone;
                 return new RangeIntSet(minValue, length);
             };
 
-            RangeIntSet.prototype.get = function (index) {
+            RangeIntSet.prototype.has = function (index) {
                 return this.size > 0 && index >= this.minValue && index <= this.max();
             };
 
@@ -1395,7 +1414,7 @@ var ozone;
 
             RangeIntSet.prototype.intersection = function (bm) {
                 if (this.size === 0 || bm.size === 0) {
-                    return ozone.intSet.empty;
+                    return intSet.empty;
                 }
                 if (typeof (bm["intersectionWithRangeIntSet"]) === "function") {
                     return bm["intersectionWithRangeIntSet"](this);
@@ -1404,7 +1423,7 @@ var ozone;
                 var min = Math.max(this.min(), bm.min());
                 var max = Math.min(this.max(), bm.max());
                 if (max < min) {
-                    return ozone.intSet.empty;
+                    return intSet.empty;
                 }
                 if (bm instanceof RangeIntSet) {
                     return RangeIntSet.fromTo(min, max);
@@ -1422,7 +1441,7 @@ var ozone;
         })();
         intSet.RangeIntSet = RangeIntSet;
 
-        ozone.intSet.empty = new RangeIntSet(-1, 0);
+        intSet.empty = new RangeIntSet(-1, 0);
     })(ozone.intSet || (ozone.intSet = {}));
     var intSet = ozone.intSet;
 })(ozone || (ozone = {}));
@@ -1436,7 +1455,7 @@ var ozone;
         /** Build from a CSV file, with all resulting Fields treated as strings. */
         function buildFromCsv(csv) {
             var dataArray = csv.split(/(\r\n|\n|\r)/);
-            var reader = new ozone.rowStore.CsvReader();
+            var reader = new rowStore.CsvReader();
             var fieldInfo = (function () {
                 reader.onItem(dataArray[0]);
                 var result = {};
@@ -1476,27 +1495,27 @@ var ozone;
 
                     var fProto;
                     if (fd.multipleValuesPerRow)
-                        fProto = ozone.rowStore.JsonRowField;
+                        fProto = rowStore.JsonRowField;
                     else
-                        fProto = ozone.rowStore.UnaryJsonRowField;
+                        fProto = rowStore.UnaryJsonRowField;
                     var field = new fProto(fd.identifier, fd.displayName, fd.typeOfValue, null, fd.range(), fd.distinctValueEstimate());
                     fields.push(field);
                 }
             }
 
-            var result = new ozone.rowStore.RowStore(fields, data, rowTransformer);
+            var result = new rowStore.RowStore(fields, data, rowTransformer);
 
             if (toComputeDistinctValues.length > 0 || toComputeRange.length > 0) {
                 var rangeCalculators = {};
                 for (var i = 0; i < toComputeRange.length; i++) {
                     key = toComputeRange[i];
-                    rangeCalculators[key] = new ozone.rowStore.RangeCalculator(result.field(key));
+                    rangeCalculators[key] = new rowStore.RangeCalculator(result.field(key));
                 }
 
                 var valueCalculators = {};
                 for (var i = 0; i < toComputeDistinctValues.length; i++) {
                     key = toComputeDistinctValues[i];
-                    valueCalculators[key] = new ozone.rowStore.ValueFrequencyCalculator(result.field(key));
+                    valueCalculators[key] = new rowStore.ValueFrequencyCalculator(result.field(key));
                 }
 
                 result.eachRow(function (rowToken) {
@@ -1542,9 +1561,9 @@ var ozone;
 
         function proto(field) {
             if (typeof field["value"] === "function") {
-                return ozone.rowStore.UnaryJsonRowField;
+                return rowStore.UnaryJsonRowField;
             }
-            return ozone.rowStore.JsonRowField;
+            return rowStore.JsonRowField;
         }
     })(ozone.rowStore || (ozone.rowStore = {}));
     var rowStore = ozone.rowStore;

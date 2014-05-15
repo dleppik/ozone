@@ -122,7 +122,7 @@ module ozone.columnStore {
             for (var i=0; i<this.valueList.length; i++) {
                 var value = this.valueList[i];
                 var intSet = this.valueMap[value.toString()];
-                if (intSet.get(index)) {
+                if (intSet.has(index)) {
                     result.push(value);
                 }
             }
@@ -141,7 +141,7 @@ module ozone.columnStore {
         public rowHasValue(index : number, value : any) : boolean {
             var intSet : IntSet = this.valueMap[value.toString()];
             if (intSet) {
-                return intSet.get(index);
+                return intSet.has(index);
             }
             return false;
         }

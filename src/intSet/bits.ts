@@ -15,13 +15,13 @@
 module ozone.intSet.bits {
 
     function singleBitMask(bitPos : number) : number {
-        return 1 << bitPos;
+        return 1 << (bitPos % 32);
     }
 
     /** Return a number with the bit at num%32 set to true. */
     export function setBit(num : number, bits : number) : number {
         bits = bits | 0;  // JIT hint, same one used by asm.js to signify a bitwise int.  Also clears high bits.
-        var mask = singleBitMask(num % 32);
+        var mask = singleBitMask(num);
         var result = 0; result = bits | mask;
         return result;
     }
@@ -29,8 +29,18 @@ module ozone.intSet.bits {
     /** Return a number with the bit at num%32 set to false. */
     export function unsetBit(num : number, bits : number) : number {
         bits = bits | 0;
-        var mask = ~ singleBitMask(num % 32);
+        var mask = ~ singleBitMask(num);
         return bits & mask;
+    }
+
+    /** Return true if the bit num%32 is set*/
+    export function hasBit(num : number, bits : number) : boolean {
+        if (bits & singleBitMask(num)) {
+            return true;
+        }
+        else {
+            return false;
+        }
     }
 
     /** Returns the number of 1's set within the first 32-bits of this number. */
@@ -50,17 +60,5 @@ module ozone.intSet.bits {
             throw new Error("More than 32 bits: '"+str+"'");
         }
         return parseInt(str, 2) | 0;
-    }
-
-    /**
-     * For each bit, add offset and append to the array, returning that array.
-     * Thus appendToArray(1, 32) returns [32] and appendToArray(3, 32) returns [32, 33].
-     */
-    export function appendToArray(bits : number, offset : number, array : number[] = []) : number[] {
-        return notWritten(); // TODO
-    }
-
-    function notWritten() : any {
-        throw new Error("This method has not been implemented yet."); // XXX
     }
 }

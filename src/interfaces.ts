@@ -147,21 +147,21 @@ module ozone {
      */
     export interface IntSet {
 
-        get(index : number) : boolean;
+        has(index : number) : boolean;
 
         /**
-         * The lowest value for which get() returns true, or -1 if size === 0.  This should be extremely fast.
+         * The lowest value for which has() returns true, or -1 if size === 0.  This should be extremely fast.
          * The behavior when size === 0 may change in future versions.
          */
         min() : number;
 
         /**
-         * The highest value for which get() returns true, or -1 if size === 0. This should be extremely fast.
+         * The highest value for which has() returns true, or -1 if size === 0. This should be extremely fast.
          * The behavior when size === 0 may change in future versions.
          */
         max() : number;
 
-        /** The number of values for which get() returns true. */
+        /** The number of values for which has() returns true. */
         size : number;
 
         /** Iterate over all "true" elements in order. */
@@ -186,7 +186,7 @@ module ozone {
         /** Equals Math.floor(min()/32). */
         minBits() : number;
 
-        /** Equals Math.floor(min()/32). */
+        /** Equals Math.floor(max()/32). */
         maxBits() : number;
 
         /** If true, the PackedIntSet methods are not just available, but preferred. */

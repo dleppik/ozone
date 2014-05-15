@@ -9,7 +9,22 @@ module ozone.intSet {
      */
     export class BitmapArrayIntSet implements PackedIntSet {
 
+        public static builder(min : number = 0, max: number = -1) : Reducer<number,IntSet> {
+            var array : number[] = [];
+            return (<Reducer<number,IntSet>> {
+                onItem: function(item : number) { array.push(item); },
+                onEnd:  function() {
+                    throw new Error("This method has not been implemented yet."); // XXX
+                }
+            });
 
+        }
+
+        /**
+         * Constructs a BitmapArrayIntSet
+         * @param offset    The number of leading 32 bit numbers which contain all zeros
+         * @param bits      The bitmap (not including the offset) as a number array
+         */
         constructor(private offset : number, private bits : number[]) { }
 
         private notWritten() : any {
@@ -17,12 +32,17 @@ module ozone.intSet {
         }
 
 
-        get(index : number) : boolean {
-            return this.notWritten();  // TODO
+        has(index : number) : boolean {
+            var indexOffset : number = index - this.offset*32;
+            console.log("indexOffset = " + indexOffset);
+            if (indexOffset < 0) {
+                return false;
+            }
+            return bits.hasBit(indexOffset%32, this.bits[Math.floor(indexOffset/32]));
         }
 
         /**
-         * The lowest value for which get() returns true, or -1 if size === 0.  This should be extremely fast.
+         * The lowest value for which has() returns true, or -1 if size === 0.  This should be extremely fast.
          * The behavior when size === 0 may change in future versions.
          */
         min() : number {
@@ -30,14 +50,14 @@ module ozone.intSet {
         }
 
         /**
-         * The highest value for which get() returns true, or -1 if size === 0. This should be extremely fast.
+         * The highest value for which has() returns true, or -1 if size === 0. This should be extremely fast.
          * The behavior when size === 0 may change in future versions.
          */
         max() : number {
             return this.notWritten();  // TODO
         }
 
-        /** The number of values for which get() returns true. */
+        /** The number of values for which has() returns true. */
         size : number;
 
         /** Iterate over all "true" elements in order. */
