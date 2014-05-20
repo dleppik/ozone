@@ -61,4 +61,14 @@ module ozone.intSet.bits {
         }
         return parseInt(str, 2) | 0;
     }
+
+    /** Returns the 32-bit int 'bit' is in */
+    export function inWord(bit : number) {
+        return Math.floor(bit / 32);
+    }
+
+    /** Returns the offset into a 32-bit int that 'bit' is in */
+    export function offset(bit : number) {
+        return bit%32;
+    }
 }

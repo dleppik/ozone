@@ -895,6 +895,18 @@ var ozone;
                 return parseInt(str, 2) | 0;
             }
             _bits.base2ToBits = base2ToBits;
+
+            /** Returns the 32-bit int 'bit' is in */
+            function inWord(bit) {
+                return Math.floor(bit / 32);
+            }
+            _bits.inWord = inWord;
+
+            /** Returns the offset into a 32-bit int that 'bit' is in */
+            function offset(bit) {
+                return bit % 32;
+            }
+            _bits.offset = offset;
         })(intSet.bits || (intSet.bits = {}));
         var bits = intSet.bits;
     })(ozone.intSet || (ozone.intSet = {}));
@@ -1214,24 +1226,54 @@ var ozone;
         var BitmapArrayIntSet = (function () {
             /**
             * Constructs a BitmapArrayIntSet
-            * @param offset    The number of leading 32 bit numbers which contain all zeros
-            * @param bits      The bitmap (not including the offset) as a number array
+            * @param onesCount
+            * @param wordOffset     The number of 32-bit words which are all zeroes which proceed the given array.
+            * @param words          The bitmap (not including the offset bits) as a number array
             */
-            function BitmapArrayIntSet(offset, bits) {
-                this.offset = offset;
-                this.bits = bits;
+            function BitmapArrayIntSet(onesCount, wordOffset, words) {
+                this.onesCount = onesCount;
+                this.wordOffset = wordOffset;
+                this.words = words;
                 this.isPacked = true;
             }
             BitmapArrayIntSet.builder = function (min, max) {
                 if (typeof min === "undefined") { min = 0; }
                 if (typeof max === "undefined") { max = -1; }
                 var array = [];
+                var onesCounter = 0;
+                var isFirst = true;
+                var numOfLeadingWords = 0;
+                var currentWordIndex = 0;
+                var currentWord = currentWord | 0;
+
                 return {
                     onItem: function (item) {
-                        array.push(item);
+                        var thisWordIndex = intSet.bits.inWord(item);
+                        if (thisWordIndex < currentWordIndex) {
+                            throw new Error("BitmapArrayIntSet.builder() requires a sorted array to parse.");
+                            //Note: is there a better way to refer to the current method?
+                        }
+                        if (thisWordIndex > currentWordIndex) {
+                            if (isFirst) {
+                                // The index of the word which the first set bit is in is the same as the number of words
+                                // which are filled with leading zeroes.
+                                numOfLeadingWords = intSet.bits.inWord(item);
+                            } else {
+                                array[currentWordIndex] = currentWord;
+                                currentWord = 0;
+                                currentWord = currentWord | 0; // Needed to clear the high bits?
+                            }
+                            currentWordIndex = thisWordIndex;
+                        }
+                        onesCounter++;
+                        currentWord = intSet.bits.setBit(currentWord, intSet.bits.offset(item));
+                        isFirst = false;
                     },
                     onEnd: function () {
-                        throw new Error("This method has not been implemented yet.");
+                        if (onesCounter > 0) {
+                            array[currentWordIndex] = currentWord;
+                        }
+                        return new BitmapArrayIntSet(onesCounter, numOfLeadingWords, array);
                     }
                 };
             };
@@ -1240,28 +1282,38 @@ var ozone;
                 throw new Error("This method has not been implemented yet.");
             };
 
-            BitmapArrayIntSet.prototype.has = function (index) {
-                var indexOffset = index - this.offset * 32;
+            BitmapArrayIntSet.prototype.has = function (theBit) {
+                var indexOffset = theBit - this.wordOffset * 32;
                 if (indexOffset < 0) {
                     return false;
                 }
-                return intSet.bits.hasBit(indexOffset % 32, this.bits[Math.findexOffset / 32]);
+                return intSet.bits.hasBit(intSet.bits.offset(indexOffset), this.words[intSet.bits.inWord(indexOffset)]);
             };
 
             /**
-            * The lowest value for which has() returns true, or -1 if size === 0.  This should be extremely fast.
+            * The lowest value for which has() returns true, or -1 if length === 0 and offset === 0.  This should be
+            * extremely fast.
             * The behavior when size === 0 may change in future versions.
             */
             BitmapArrayIntSet.prototype.min = function () {
-                return this.notWritten();
+                if (this.wordOffset > 0 || this.words.length > 0) {
+                    return this.wordOffset * 32 + this.minTrue;
+                } else {
+                    return -1;
+                }
             };
 
             /**
-            * The highest value for which has() returns true, or -1 if size === 0. This should be extremely fast.
+            * The highest value for which has() returns true, or -1 if length === 0 and offset === 0.  This should be
+            * extremely fast.
             * The behavior when size === 0 may change in future versions.
             */
             BitmapArrayIntSet.prototype.max = function () {
-                return this.notWritten();
+                if (this.wordOffset > 0 || this.words.length > 0) {
+                    return this.wordOffset * 32 + this.maxTrue;
+                } else {
+                    return -1;
+                }
             };
 
             /** Iterate over all "true" elements in order. */

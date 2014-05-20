@@ -331,17 +331,17 @@ describe("RangeIntSet", function() {
     });
 });
 
-describe("Temporary BitmapArrayIntSet tests", function() {
+describe("BitmapArrayIntSet tests", function() {
     it("Does has()", function() {
         console.log("test");
-        // ["111000" , "101"] or "10100000000000000000000000000111000"
-        var bitmap = new ozone.intSet.BitmapArrayIntSet(0, [ 1|0]);
+        // ["1"]
+        var bitmap = new ozone.intSet.BitmapArrayIntSet(1, 0, [1|0]);
 
         expect(bitmap.has( 0)).toBe(true);
         expect(bitmap.has( 1)).toBe(false);
 
         // ["111000" , "101"] or "10100000000000000000000000000111000"
-        var bitmap = new ozone.intSet.BitmapArrayIntSet(0, [ 56|0, 5|0]);
+        var bitmap = new ozone.intSet.BitmapArrayIntSet(5, 0, [56|0, 5|0]);
 
         expect(bitmap.has( 0)).toBe(false);
         expect(bitmap.has( 1)).toBe(false);
@@ -353,6 +353,14 @@ describe("Temporary BitmapArrayIntSet tests", function() {
         expect(bitmap.has( 63)).toBe(false);
         expect(bitmap.has( 64)).toBe(false);
         expect(bitmap.has( 200 )).toBe( false );
+    });
+
+    it("Implements offset correctly", function() {
+        var bitmap = new ozone.intSet.BitmapArrayIntSet(2, 3, [5|0]);
+        expect(bitmap.has( 0)).toBe(false);
+        expect(bitmap.has( 96)).toBe(true);
+        expect(bitmap.has( 97)).toBe(false);
+
     });
 });
 
