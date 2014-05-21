@@ -841,51 +841,91 @@ var ozone;
         *
         * See:  http://asmjs.org/spec/latest/
         */
-        (function (_bits) {
+        (function (bits) {
             function singleBitMask(bitPos) {
                 return 1 << (bitPos % 32);
             }
 
             /** Return a number with the bit at num%32 set to true. */
-            function setBit(num, bits) {
-                bits = bits | 0; // JIT hint, same one used by asm.js to signify a bitwise int.  Also clears high bits.
+            function setBit(num, word) {
+                word = word | 0; // JIT hint, same one used by asm.js to signify a bitwise int.  Also clears high bits.
                 var mask = singleBitMask(num);
                 var result = 0;
-                result = bits | mask;
+                result = word | mask;
                 return result;
             }
-            _bits.setBit = setBit;
+            bits.setBit = setBit;
 
             /** Return a number with the bit at num%32 set to false. */
-            function unsetBit(num, bits) {
-                bits = bits | 0;
+            function unsetBit(num, word) {
+                word = word | 0;
                 var mask = ~singleBitMask(num);
-                return bits & mask;
+                return word & mask;
             }
-            _bits.unsetBit = unsetBit;
+            bits.unsetBit = unsetBit;
 
             /** Return true if the bit num%32 is set*/
-            function hasBit(num, bits) {
-                if (bits & singleBitMask(num)) {
+            function hasBit(num, word) {
+                if (word == null)
+                    return false;
+
+                if (word & singleBitMask(num)) {
                     return true;
                 } else {
                     return false;
                 }
             }
-            _bits.hasBit = hasBit;
+            bits.hasBit = hasBit;
 
             /** Returns the number of 1's set within the first 32-bits of this number. */
-            function countBits(bits) {
-                bits = bits | 0; // This is not just a JIT hint:  clears the high bits
+            function countBits(word) {
+                if (word == null)
+                    return 0;
+
+                word = word | 0; // This is not just a JIT hint:  clears the high bits
                 var result = 0;
-                result = bits & 1;
-                while (bits !== 0) {
-                    bits = bits >>> 1;
-                    result += (bits & 1);
+                result = word & 1;
+                while (word !== 0) {
+                    word = word >>> 1;
+                    result += (word & 1);
                 }
                 return result;
             }
-            _bits.countBits = countBits;
+            bits.countBits = countBits;
+
+            /** Returns the position of the minimum true bit in the lowest 32 bits of word, or -1 if all are false. */
+            function minBit(word) {
+                if (word == null)
+                    return -1;
+
+                word = word | 0; // This is not just a JIT hint:  clears the high bits
+                var mask = singleBitMask(0);
+                var result = 0;
+                while (result < 32 && ((mask & word) !== mask)) {
+                    mask <<= 1;
+                    result++;
+                }
+                if (result > 31)
+                    result = -1;
+                return result;
+            }
+            bits.minBit = minBit;
+
+            /** Returns the position of the maximum true bit in the lowest 32 bits of word, or -1 if all are false. */
+            function maxBit(word) {
+                if (word == null)
+                    return -1;
+
+                word = word | 0; // This is not just a JIT hint:  clears the high bits
+                var mask = singleBitMask(31);
+                var result = 31;
+                while (result >= 0 && ((mask & word) !== mask)) {
+                    mask >>>= 1;
+                    result--;
+                }
+                return result;
+            }
+            bits.maxBit = maxBit;
 
             /** Convert a string of 1's and 0's to a 32-bit number, throws an error if the string is too long. */
             function base2ToBits(str) {
@@ -894,19 +934,19 @@ var ozone;
                 }
                 return parseInt(str, 2) | 0;
             }
-            _bits.base2ToBits = base2ToBits;
+            bits.base2ToBits = base2ToBits;
 
             /** Returns the 32-bit int 'bit' is in */
             function inWord(bit) {
                 return Math.floor(bit / 32);
             }
-            _bits.inWord = inWord;
+            bits.inWord = inWord;
 
             /** Returns the offset into a 32-bit int that 'bit' is in */
             function offset(bit) {
                 return bit % 32;
             }
-            _bits.offset = offset;
+            bits.offset = offset;
         })(intSet.bits || (intSet.bits = {}));
         var bits = intSet.bits;
     })(ozone.intSet || (ozone.intSet = {}));
@@ -1225,23 +1265,48 @@ var ozone;
         */
         var BitmapArrayIntSet = (function () {
             /**
-            * Constructs a BitmapArrayIntSet
-            * @param onesCount
-            * @param wordOffset     The number of 32-bit words which are all zeroes which proceed the given array.
-            * @param words          The bitmap (not including the offset bits) as a number array
+            * Constructs a BitmapArrayIntSet.
+            * @param words         The bitmap (not including the offset bits) as a number array
+            * @param wordOffset    The number of 32-bit words which are all zeroes which proceed the given array.
+            * @param size          The number of ones in the array (0 if 'words' is empty)
             */
-            function BitmapArrayIntSet(onesCount, wordOffset, words) {
-                this.onesCount = onesCount;
-                this.wordOffset = wordOffset;
+            function BitmapArrayIntSet(words, wordOffset, size) {
                 this.words = words;
+                this.wordOffset = wordOffset;
+                this.size = size;
                 this.isPacked = true;
+                if (words == null || words.length == 0) {
+                    size = 0;
+                    this.minValue = -1;
+                    this.maxValue = -1;
+                } else {
+                    var currentBit;
+                    for (var i = 0; i < words.length; i++) {
+                        currentBit = intSet.bits.minBit(words[i]);
+                        if (currentBit >= 0) {
+                            this.minValue = currentBit + i * 32;
+                            break;
+                        }
+                    }
+                    for (var i = words.length - 1; i >= 0; i--) {
+                        currentBit = intSet.bits.maxBit(words[i]);
+                        if (currentBit >= 0) {
+                            this.maxValue = currentBit + i * 32;
+                            break;
+                        }
+                    }
+                }
             }
+            /***** Note: should we be ignoring min and max like this?  ******/
             BitmapArrayIntSet.builder = function (min, max) {
                 if (typeof min === "undefined") { min = 0; }
                 if (typeof max === "undefined") { max = -1; }
                 var array = [];
                 var onesCounter = 0;
                 var isFirst = true;
+
+                //var minValue : number = -1;
+                //var maxValue : number = -1;
                 var numOfLeadingWords = 0;
                 var currentWordIndex = 0;
                 var currentWord = currentWord | 0;
@@ -1258,6 +1323,7 @@ var ozone;
                                 // The index of the word which the first set bit is in is the same as the number of words
                                 // which are filled with leading zeroes.
                                 numOfLeadingWords = intSet.bits.inWord(item);
+                                //minValue = item;
                             } else {
                                 array[currentWordIndex] = currentWord;
                                 currentWord = 0;
@@ -1268,12 +1334,14 @@ var ozone;
                         onesCounter++;
                         currentWord = intSet.bits.setBit(currentWord, intSet.bits.offset(item));
                         isFirst = false;
+                        //maxValue = item;
                     },
                     onEnd: function () {
                         if (onesCounter > 0) {
                             array[currentWordIndex] = currentWord;
                         }
-                        return new BitmapArrayIntSet(onesCounter, numOfLeadingWords, array);
+                        return new BitmapArrayIntSet(array, numOfLeadingWords, onesCounter);
+                        //return new BitmapArrayIntSet(array, numOfLeadingWords,onesCounter, minValue, maxValue);
                     }
                 };
             };
@@ -1291,29 +1359,21 @@ var ozone;
             };
 
             /**
-            * The lowest value for which has() returns true, or -1 if length === 0 and offset === 0.  This should be
+            * The lowest value for which has() returns true, or -1 if size === 0.  This should be
             * extremely fast.
             * The behavior when size === 0 may change in future versions.
             */
             BitmapArrayIntSet.prototype.min = function () {
-                if (this.wordOffset > 0 || this.words.length > 0) {
-                    return this.wordOffset * 32 + this.minTrue;
-                } else {
-                    return -1;
-                }
+                return this.minValue;
             };
 
             /**
-            * The highest value for which has() returns true, or -1 if length === 0 and offset === 0.  This should be
+            * The highest value for which has() returns true, or -1 if size === 0.  This should be
             * extremely fast.
             * The behavior when size === 0 may change in future versions.
             */
             BitmapArrayIntSet.prototype.max = function () {
-                if (this.wordOffset > 0 || this.words.length > 0) {
-                    return this.wordOffset * 32 + this.maxTrue;
-                } else {
-                    return -1;
-                }
+                return this.maxValue;
             };
 
             /** Iterate over all "true" elements in order. */
@@ -1341,13 +1401,12 @@ var ozone;
                 return this.notWritten();
             };
 
-            /** Equals Math.floor(min()/32). */
-            BitmapArrayIntSet.prototype.minBits = function () {
-                return this.notWritten();
+            BitmapArrayIntSet.prototype.minWord = function () {
+                return this.wordOffset;
             };
 
             /** Equals Math.floor(min()/32). */
-            BitmapArrayIntSet.prototype.maxBits = function () {
+            BitmapArrayIntSet.prototype.maxWord = function () {
                 return this.notWritten();
             };
             return BitmapArrayIntSet;

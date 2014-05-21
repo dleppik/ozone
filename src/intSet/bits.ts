@@ -19,23 +19,26 @@ module ozone.intSet.bits {
     }
 
     /** Return a number with the bit at num%32 set to true. */
-    export function setBit(num : number, bits : number) : number {
-        bits = bits | 0;  // JIT hint, same one used by asm.js to signify a bitwise int.  Also clears high bits.
+    export function setBit(num : number, word : number) : number {
+        word = word | 0;  // JIT hint, same one used by asm.js to signify a bitwise int.  Also clears high bits.
         var mask = singleBitMask(num);
-        var result = 0; result = bits | mask;
+        var result = 0; result = word | mask;
         return result;
     }
 
     /** Return a number with the bit at num%32 set to false. */
-    export function unsetBit(num : number, bits : number) : number {
-        bits = bits | 0;
+    export function unsetBit(num : number, word : number) : number {
+        word = word | 0;
         var mask = ~ singleBitMask(num);
-        return bits & mask;
+        return word & mask;
     }
 
     /** Return true if the bit num%32 is set*/
-    export function hasBit(num : number, bits : number) : boolean {
-        if (bits & singleBitMask(num)) {
+    export function hasBit(num : number, word : number) : boolean {
+
+        if (word == null) return false;
+
+        if (word & singleBitMask(num)) {
             return true;
         }
         else {
@@ -44,12 +47,46 @@ module ozone.intSet.bits {
     }
 
     /** Returns the number of 1's set within the first 32-bits of this number. */
-    export function countBits(bits : number) : number {
-        bits = bits | 0; // This is not just a JIT hint:  clears the high bits
-        var result = 0; result = bits & 1;
-        while (bits !== 0) {
-            bits = bits >>> 1;
-            result += (bits & 1);
+    export function countBits(word : number) : number {
+
+        if (word == null) return 0;
+
+        word = word | 0; // This is not just a JIT hint:  clears the high bits
+        var result = 0; result = word & 1;
+        while (word !== 0) {
+            word = word >>> 1;
+            result += (word & 1);
+        }
+        return result;
+    }
+
+    /** Returns the position of the minimum true bit in the lowest 32 bits of word, or -1 if all are false. */
+    export function minBit(word : number) : number {
+
+        if (word == null) return -1;
+
+        word = word | 0; // This is not just a JIT hint:  clears the high bits
+        var mask : number = singleBitMask(0);
+        var result : number = 0;
+        while (result < 32 && ((mask & word) !== mask)) {
+            mask <<= 1;
+            result++;
+        }
+        if (result > 31) result = -1;
+        return result;
+    }
+
+    /** Returns the position of the maximum true bit in the lowest 32 bits of word, or -1 if all are false. */
+    export function maxBit(word : number) : number {
+
+        if (word == null) return -1;
+
+        word = word | 0; // This is not just a JIT hint:  clears the high bits
+        var mask : number = singleBitMask(31);
+        var result : number = 31;
+        while (result >= 0 && ((mask & word) !== mask)) {
+            mask >>>= 1;
+            result--;
         }
         return result;
     }

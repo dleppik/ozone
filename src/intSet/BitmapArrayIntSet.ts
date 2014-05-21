@@ -11,10 +11,13 @@ module ozone.intSet {
     export class BitmapArrayIntSet implements PackedIntSet {
 
 
+        /***** Note: should we be ignoring min and max like this?  ******/
         public static builder(min : number = 0, max: number = -1) : Reducer<number,IntSet> {
             var array : number[] = [];
             var onesCounter : number = 0;
             var isFirst : boolean = true;
+            //var minValue : number = -1;
+            //var maxValue : number = -1;
             var numOfLeadingWords : number = 0;
             var currentWordIndex : number = 0;
             var currentWord : number = currentWord | 0; // This is not just a JIT hint:  clears the high bits
@@ -31,6 +34,7 @@ module ozone.intSet {
                             // The index of the word which the first set bit is in is the same as the number of words
                             // which are filled with leading zeroes.
                             numOfLeadingWords = bits.inWord(item);
+                            //minValue = item;
                         }
                         else {
                             array[currentWordIndex] = currentWord;
@@ -42,29 +46,56 @@ module ozone.intSet {
                     onesCounter++;
                     currentWord = bits.setBit(currentWord, bits.offset(item));
                     isFirst = false;
+                    //maxValue = item;
 
                 },
                 onEnd:  function() {
                     if (onesCounter > 0) {
                         array[currentWordIndex] = currentWord;
                     }
-                    return new BitmapArrayIntSet(onesCounter, numOfLeadingWords, array);
+                    return new BitmapArrayIntSet(array, numOfLeadingWords,onesCounter);
+                    //return new BitmapArrayIntSet(array, numOfLeadingWords,onesCounter, minValue, maxValue);
                 }
             });
 
         }
 
-        private minTrue : number;
-        private maxTrue : number;
+        private minValue : number;
+        private maxValue : number;
 
         /**
-         * Constructs a BitmapArrayIntSet
-         * @param onesCount
-         * @param wordOffset     The number of 32-bit words which are all zeroes which proceed the given array.
-         * @param words          The bitmap (not including the offset bits) as a number array
+         * Constructs a BitmapArrayIntSet.
+         * @param words         The bitmap (not including the offset bits) as a number array
+         * @param wordOffset    The number of 32-bit words which are all zeroes which proceed the given array.
+         * @param size          The number of ones in the array (0 if 'words' is empty)
          */
-        constructor( public onesCount : number,
-                    private wordOffset : number, private words : number[]) {
+        constructor(
+            private words : number[],
+            private wordOffset : number,
+            public size : number)
+        {
+            if (words == null || words.length == 0) {
+                size = 0;
+                this.minValue = -1;
+                this.maxValue = -1;
+            }
+            else  {
+                var currentBit : number;
+                for (var i : number = 0; i < words.length; i++) {
+                    currentBit = bits.minBit(words[i]);
+                    if (currentBit >= 0) {
+                        this.minValue = currentBit + i*32;
+                        break;
+                    }
+                }
+                for (var i : number = words.length-1; i >= 0; i--) {
+                    currentBit = bits.maxBit(words[i]);
+                    if (currentBit >= 0) {
+                        this.maxValue = currentBit + i*32;
+                        break;
+                    }
+                }
+            }
         }
 
         private notWritten() : any {
@@ -82,36 +113,22 @@ module ozone.intSet {
 
 
         /**
-         * The lowest value for which has() returns true, or -1 if length === 0 and offset === 0.  This should be
+         * The lowest value for which has() returns true, or -1 if size === 0.  This should be
          * extremely fast.
          * The behavior when size === 0 may change in future versions.
          */
         min() : number {
-            if (this.wordOffset > 0 || this.words.length > 0) {
-                return this.wordOffset*32 + this.minTrue;
-            }
-            else {
-                return -1;
-            }
+            return this.minValue;
         }
 
         /**
-         * The highest value for which has() returns true, or -1 if length === 0 and offset === 0.  This should be
+         * The highest value for which has() returns true, or -1 if size === 0.  This should be
          * extremely fast.
          * The behavior when size === 0 may change in future versions.
          */
         max() : number {
-            if (this.wordOffset > 0 || this.words.length > 0) {
-                return this.wordOffset*32 + this.maxTrue;
-            }
-            else {
-                return -1;
-            }
+            return this.maxValue;
         }
-
-
-        /** The number of values for which has() returns true. */
-        size : number;
 
         /** Iterate over all "true" elements in order. */
         each(action : (index : number) => void) {
@@ -138,13 +155,12 @@ module ozone.intSet {
             return this.notWritten();  // TODO
         }
 
-        /** Equals Math.floor(min()/32). */
-        minBits() : number {
-            return this.notWritten();  // TODO
+        minWord() : number {
+            return this.wordOffset;
         }
 
         /** Equals Math.floor(min()/32). */
-        maxBits() : number {
+        maxWord() : number {
             return this.notWritten();  // TODO
         }
 

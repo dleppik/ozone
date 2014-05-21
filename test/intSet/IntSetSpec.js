@@ -142,6 +142,8 @@ describe("Bits", function() {
     });
 
     it ("Knows if a bit is set to true", function() {
+        expect(bits.hasBit(5, undefined)).toBe(false);
+        expect(bits.hasBit(5, 0)).toBe(false);
         var bitMap1 = bits.base2ToBits("10101");
         expect(bits.hasBit(0, bitMap1)).toBe(true);
         expect(bits.hasBit(3, bitMap1)).toBe(false);
@@ -150,7 +152,20 @@ describe("Bits", function() {
         expect(bits.hasBit(34, bitMap1)).toBe(true); // Wrap
     });
 
-    it ("Counts bits", function() {
+    it ("Knows the minimum and maximum set bits", function() {
+        expect(bits.minBit(undefined)).toBe(-1);
+        expect(bits.maxBit(undefined)).toBe(-1);
+        expect(bits.minBit(0)).toBe(-1);
+        expect(bits.maxBit(0)).toBe(-1);
+        var bitMap1 = bits.base2ToBits("10101");
+        expect(bits.minBit(bitMap1)).toBe(0);
+        expect(bits.maxBit(bitMap1)).toBe(4);
+
+        var bitMap1 = bits.base2ToBits("100100100");
+        expect(bits.minBit(bitMap1)).toBe(2);
+        expect(bits.maxBit(bitMap1)).toBe(8);
+    });
+        it ("Counts bits", function() {
         expect(bits.countBits(0)).toBe(0);
         expect(bits.countBits(1)).toBe(1);
         expect(bits.countBits(2)).toBe(1);
@@ -332,16 +347,52 @@ describe("RangeIntSet", function() {
 });
 
 describe("BitmapArrayIntSet tests", function() {
-    it("Does has()", function() {
-        console.log("test");
+    it("Finds minValue and maxValue correctly", function() {
+
+        // undefined
+        var bitmap = new ozone.intSet.BitmapArrayIntSet(undefined, 0, 0);
+        expect(bitmap.min()).toBe(-1);
+        expect(bitmap.max()).toBe(-1);
+
+        // []
+        var bitmap = new ozone.intSet.BitmapArrayIntSet([], 0, 0);
+        expect(bitmap.min()).toBe(-1);
+        expect(bitmap.max()).toBe(-1);
+
         // ["1"]
-        var bitmap = new ozone.intSet.BitmapArrayIntSet(1, 0, [1|0]);
+        var bitmap = new ozone.intSet.BitmapArrayIntSet([1|0], 0, 1);
+
+        expect(bitmap.min()).toBe(0);
+        expect(bitmap.max()).toBe(0);
+
+        // ["00000000000000000000000000000000" , "101"] or "10100000000000000000000000000000000"
+        var bitmap = new ozone.intSet.BitmapArrayIntSet([0|0, 5|0], 0, 3);
+
+        expect(bitmap.min()).toBe(32);
+        expect(bitmap.max()).toBe(34);
+
+        // ["1000" , undefined, "101"] or "10100000000000000000000000000000000000000000000000000000000000000001000"
+        var bitmap = new ozone.intSet.BitmapArrayIntSet([8|0, undefined, 5|0], 0, 3);
+
+        expect(bitmap.min()).toBe(3);
+        expect(bitmap.max()).toBe(66);
+
+        // ["101" , "00000000000000000000000000000000"] or "00000000000000000000000000000000101"
+        var bitmap = new ozone.intSet.BitmapArrayIntSet([5|0, 0|0], 0, 3);
+
+        expect(bitmap.min()).toBe(0);
+        expect(bitmap.max()).toBe(2);
+    });
+
+    it("Does has()", function() {
+        // ["1"]
+        var bitmap = new ozone.intSet.BitmapArrayIntSet([1|0], 0, 1);
 
         expect(bitmap.has( 0)).toBe(true);
         expect(bitmap.has( 1)).toBe(false);
 
         // ["111000" , "101"] or "10100000000000000000000000000111000"
-        var bitmap = new ozone.intSet.BitmapArrayIntSet(5, 0, [56|0, 5|0]);
+        var bitmap = new ozone.intSet.BitmapArrayIntSet([56|0, 5|0], 0, 5);
 
         expect(bitmap.has( 0)).toBe(false);
         expect(bitmap.has( 1)).toBe(false);
@@ -356,7 +407,12 @@ describe("BitmapArrayIntSet tests", function() {
     });
 
     it("Implements offset correctly", function() {
-        var bitmap = new ozone.intSet.BitmapArrayIntSet(2, 3, [5|0]);
+        //  three words of zeroes, followed by "101"
+        var bitmap = new ozone.intSet.BitmapArrayIntSet([5|0], 3, 2);
+
+        expect(bitmap.min()).toBe(0);
+        expect(bitmap.max()).toBe(2);
+
         expect(bitmap.has( 0)).toBe(false);
         expect(bitmap.has( 96)).toBe(true);
         expect(bitmap.has( 97)).toBe(false);

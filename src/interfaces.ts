@@ -183,11 +183,11 @@ module ozone {
     /** An IntSet which stores its values as bits in 32-bit unsigned ints.   */
     export interface PackedIntSet extends IntSet {
 
-        /** Equals Math.floor(min()/32). */
-        minBits() : number;
+        /** Word which has the minimum true bit */
+        minWord() : number;
 
-        /** Equals Math.floor(max()/32). */
-        maxBits() : number;
+        /** Word which has the maximum true bit */
+        maxWord() : number;
 
         /** If true, the PackedIntSet methods are not just available, but preferred. */
         isPacked : boolean;
