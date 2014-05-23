@@ -64,6 +64,8 @@
 
 <h1>Counts of Summer Olympic Medals</h1>
 
+<p> Developed by Toby Baratta as a 2014 Grinnell College Externship project. </p>
+
 <div id = 'filter' class="menuBar">
     <div id="fieldMenu" class="menu">
     </div>
@@ -151,7 +153,8 @@ d3.text("../test/SummerOlympicMedallists1896to2008.csv", function(rawData) {
     var metaData = {
         fields: {
             Edition: { displayName: "Year" },
-            NOC:     { displayName: "Country" }
+            NOC:     { displayName: "Country" },
+            Medal:   { values:      ["Bronze", "Silver", "Gold"]}
         }
     };
 
