@@ -15,9 +15,15 @@ module ozone.intSet {
         /** Matches the API of other IntSet builders. */
         public static builder(min : number = 0, max: number = -1) : Reducer<number,IntSet> {
             var array : number[] = [];
+            var done = false;
             return (<Reducer<number,IntSet>> {
-                onItem: function(item : number) { array.push(item); },
-                onEnd:  function() { return new ArrayIndexIntSet(array)}
+                onItem: function(item : number) {
+                    if (done) {
+                        throw new Error("Builder being called multiple times.");
+                    }
+                    array.push(item);
+                },
+                onEnd:  function() { done = true; return new ArrayIndexIntSet(array)}
             });
         }
 
