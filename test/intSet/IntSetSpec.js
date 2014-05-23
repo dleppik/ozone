@@ -421,7 +421,7 @@ describe("BitmapArrayIntSet tests", function() {
     });
 });
 
-describe("General-purpose IntSets", function() {
+describe("IntSets", function() {
     var RangeIntSet = ozone.intSet.RangeIntSet;
     var ArrayIterator = ozone.intSet.OrderedArrayIterator;
     var unionOfIterators = ozone.intSet.unionOfIterators;
@@ -442,7 +442,7 @@ describe("General-purpose IntSets", function() {
         [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 ]
     ];
 
-    var intSetClasses = [ ozone.intSet.ArrayIndexIntSet, ozone.intSet.BitmapArrayIntSet ];
+
 
     var forEachArray = function(beforeElements, onEachElement, afterElements) {
         for (var i=0; i< arrays.length; i++) {
@@ -461,12 +461,12 @@ describe("General-purpose IntSets", function() {
         }
     };
 
-    var intSetForEachArray = function(withArrayAndIntSet) {
-        var builder;
+    var intSetForEachArray = function(intSetClass, withArrayAndIntSet) {
+        var builder = null;
         forEachArray(
-            function(array)          { builder = intSetClass.builder(); },
-            function(array, element) { builder.onItem(element); },
-            function(array)          { withArrayAndIntSet(array, builder.onEnd()); }
+            function(array)          { builder = intSetClass.builder();            },  // Before iterating
+            function(array, element) { builder.onItem(element);                    },  // For each item in the array
+            function(array)          { withArrayAndIntSet(array, builder.onEnd()); }   // After iterating
         );
     };
 
@@ -486,36 +486,40 @@ describe("General-purpose IntSets", function() {
         });
     });
 
-    for (var intSetClassIndex = 0; intSetClassIndex < intSetClasses.length; intSetClassIndex++) {
-        var intSetClass = intSetClasses[intSetClassIndex];
-        describe("Implementation "+intSetClassIndex+": "+intSetClass, function() {
-            it("Has a builder that produces something of the right size", function() {
+    var sharedBehaviorForIntSetClasses = function(intSetClass, intSetClassName) {
+        describe("(IntSet shared behavior)", function() {
+            it("Has a builder that produces something of the right size", function () {
                 var builder;
                 forEachArray(
-                    function() {
+                    function () {
                         builder = intSetClass.builder();
                         expect(typeof(builder)).toBe("object");
                     },
-                    function(a, element) { builder.onItem(element); },
-                    function(array)      { expect(builder.onEnd().size).toEqual(array.length); }
+                    function (a, element) {
+                        builder.onItem(element);
+                    },
+                    function (array) {
+                        expect(builder.onEnd().size).toEqual(array.length);
+                    }
                 );
             });
-            it("Reports min accurately", function() {
-                intSetForEachArray(function(array, intSet) {
-                    var expected = (array.length == 0) ?  -1  : array[0];
-                    expect(intSet.min()).toEqual(expected);
+            it("Reports min accurately", function () {
+                intSetForEachArray(intSetClass, function (array, intSet) {
+                    var expected = (array.length == 0) ? -1 : array[0];
+                    var actual = intSet.min();
+                    expect(actual).toEqual(expected);
                 });
             });
-            it("Reports max accurately", function() {
-                intSetForEachArray(function(array, intSet) {
-                    var expected = (array.length == 0) ?  -1  : array[array.length-1];
+            it("Reports max accurately", function () {
+                intSetForEachArray(intSetClass, function (array, intSet) {
+                    var expected = (array.length == 0) ? -1 : array[array.length - 1];
                     expect(intSet.max()).toEqual(expected);
                 });
             });
-            it("Reports 'get' accurately", function() {
-                intSetForEachArray(function(array, intSet) {
+            it("Reports 'get' accurately", function () {
+                intSetForEachArray(intSetClass, function (array, intSet) {
                     var element = 0;
-                    for (var arrayIndex=0; arrayIndex<array.length; arrayIndex++) {
+                    for (var arrayIndex = 0; arrayIndex < array.length; arrayIndex++) {
                         var nextInArray = array[arrayIndex];
                         for (; element < nextInArray; element++) {
                             expect(intSet.has(element)).toEqual(false);
@@ -523,14 +527,14 @@ describe("General-purpose IntSets", function() {
                         expect(intSet.has(element)).toEqual(true);
                         element++;
                     }
-                    for (; element < nextInArray+33; element++) {  // Check past next packed bits
+                    for (; element < nextInArray + 33; element++) {  // Check past next packed bits
                         expect(intSet.has(element)).toEqual(false);
                     }
                 });
             });
-            describe("Iterator", function() {
-                it("Increases monotonically", function() {
-                    intSetForEachArray(function(array, intSet) {
+            describe("Iterator", function () {
+                it("Increases monotonically", function () {
+                    intSetForEachArray(intSetClass, function (array, intSet) {
                         var it = intSet.iterator();
                         var previous = -1;
                         while (it.hasNext()) {
@@ -540,8 +544,8 @@ describe("General-purpose IntSets", function() {
                         }
                     });
                 });
-                it("Matches get", function() {
-                    intSetForEachArray(function(array, intSet) {
+                it("Matches get", function () {
+                    intSetForEachArray(intSetClass, function (array, intSet) {
                         var it = intSet.iterator();
                         while (it.hasNext()) {
                             var element = it.next();
@@ -549,8 +553,8 @@ describe("General-purpose IntSets", function() {
                         }
                     });
                 });
-                it("Matches size", function() {
-                    intSetForEachArray(function(array, intSet) {
+                it("Matches size", function () {
+                    intSetForEachArray(intSetClass, function (array, intSet) {
                         var it = intSet.iterator();
                         var count = 0;
                         while (it.hasNext()) {
@@ -560,11 +564,11 @@ describe("General-purpose IntSets", function() {
                         expect(count).toBe(intSet.size);
                     });
                 });
-                it("Skips properly", function() {
-                    intSetForEachArray(function(array, intSet) {
+                it("Skips properly", function () {
+                    intSetForEachArray(intSetClass, function (array, intSet) {
                         if (array.length > 0) {
                             var it = intSet.iterator();
-                            it.skipTo(intSet.min()-1);
+                            it.skipTo(intSet.min() - 1);
                             expect(it.next()).toBe(intSet.min());
 
                             it = intSet.iterator();
@@ -578,14 +582,14 @@ describe("General-purpose IntSets", function() {
                             }
 
                             it = intSet.iterator();
-                            it.skipTo(intSet.max()+1);
+                            it.skipTo(intSet.max() + 1);
                             expect(it.hasNext()).toBe(false);
 
                             if (array.length > 1) {
                                 it = intSet.iterator();
-                                var skipTo = intSet.max()-1;
+                                var skipTo = intSet.max() - 1;
                                 it.skipTo(skipTo);
-                                var expectedNext = (intSet.has(skipTo)) ?  skipTo  :  intSet.max();
+                                var expectedNext = (intSet.has(skipTo)) ? skipTo : intSet.max();
                                 expect(it.next()).toBe(expectedNext);
                             }
                         }
@@ -593,95 +597,95 @@ describe("General-purpose IntSets", function() {
                 });
             });
 
-            it("Has 'each' which matches the iterator", function() {
-                intSetForEachArray(function(array, intSet) {
+            it("Has 'each' which matches the iterator", function () {
+                intSetForEachArray(intSetClass, function (array, intSet) {
                     var it = intSet.iterator();
-                    intSet.each(function(element) {
+                    intSet.each(function (element) {
                         expect(element).toBe(it.next());
                     });
                     expect(it.hasNext()).toBe(false);
                 });
             });
 
-            it("Unions with a RangeIntSet with the same or wider range to produce a RangeIntSet", function() {
-                intSetForEachArray(function(array, intSet) {
+            it("Unions with a RangeIntSet with the same or wider range to produce a RangeIntSet", function () {
+                intSetForEachArray(intSetClass, function (array, intSet) {
                     var sameSize = RangeIntSet.fromTo(intSet.min(), intSet.max());
                     var sameSizeUnion = intSet.union(sameSize);
                     if (!sameSizeUnion.equals(sameSize)) {
-                        console.log("sameSizeUnion min: "+sameSizeUnion.min()+", max: "+sameSizeUnion.max()+
-                            ", size: "+sameSizeUnion.size+", equality: "+sameSizeUnion.equals(sameSize));
+                        console.log("sameSizeUnion min: " + sameSizeUnion.min() + ", max: " + sameSizeUnion.max() +
+                            ", size: " + sameSizeUnion.size + ", equality: " + sameSizeUnion.equals(sameSize));
                     }
                     expect(sameSizeUnion.equals(sameSize)).toBe(true);
                     expect(sameSizeUnion instanceof RangeIntSet).toBe(true);
 
-                    var bigger = RangeIntSet.fromTo(0, intSet.max()+1);
+                    var bigger = RangeIntSet.fromTo(0, intSet.max() + 1);
                     var biggerUnion = intSet.union(bigger);
                     expect(biggerUnion.equals(bigger)).toBe(true);
                     expect(biggerUnion instanceof RangeIntSet).toBe(true);
                 });
             });
 
-            it("Unions with a partially overlapping or smaller RangeIntSet properly", function() {
-                intSetForEachArray(function(array, intSet) {
+            it("Unions with a partially overlapping or smaller RangeIntSet properly", function () {
+                intSetForEachArray(intSetClass, function (array, intSet) {
                     if (array.length === 0) {
                         return;
                     }
                     var r1 = RangeIntSet.fromTo(0, intSet.min());
                     expect(intSet.union(r1).equals(unionOfIterators(r1.iterator(), intSet.iterator()))).toBe(true);
 
-                    var r2 = RangeIntSet.fromTo(intSet.max(), intSet.max()+2);
+                    var r2 = RangeIntSet.fromTo(intSet.max(), intSet.max() + 2);
                     expect(intSet.union(r2).equals(unionOfIterators(r2.iterator(), intSet.iterator()))).toBe(true);
 
                     if (intSet.size > 1) {
-                        var r3 = RangeIntSet.fromTo(intSet.min()+1, intSet.max());
+                        var r3 = RangeIntSet.fromTo(intSet.min() + 1, intSet.max());
                         expect(intSet.union(r3).equals(unionOfIterators(r3.iterator(), intSet.iterator()))).toBe(true);
                     }
                     if (intSet.size > 2) {
-                        var r4 = RangeIntSet.fromTo(intSet.min()+1, intSet.max()-1);
+                        var r4 = RangeIntSet.fromTo(intSet.min() + 1, intSet.max() - 1);
                         expect(intSet.union(r4).equals(unionOfIterators(r4.iterator(), intSet.iterator()))).toBe(true);
                     }
                 });
             });
 
-            it("Intersects with a RangeIntSet with the same or wider range to produce itself or an equivalent intSet", function() {
-                intSetForEachArray(function(array, intSet) {
+            it("Intersects with a RangeIntSet with the same or wider range to produce itself or an equivalent intSet", function () {
+                intSetForEachArray(intSetClass, function (array, intSet) {
                     if (array.length === 0) {
                         return;
                     }
                     var r1 = RangeIntSet.fromTo(intSet.min(), intSet.max());
                     expect(intSet.intersection(r1).equals(intersectionOfOrderedIterators(r1.iterator(), intSet.iterator()))).toBe(true);
 
-                    var r2 = RangeIntSet.fromTo(0, intSet.max()+1);
+                    var r2 = RangeIntSet.fromTo(0, intSet.max() + 1);
                     expect(intSet.intersection(r2).equals(intersectionOfOrderedIterators(r2.iterator(), intSet.iterator()))).toBe(true);
 
                 });
             });
 
-            it("Intersects with a partially overlapping or smaller RangeIntSet to produce a truncated subset", function() {
-                intSetForEachArray(function(array, intSet) {
+            it("Intersects with a partially overlapping or smaller RangeIntSet to produce a truncated subset", function () {
+                intSetForEachArray(intSetClass, function (array, intSet) {
                     if (array.length === 0) {
                         return;
                     }
                     var r1 = RangeIntSet.fromTo(0, intSet.min());
                     expect(intSet.intersection(r1).equals(intersectionOfOrderedIterators(r1.iterator(), intSet.iterator()))).toBe(true);
 
-                    var r2 = RangeIntSet.fromTo(intSet.max(), intSet.max()+2);
+                    var r2 = RangeIntSet.fromTo(intSet.max(), intSet.max() + 2);
                     expect(intSet.intersection(r2).equals(intersectionOfOrderedIterators(r2.iterator(), intSet.iterator()))).toBe(true);
 
                     if (intSet.size > 1) {
-                        var r3 = RangeIntSet.fromTo(intSet.min()+1, intSet.max());
+                        var r3 = RangeIntSet.fromTo(intSet.min() + 1, intSet.max());
                         expect(intSet.intersection(r3).equals(intersectionOfOrderedIterators(r3.iterator(), intSet.iterator()))).toBe(true);
                     }
                     if (intSet.size > 2) {
-                        var r4 = RangeIntSet.fromTo(intSet.min()+1, intSet.max()-1);
+                        var r4 = RangeIntSet.fromTo(intSet.min() + 1, intSet.max() - 1);
                         expect(intSet.intersection(r4).equals(intersectionOfOrderedIterators(r4.iterator(), intSet.iterator()))).toBe(true);
                     }
                 });
             });
 
-            it("Does a trivial union properly", function() {  // Less trivial cases are handled below
-                var a1 = [    3,  5,   9 ];
-                var a2 = [ 2,    5, 8    ];
+            it("Does a trivial union properly", function () {  // Less trivial cases are handled below
+                var a1 = [    3, 5, 9 ];
+                var a2 = [ 2, 5, 8    ];
                 var au = [ 2, 3, 5, 8, 9 ];
 
                 var set1 = intSetClass.fromArray(a1);
@@ -696,9 +700,9 @@ describe("General-purpose IntSets", function() {
             });
 
 
-            it("Does a trivial intersection properly", function() {  // Less trivial cases are handled below
-                var a1 = [    3,  5, 8, 9 ];
-                var a2 = [ 2,     5, 8    ];
+            it("Does a trivial intersection properly", function () {  // Less trivial cases are handled below
+                var a1 = [    3, 5, 8, 9 ];
+                var a2 = [ 2, 5, 8    ];
                 var ai = [        5, 8];
 
                 var set1 = intSetClass.fromArray(a1);
@@ -710,36 +714,47 @@ describe("General-purpose IntSets", function() {
                 expect(set1.intersection(set2)).toEqual(intSetClass.fromArray(ai));
                 expect(set2.intersection(set1)).toEqual(intSetClass.fromArray(ai));
             });
-
-            for (var intSetClassIndex1 = 0; intSetClassIndex1 < intSetClasses.length; intSetClassIndex1++) {
-                var intSetClass1 = intSetClasses[intSetClassIndex1];
-                describe("Interaction with "+intSetClassIndex1+" "+intSetClass1, function() {
-
-                    var forEachArrayAndIntSet = function (onEach) {
-                        intSetForEachArray(function(array0, intSet0) {
-                            for (var index1=0; index1< arrays.length; index1++) {
-                                var array1 = arrays[index1];
-                                var intSet1 = intSetClass1.fromArray(array1);
-                                onEach(array0, intSet0, array1, intSet1);
-                            }
-                        });
-                    };
-
-                    it("Intersects correctly", function() {
-                        forEachArrayAndIntSet(function(array0, intSet0, array1, intSet1) {
-                            var expected = intersectionOfOrderedIterators(intSet0.iterator(), intSet1.iterator());
-                            expect(intSet0.intersection(intSet1).equals(expected)).toBe(true);
-                        });
-                    });
-
-                    it("Unions correctly", function() {
-                        forEachArrayAndIntSet(function(array0, intSet0, array1, intSet1) {
-                            var expected = unionOfIterators(intSet0.iterator(), intSet1.iterator());
-                            expect(intSet0.union(intSet1).equals(expected)).toBe(true);
-                        });
-                    });
-                });
-            }
         });
-    }
+    };
+
+    var behaviorAcrossIntSetClasses = function(intSetClass0, intSetClassName0, intSetClass1, intSetClassName1) {
+        describe("Operations on "+intSetClassName0+" with "+intSetClassName1, function() {
+
+            it("intersect() is equivalent to ozone.intSet.intersectionOfOrderedIterators()", function() {
+                intSetForEachArray(intSetClass0.builder(), function(array0, intSet0) {
+                    for (var index1=0; index1< arrays.length; index1++) {
+                        var array1 = arrays[index1];
+                        var intSet1 = intSetClass1.fromArray(array1);
+
+                        var expected = intersectionOfOrderedIterators(intSet0.iterator(), intSet1.iterator());
+                        expect(  intSet0.intersection(intSet1).equals(expected)  ).toBe(true);
+                    }
+                });
+            });
+
+            it("union() is equivalent to ozone.intSet.unionOfIterators()", function() {
+                intSetForEachArray(intSetClass0.builder(), function(array0, intSet0) {
+                    for (var index1 = 0; index1 < arrays.length; index1++) {
+                        var array1 = arrays[index1];
+                        var intSet1 = intSetClass1.fromArray(array1);
+
+                        var expected = unionOfIterators(intSet0.iterator(), intSet1.iterator());
+                        expect(intSet0.union(intSet1).equals(expected)).toBe(true);
+                    }
+                });
+            });
+        });
+    };
+
+    describe("ArrayIndexBitSet", function() {
+        sharedBehaviorForIntSetClasses(ozone.intSet.ArrayIndexIntSet, "ArrayIndexIntSet");
+    });
+
+    describe("BitmapArrayIntSet", function() {
+        sharedBehaviorForIntSetClasses(ozone.intSet.BitmapArrayIntSet, "BitmapArrayIntSet");
+
+        behaviorAcrossIntSetClasses(
+            ozone.intSet.ArrayIndexIntSet, "ArrayIndexIntSet",
+            ozone.intSet.BitmapArrayIntSet, "BitmapArrayIntSet");
+    });
 });
