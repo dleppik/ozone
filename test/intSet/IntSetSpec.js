@@ -392,15 +392,16 @@ describe("BitmapArrayIntSet tests", function() {
         expect(bitmap.has( 1)).toBe(false);
 
         // ["111000" , "101"] or "10100000000000000000000000000111000"
-        var bitmap = new ozone.intSet.BitmapArrayIntSet([56|0, 5|0], 0, 5);
+        var bitmap = new ozone.intSet.BitmapArrayIntSet([56|0, undefined, 5|0], 0, 5);
 
         expect(bitmap.has( 0)).toBe(false);
         expect(bitmap.has( 1)).toBe(false);
         expect(bitmap.has( 3)).toBe(true);
         expect(bitmap.has( 31)).toBe(false);
-        expect(bitmap.has( 32)).toBe(true);
-        expect(bitmap.has( 33)).toBe(false);
-        expect(bitmap.has( 34)).toBe(true);
+        expect(bitmap.has( 40)).toBe(false);
+        expect(bitmap.has( 64)).toBe(true);
+        expect(bitmap.has( 65)).toBe(false);
+        expect(bitmap.has( 66)).toBe(true);
         expect(bitmap.has( 63)).toBe(false);
         expect(bitmap.has( 64)).toBe(false);
         expect(bitmap.has( 200 )).toBe( false );

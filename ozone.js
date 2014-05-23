@@ -845,6 +845,7 @@ var ozone;
             function singleBitMask(bitPos) {
                 return 1 << (bitPos % 32);
             }
+            bits.singleBitMask = singleBitMask;
 
             /** Return a number with the bit at num%32 set to true. */
             function setBit(num, word) {
@@ -1304,9 +1305,6 @@ var ozone;
                 var array = [];
                 var onesCounter = 0;
                 var isFirst = true;
-
-                //var minValue : number = -1;
-                //var maxValue : number = -1;
                 var numOfLeadingWords = 0;
                 var currentWordIndex = 0;
                 var currentWord = currentWord | 0;
@@ -1323,7 +1321,6 @@ var ozone;
                                 // The index of the word which the first set bit is in is the same as the number of words
                                 // which are filled with leading zeroes.
                                 numOfLeadingWords = intSet.bits.inWord(item);
-                                //minValue = item;
                             } else {
                                 array[currentWordIndex] = currentWord;
                                 currentWord = 0;
@@ -1334,14 +1331,12 @@ var ozone;
                         onesCounter++;
                         currentWord = intSet.bits.setBit(currentWord, intSet.bits.offset(item));
                         isFirst = false;
-                        //maxValue = item;
                     },
                     onEnd: function () {
                         if (onesCounter > 0) {
                             array[currentWordIndex] = currentWord;
                         }
                         return new BitmapArrayIntSet(array, numOfLeadingWords, onesCounter);
-                        //return new BitmapArrayIntSet(array, numOfLeadingWords,onesCounter, minValue, maxValue);
                     }
                 };
             };
@@ -1378,12 +1373,20 @@ var ozone;
 
             /** Iterate over all "true" elements in order. */
             BitmapArrayIntSet.prototype.each = function (action) {
-                return this.notWritten();
+                for (var i = 0; i < this.words.length; i++) {
+                    if (this.words[i] != null || this.words[i] != 0) {
+                        for (var j = 0; j < 32; j++) {
+                            if (this.words[i] & intSet.bits.singleBitMask(j)) {
+                                action(i * 32 + j);
+                            }
+                        }
+                    }
+                }
             };
 
             /** Iterate over all "true" elements in order. */
             BitmapArrayIntSet.prototype.iterator = function () {
-                return this.notWritten();
+                return new OrderedBitmapArrayIterator(this.words);
             };
 
             /** Returns an IntSet containing only the elements that are found in both IntSets. */
@@ -1407,11 +1410,45 @@ var ozone;
 
             /** Equals Math.floor(min()/32). */
             BitmapArrayIntSet.prototype.maxWord = function () {
-                return this.notWritten();
+                return intSet.bits.inWord(this.maxValue);
             };
             return BitmapArrayIntSet;
         })();
         intSet.BitmapArrayIntSet = BitmapArrayIntSet;
+
+        var OrderedBitmapArrayIterator = (function () {
+            function OrderedBitmapArrayIterator(words) {
+                this.words = words;
+                this.nextBit = 0;
+                this.lastBit = this.words.length * 32 - 1;
+            }
+            OrderedBitmapArrayIterator.prototype.hasNext = function () {
+                return this.nextBit <= this.lastBit;
+            };
+
+            OrderedBitmapArrayIterator.prototype.next = function () {
+                var word = this.words[intSet.bits.inWord(this.nextBit)];
+                var result = -1;
+
+                while (this.hasNext() && result < 0) {
+                    if (word) {
+                        if (word & intSet.bits.singleBitMask(this.nextBit)) {
+                            result = this.nextBit;
+                        }
+                        this.nextBit++;
+                    } else {
+                        this.nextBit = (intSet.bits.inWord(this.nextBit) + 1) * 32;
+                    }
+                }
+                return result;
+            };
+
+            OrderedBitmapArrayIterator.prototype.skipTo = function (item) {
+                this.nextBit = item;
+            };
+            return OrderedBitmapArrayIterator;
+        })();
+        intSet.OrderedBitmapArrayIterator = OrderedBitmapArrayIterator;
     })(ozone.intSet || (ozone.intSet = {}));
     var intSet = ozone.intSet;
 })(ozone || (ozone = {}));

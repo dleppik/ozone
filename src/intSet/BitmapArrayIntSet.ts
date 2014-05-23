@@ -16,8 +16,6 @@ module ozone.intSet {
             var array : number[] = [];
             var onesCounter : number = 0;
             var isFirst : boolean = true;
-            //var minValue : number = -1;
-            //var maxValue : number = -1;
             var numOfLeadingWords : number = 0;
             var currentWordIndex : number = 0;
             var currentWord : number = currentWord | 0; // This is not just a JIT hint:  clears the high bits
@@ -34,7 +32,6 @@ module ozone.intSet {
                             // The index of the word which the first set bit is in is the same as the number of words
                             // which are filled with leading zeroes.
                             numOfLeadingWords = bits.inWord(item);
-                            //minValue = item;
                         }
                         else {
                             array[currentWordIndex] = currentWord;
@@ -46,7 +43,6 @@ module ozone.intSet {
                     onesCounter++;
                     currentWord = bits.setBit(currentWord, bits.offset(item));
                     isFirst = false;
-                    //maxValue = item;
 
                 },
                 onEnd:  function() {
@@ -54,7 +50,6 @@ module ozone.intSet {
                         array[currentWordIndex] = currentWord;
                     }
                     return new BitmapArrayIntSet(array, numOfLeadingWords,onesCounter);
-                    //return new BitmapArrayIntSet(array, numOfLeadingWords,onesCounter, minValue, maxValue);
                 }
             });
 
@@ -81,14 +76,14 @@ module ozone.intSet {
             }
             else  {
                 var currentBit : number;
-                for (var i : number = 0; i < words.length; i++) {
+                for (var i = 0; i < words.length; i++) {
                     currentBit = bits.minBit(words[i]);
                     if (currentBit >= 0) {
                         this.minValue = currentBit + i*32;
                         break;
                     }
                 }
-                for (var i : number = words.length-1; i >= 0; i--) {
+                for (var i = words.length-1; i >= 0; i--) {
                     currentBit = bits.maxBit(words[i]);
                     if (currentBit >= 0) {
                         this.maxValue = currentBit + i*32;
@@ -131,13 +126,21 @@ module ozone.intSet {
         }
 
         /** Iterate over all "true" elements in order. */
-        each(action : (index : number) => void) {
-            return this.notWritten();  // TODO
+        each(action : (index : number) => void) : void {
+            for(var i = 0; i < this.words.length; i++) {
+                if (this.words[i] != null || this.words[i] != 0) {
+                    for (var j = 0; j < 32; j++) {
+                        if (this.words[i] & bits.singleBitMask(j)) {
+                            action(i*32 + j);
+                        }
+                    }
+                }
+            }
         }
 
         /** Iterate over all "true" elements in order. */
         iterator() : OrderedIterator<number> {
-            return this.notWritten();  // TODO
+            return new OrderedBitmapArrayIterator<number>(this.words);
         }
 
         /** Returns an IntSet containing only the elements that are found in both IntSets. */
@@ -161,9 +164,42 @@ module ozone.intSet {
 
         /** Equals Math.floor(min()/32). */
         maxWord() : number {
-            return this.notWritten();  // TODO
+            return bits.inWord(this.maxValue);
         }
 
         public isPacked = true;
+    }
+
+    export class OrderedBitmapArrayIterator<number> implements OrderedIterator<number> {
+        constructor( private words : number[] ) {}
+
+        private nextBit = 0;
+        private lastBit = this.words.length * 32 - 1;
+
+        hasNext() : boolean {
+            return this.nextBit <= this.lastBit;
+        }
+
+        next() : number {
+            var word : number = this.words[bits.inWord(this.nextBit)];
+            var result : number = -1;  // NOTE: should I be returning -1 or undefined?
+
+            while (this.hasNext() && result < 0) {
+                if (word) {
+                    if (word & bits.singleBitMask(this.nextBit)) {
+                        result = this.nextBit;
+                    }
+                    this.nextBit++;
+                }
+                else {
+                    this.nextBit = (bits.inWord(this.nextBit) + 1) * 32;
+                }
+            }
+            return result;
+        }
+
+        skipTo(item : number) {
+            this.nextBit = item;
+        }
     }
 }

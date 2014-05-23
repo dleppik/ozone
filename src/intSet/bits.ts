@@ -14,7 +14,7 @@
  */
 module ozone.intSet.bits {
 
-    function singleBitMask(bitPos : number) : number {
+    export function singleBitMask(bitPos : number) : number {
         return 1 << (bitPos % 32);
     }
 
@@ -22,7 +22,8 @@ module ozone.intSet.bits {
     export function setBit(num : number, word : number) : number {
         word = word | 0;  // JIT hint, same one used by asm.js to signify a bitwise int.  Also clears high bits.
         var mask = singleBitMask(num);
-        var result = 0; result = word | mask;
+        var result = 0;
+        result = word | mask;
         return result;
     }
 
