@@ -22,26 +22,27 @@ module ozone.intSet {
 
             return (<Reducer<number,IntSet>> {
                 onItem: function(item : number) {
-                    var thisWordIndex = bits.inWord(item);
+                    var thisWordIndex = bits.inWord(item) - numOfLeadingWords;
                     if (thisWordIndex < currentWordIndex){
                         throw new Error("BitmapArrayIntSet.builder() requires a sorted array to parse.");
-                        //Note: is there a better way to refer to the current method?
+                        //******* Note: is there a better way to refer to the current method?
                     }
                     if (thisWordIndex > currentWordIndex) {
                         if (isFirst) {
                             // The index of the word which the first set bit is in is the same as the number of words
                             // which are filled with leading zeroes.
                             numOfLeadingWords = bits.inWord(item);
+                            currentWordIndex = thisWordIndex - numOfLeadingWords;
                         }
                         else {
                             array[currentWordIndex] = currentWord;
                             currentWord = 0;
                             currentWord = currentWord | 0; // Needed to clear the high bits?
+                            currentWordIndex = thisWordIndex;
                         }
-                        currentWordIndex = thisWordIndex;
                     }
                     onesCounter++;
-                    currentWord = bits.setBit(currentWord, bits.offset(item));
+                    currentWord = bits.setBit(bits.offset(item), currentWord);
                     isFirst = false;
 
                 },
@@ -79,14 +80,14 @@ module ozone.intSet {
                 for (var i = 0; i < words.length; i++) {
                     currentBit = bits.minBit(words[i]);
                     if (currentBit >= 0) {
-                        this.minValue = currentBit + i*32;
+                        this.minValue = currentBit + (i + this.wordOffset)*32;
                         break;
                     }
                 }
                 for (var i = words.length-1; i >= 0; i--) {
                     currentBit = bits.maxBit(words[i]);
                     if (currentBit >= 0) {
-                        this.maxValue = currentBit + i*32;
+                        this.maxValue = currentBit + (i + this.wordOffset)*32;
                         break;
                     }
                 }
@@ -140,7 +141,7 @@ module ozone.intSet {
 
         /** Iterate over all "true" elements in order. */
         iterator() : OrderedIterator<number> {
-            return new OrderedBitmapArrayIterator<number>(this.words);
+            return new OrderedBitmapArrayWithOffsetIterator<number>(this.words, this.maxValue, this.wordOffset);
         }
 
         /** Returns an IntSet containing only the elements that are found in both IntSets. */
@@ -170,21 +171,28 @@ module ozone.intSet {
         public isPacked = true;
     }
 
+    /**
+     * Iterates over all the set bits in order.  This class does not support an index offset.
+     */
     export class OrderedBitmapArrayIterator<number> implements OrderedIterator<number> {
-        constructor( private words : number[] ) {}
+        constructor( private words : number[], private maxBit : number ) {}
 
         private nextBit = 0;
-        private lastBit = this.words.length * 32 - 1;
 
         hasNext() : boolean {
-            return this.nextBit <= this.lastBit;
+            return this.nextBit <= this.maxBit;
         }
 
+        /**
+         * Returns the index of the next set bit.
+         *
+         * @returns {number}
+         */
         next() : number {
             var word : number = this.words[bits.inWord(this.nextBit)];
-            var result : number = -1;  // NOTE: should I be returning -1 or undefined?
+            var result : number;
 
-            while (this.hasNext() && result < 0) {
+            while (this.hasNext() && typeof(result) === 'undefined') {
                 if (word) {
                     if (word & bits.singleBitMask(this.nextBit)) {
                         result = this.nextBit;
@@ -202,4 +210,55 @@ module ozone.intSet {
             this.nextBit = item;
         }
     }
+
+
+    /**
+     * Iterates over all the set bits in order.  This class does support an index offset.
+     */
+    export class OrderedBitmapArrayWithOffsetIterator<number> extends OrderedBitmapArrayIterator<number>{
+
+        private bitOffset : number;
+
+        constructor( words : number[], maxBit : number, wordOffset : number ) {
+            this.bitOffset = wordOffset * 32;
+            super(words, maxBit - this.bitOffset);
+        }
+
+        next() : number {
+            return super.next() + this.bitOffset;
+        }
+
+        skipTo(item : number) {
+            if (item >= this.bitOffset) {
+                super.skipTo(item - this.bitOffset);
+            }
+            else {
+                super.skipTo(0);
+            }
+        }
+    }
+
+
+    export class OrderedWordIterator<number> implements OrderedIterator<number> {
+        constructor( private words : number[]) {}
+
+        private nextWord = 0;
+
+        hasNext() : boolean {
+            return this.nextWord < this.words.length;
+        }
+
+        next() : number {
+            var result : number = this.words[this.nextWord++];
+            if (typeof(result) === 'undefined') {
+                result = 0;
+            }
+             return result;
+        }
+
+        skipTo(item : number) {
+            this.nextWord = item;
+        }
+    }
+
 }

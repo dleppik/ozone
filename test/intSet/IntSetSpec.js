@@ -391,7 +391,7 @@ describe("BitmapArrayIntSet tests", function() {
         expect(bitmap.has( 0)).toBe(true);
         expect(bitmap.has( 1)).toBe(false);
 
-        // ["111000" , "101"] or "10100000000000000000000000000111000"
+        // ["111000" , , "101"] or "10100000000000000000000000000(32 zeroes)111000"
         var bitmap = new ozone.intSet.BitmapArrayIntSet([56|0, undefined, 5|0], 0, 5);
 
         expect(bitmap.has( 0)).toBe(false);
@@ -399,11 +399,10 @@ describe("BitmapArrayIntSet tests", function() {
         expect(bitmap.has( 3)).toBe(true);
         expect(bitmap.has( 31)).toBe(false);
         expect(bitmap.has( 40)).toBe(false);
+        expect(bitmap.has( 63)).toBe(false);
         expect(bitmap.has( 64)).toBe(true);
         expect(bitmap.has( 65)).toBe(false);
         expect(bitmap.has( 66)).toBe(true);
-        expect(bitmap.has( 63)).toBe(false);
-        expect(bitmap.has( 64)).toBe(false);
         expect(bitmap.has( 200 )).toBe( false );
     });
 
@@ -411,13 +410,19 @@ describe("BitmapArrayIntSet tests", function() {
         //  three words of zeroes, followed by "101"
         var bitmap = new ozone.intSet.BitmapArrayIntSet([5|0], 3, 2);
 
-        expect(bitmap.min()).toBe(0);
-        expect(bitmap.max()).toBe(2);
+        expect(bitmap.min()).toBe(96);
+        expect(bitmap.max()).toBe(98);
 
         expect(bitmap.has( 0)).toBe(false);
         expect(bitmap.has( 96)).toBe(true);
         expect(bitmap.has( 97)).toBe(false);
 
+    });
+
+    it("Creates an iterator", function() {
+        // ["00000000000000000000000000000000" , "101"] or "10100000000000000000000000000000000"
+        var bitmap = new ozone.intSet.BitmapArrayIntSet([0|0, 5|0], 0, 3);
+        expect(typeof (bitmap.iterator())).toBe("object");
     });
 });
 
@@ -516,7 +521,7 @@ describe("IntSets", function() {
                     expect(intSet.max()).toEqual(expected);
                 });
             });
-            it("Reports 'get' accurately", function () {
+            it("Reports 'has' accurately", function () {
                 intSetForEachArray(intSetClass, function (array, intSet) {
                     var element = 0;
                     for (var arrayIndex = 0; arrayIndex < array.length; arrayIndex++) {
@@ -544,7 +549,7 @@ describe("IntSets", function() {
                         }
                     });
                 });
-                it("Matches get", function () {
+                it("Matches has", function () {
                     intSetForEachArray(intSetClass, function (array, intSet) {
                         var it = intSet.iterator();
                         while (it.hasNext()) {

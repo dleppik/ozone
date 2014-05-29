@@ -251,9 +251,9 @@ var ozone;
 
                 if (newBuilder === null && buildThisField) {
                     if (sourceFieldIsUnary && sourceField.distinctValueEstimate() > 500) {
-                        newBuilder = ozone.columnStore.UnIndexedField.builder(sourceField, fieldParams);
+                        newBuilder = columnStore.UnIndexedField.builder(sourceField, fieldParams);
                     } else {
-                        newBuilder = ozone.columnStore.IndexedField.builder(sourceField, fieldParams);
+                        newBuilder = columnStore.IndexedField.builder(sourceField, fieldParams);
                     }
                 }
                 if (newBuilder !== null) {
@@ -279,7 +279,7 @@ var ozone;
                     resultFields.push(builder.onEnd());
                 }
             }
-            return new ozone.columnStore.ColumnStore(length, resultFields);
+            return new columnStore.ColumnStore(length, resultFields);
         }
         columnStore.buildFromStore = buildFromStore;
     })(ozone.columnStore || (ozone.columnStore = {}));
@@ -461,7 +461,7 @@ var ozone;
             };
 
             ColumnStore.prototype.filter = function (fieldNameOrFilter, value) {
-                return ozone.columnStore.filterColumnStore(this, this, ozone.columnStore.createFilter(this, fieldNameOrFilter, value));
+                return columnStore.filterColumnStore(this, this, columnStore.createFilter(this, fieldNameOrFilter, value));
             };
 
             ColumnStore.prototype.filters = function () {
@@ -477,7 +477,7 @@ var ozone;
 
             ColumnStore.prototype.partition = function (fieldAny) {
                 var key = (typeof fieldAny === 'string') ? fieldAny : fieldAny.identifier;
-                return ozone.columnStore.partitionColumnStore(this, this.field(key));
+                return columnStore.partitionColumnStore(this, this.field(key));
             };
 
             ColumnStore.prototype.eachRow = function (rowAction) {
@@ -543,7 +543,7 @@ var ozone;
                 var filterTarget = filtersForIteration;
                 if (newFilter instanceof ozone.ValueFilter) {
                     var fieldId = newFilter.fieldDescriptor.identifier;
-                    if (source.field(fieldId) instanceof ozone.columnStore.IndexedField) {
+                    if (source.field(fieldId) instanceof columnStore.IndexedField) {
                         filterTarget = intSetFilters;
                     }
                 }
@@ -602,10 +602,10 @@ var ozone;
             }
 
             var indexedField;
-            if (field instanceof ozone.columnStore.IndexedField) {
+            if (field instanceof columnStore.IndexedField) {
                 indexedField = field;
             } else {
-                var indexedFieldBuilder = ozone.columnStore.IndexedField.builder(field);
+                var indexedFieldBuilder = columnStore.IndexedField.builder(field);
                 store.eachRow(function (row) {
                     indexedFieldBuilder.onItem({ index: row, rowToken: row });
                 });
@@ -845,6 +845,7 @@ var ozone;
             function singleBitMask(bitPos) {
                 return 1 << (bitPos % 32);
             }
+            bits.singleBitMask = singleBitMask;
 
             /** Return a number with the bit at num%32 set to true. */
             function setBit(num, word) {
@@ -998,7 +999,7 @@ var ozone;
         function builder(min, max) {
             if (typeof min === "undefined") { min = 0; }
             if (typeof max === "undefined") { max = -1; }
-            return ozone.intSet.ArrayIndexIntSet.builder();
+            return intSet.ArrayIndexIntSet.builder();
         }
         intSet.builder = builder;
 
@@ -1072,7 +1073,7 @@ var ozone;
 
             // Cycle through the iterators round-robbin style, skipping to the highest element so far.  When we have N
             // iterators in a row giving us the same value, that element goes into the builder.
-            var builder = ozone.intSet.ArrayIndexIntSet.builder();
+            var builder = intSet.ArrayIndexIntSet.builder();
             var currentIteratorIndex = 0;
             var numIteratorsWithCurrentValue = 1;
             var previousValue = NaN;
@@ -1165,7 +1166,7 @@ var ozone;
             };
 
             ArrayIndexIntSet.prototype.has = function (index) {
-                return ozone.intSet.search(index, this.indexes, 0, this.indexes.length - 1) >= 0;
+                return intSet.search(index, this.indexes, 0, this.indexes.length - 1) >= 0;
             };
 
             ArrayIndexIntSet.prototype.min = function () {
@@ -1190,7 +1191,7 @@ var ozone;
                 if (set === this) {
                     return true;
                 }
-                if (set instanceof ozone.intSet.RangeIntSet) {
+                if (set instanceof intSet.RangeIntSet) {
                     return set.equals(this);
                 }
                 if (this.size !== set.size || this.min() !== set.min() || this.max() !== set.max()) {
@@ -1218,14 +1219,14 @@ var ozone;
                 if (set.size === 0) {
                     return this;
                 }
-                if (set instanceof ozone.intSet.RangeIntSet && set.min() <= this.min() && set.max() >= this.max()) {
+                if (set instanceof intSet.RangeIntSet && set.min() <= this.min() && set.max() >= this.max()) {
                     return set;
                 }
-                return ozone.intSet.unionOfIterators(this.iterator(), set.iterator());
+                return intSet.unionOfIterators(this.iterator(), set.iterator());
             };
 
             ArrayIndexIntSet.prototype.intersection = function (set) {
-                return ozone.intSet.intersectionOfOrderedIterators(this.iterator(), set.iterator());
+                return intSet.intersectionOfOrderedIterators(this.iterator(), set.iterator());
             };
             return ArrayIndexIntSet;
         })();
@@ -1249,7 +1250,7 @@ var ozone;
                 if ((!this.hasNext()) || item <= this.array[this.nextIndex]) {
                     return;
                 }
-                var searchIndex = ozone.intSet.search(item, this.array, this.nextIndex, this.array.length);
+                var searchIndex = intSet.search(item, this.array, this.nextIndex, this.array.length);
                 this.nextIndex = (searchIndex < 0) ? ~searchIndex : searchIndex;
             };
             return OrderedArrayIterator;
@@ -1287,16 +1288,16 @@ var ozone;
                 } else {
                     var currentBit;
                     for (var i = 0; i < words.length; i++) {
-                        currentBit = ozone.intSet.bits.minBit(words[i]);
+                        currentBit = intSet.bits.minBit(words[i]);
                         if (currentBit >= 0) {
-                            this.minValue = currentBit + i * 32;
+                            this.minValue = currentBit + (i + this.wordOffset) * 32;
                             break;
                         }
                     }
                     for (var i = words.length - 1; i >= 0; i--) {
-                        currentBit = ozone.intSet.bits.maxBit(words[i]);
+                        currentBit = intSet.bits.maxBit(words[i]);
                         if (currentBit >= 0) {
-                            this.maxValue = currentBit + i * 32;
+                            this.maxValue = currentBit + (i + this.wordOffset) * 32;
                             break;
                         }
                     }
@@ -1309,44 +1310,39 @@ var ozone;
                 var array = [];
                 var onesCounter = 0;
                 var isFirst = true;
-
-                //var minValue : number = -1;
-                //var maxValue : number = -1;
                 var numOfLeadingWords = 0;
                 var currentWordIndex = 0;
                 var currentWord = currentWord | 0;
 
                 return {
                     onItem: function (item) {
-                        var thisWordIndex = ozone.intSet.bits.inWord(item);
+                        var thisWordIndex = intSet.bits.inWord(item) - numOfLeadingWords;
                         if (thisWordIndex < currentWordIndex) {
                             throw new Error("BitmapArrayIntSet.builder() requires a sorted array to parse.");
-                            //Note: is there a better way to refer to the current method?
+                            //******* Note: is there a better way to refer to the current method?
                         }
                         if (thisWordIndex > currentWordIndex) {
                             if (isFirst) {
                                 // The index of the word which the first set bit is in is the same as the number of words
                                 // which are filled with leading zeroes.
-                                numOfLeadingWords = ozone.intSet.bits.inWord(item);
-                                //minValue = item;
+                                numOfLeadingWords = intSet.bits.inWord(item);
+                                currentWordIndex = thisWordIndex - numOfLeadingWords;
                             } else {
                                 array[currentWordIndex] = currentWord;
                                 currentWord = 0;
                                 currentWord = currentWord | 0; // Needed to clear the high bits?
+                                currentWordIndex = thisWordIndex;
                             }
-                            currentWordIndex = thisWordIndex;
                         }
                         onesCounter++;
-                        currentWord = ozone.intSet.bits.setBit(currentWord, ozone.intSet.bits.offset(item));
+                        currentWord = intSet.bits.setBit(intSet.bits.offset(item), currentWord);
                         isFirst = false;
-                        //maxValue = item;
                     },
                     onEnd: function () {
                         if (onesCounter > 0) {
                             array[currentWordIndex] = currentWord;
                         }
                         return new BitmapArrayIntSet(array, numOfLeadingWords, onesCounter);
-                        //return new BitmapArrayIntSet(array, numOfLeadingWords,onesCounter, minValue, maxValue);
                     }
                 };
             };
@@ -1360,7 +1356,7 @@ var ozone;
                 if (indexOffset < 0) {
                     return false;
                 }
-                return ozone.intSet.bits.hasBit(ozone.intSet.bits.offset(indexOffset), this.words[ozone.intSet.bits.inWord(indexOffset)]);
+                return intSet.bits.hasBit(intSet.bits.offset(indexOffset), this.words[intSet.bits.inWord(indexOffset)]);
             };
 
             /**
@@ -1383,12 +1379,20 @@ var ozone;
 
             /** Iterate over all "true" elements in order. */
             BitmapArrayIntSet.prototype.each = function (action) {
-                return this.notWritten();
+                for (var i = 0; i < this.words.length; i++) {
+                    if (this.words[i] != null || this.words[i] != 0) {
+                        for (var j = 0; j < 32; j++) {
+                            if (this.words[i] & intSet.bits.singleBitMask(j)) {
+                                action(i * 32 + j);
+                            }
+                        }
+                    }
+                }
             };
 
             /** Iterate over all "true" elements in order. */
             BitmapArrayIntSet.prototype.iterator = function () {
-                return this.notWritten();
+                return new OrderedBitmapArrayWithOffsetIterator(this.words, this.maxValue, this.wordOffset);
             };
 
             /** Returns an IntSet containing only the elements that are found in both IntSets. */
@@ -1412,11 +1416,101 @@ var ozone;
 
             /** Equals Math.floor(min()/32). */
             BitmapArrayIntSet.prototype.maxWord = function () {
-                return this.notWritten();
+                return intSet.bits.inWord(this.maxValue);
             };
             return BitmapArrayIntSet;
         })();
         intSet.BitmapArrayIntSet = BitmapArrayIntSet;
+
+        /**
+        * Iterates over all the set bits in order.  This class does not support an index offset.
+        */
+        var OrderedBitmapArrayIterator = (function () {
+            function OrderedBitmapArrayIterator(words, maxBit) {
+                this.words = words;
+                this.maxBit = maxBit;
+                this.nextBit = 0;
+            }
+            OrderedBitmapArrayIterator.prototype.hasNext = function () {
+                return this.nextBit <= this.maxBit;
+            };
+
+            /**
+            * Returns the index of the next set bit.
+            *
+            * @returns {number}
+            */
+            OrderedBitmapArrayIterator.prototype.next = function () {
+                var word = this.words[intSet.bits.inWord(this.nextBit)];
+                var result;
+
+                while (this.hasNext() && typeof (result) === 'undefined') {
+                    if (word) {
+                        if (word & intSet.bits.singleBitMask(this.nextBit)) {
+                            result = this.nextBit;
+                        }
+                        this.nextBit++;
+                    } else {
+                        this.nextBit = (intSet.bits.inWord(this.nextBit) + 1) * 32;
+                    }
+                }
+                return result;
+            };
+
+            OrderedBitmapArrayIterator.prototype.skipTo = function (item) {
+                this.nextBit = item;
+            };
+            return OrderedBitmapArrayIterator;
+        })();
+        intSet.OrderedBitmapArrayIterator = OrderedBitmapArrayIterator;
+
+        /**
+        * Iterates over all the set bits in order.  This class does support an index offset.
+        */
+        var OrderedBitmapArrayWithOffsetIterator = (function (_super) {
+            __extends(OrderedBitmapArrayWithOffsetIterator, _super);
+            function OrderedBitmapArrayWithOffsetIterator(words, maxBit, wordOffset) {
+                this.bitOffset = wordOffset * 32;
+                _super.call(this, words, maxBit - this.bitOffset);
+            }
+            OrderedBitmapArrayWithOffsetIterator.prototype.next = function () {
+                return _super.prototype.next.call(this) + this.bitOffset;
+            };
+
+            OrderedBitmapArrayWithOffsetIterator.prototype.skipTo = function (item) {
+                if (item >= this.bitOffset) {
+                    _super.prototype.skipTo.call(this, item - this.bitOffset);
+                } else {
+                    _super.prototype.skipTo.call(this, 0);
+                }
+            };
+            return OrderedBitmapArrayWithOffsetIterator;
+        })(OrderedBitmapArrayIterator);
+        intSet.OrderedBitmapArrayWithOffsetIterator = OrderedBitmapArrayWithOffsetIterator;
+
+        var OrderedWordIterator = (function () {
+            function OrderedWordIterator(words) {
+                this.words = words;
+                this.nextWord = 0;
+            }
+            OrderedWordIterator.prototype.hasNext = function () {
+                return this.nextWord < this.words.length;
+            };
+
+            OrderedWordIterator.prototype.next = function () {
+                var result = this.words[this.nextWord++];
+                if (typeof (result) === 'undefined') {
+                    result = 0;
+                }
+                return result;
+            };
+
+            OrderedWordIterator.prototype.skipTo = function (item) {
+                this.nextWord = item;
+            };
+            return OrderedWordIterator;
+        })();
+        intSet.OrderedWordIterator = OrderedWordIterator;
     })(ozone.intSet || (ozone.intSet = {}));
     var intSet = ozone.intSet;
 })(ozone || (ozone = {}));
@@ -1441,11 +1535,11 @@ var ozone;
             /** Return a RangeIntSet from minValue to maxValue inclusive. */
             RangeIntSet.fromTo = function (minValue, maxValue) {
                 if (minValue === -1 && maxValue === -1) {
-                    return ozone.intSet.empty;
+                    return intSet.empty;
                 }
                 var length = 1 + maxValue - minValue;
                 if (length <= 0) {
-                    return ozone.intSet.empty;
+                    return intSet.empty;
                 }
                 if (maxValue < minValue) {
                     throw new Error("Max " + maxValue + " < " + " min " + minValue);
@@ -1530,7 +1624,7 @@ var ozone;
 
             RangeIntSet.prototype.intersection = function (bm) {
                 if (this.size === 0 || bm.size === 0) {
-                    return ozone.intSet.empty;
+                    return intSet.empty;
                 }
                 if (typeof (bm["intersectionWithRangeIntSet"]) === "function") {
                     return bm["intersectionWithRangeIntSet"](this);
@@ -1539,7 +1633,7 @@ var ozone;
                 var min = Math.max(this.min(), bm.min());
                 var max = Math.min(this.max(), bm.max());
                 if (max < min) {
-                    return ozone.intSet.empty;
+                    return intSet.empty;
                 }
                 if (bm instanceof RangeIntSet) {
                     return RangeIntSet.fromTo(min, max);
@@ -1557,7 +1651,7 @@ var ozone;
         })();
         intSet.RangeIntSet = RangeIntSet;
 
-        ozone.intSet.empty = new RangeIntSet(-1, 0);
+        intSet.empty = new RangeIntSet(-1, 0);
     })(ozone.intSet || (ozone.intSet = {}));
     var intSet = ozone.intSet;
 })(ozone || (ozone = {}));
@@ -1571,7 +1665,7 @@ var ozone;
         /** Build from a CSV file, with all resulting Fields treated as strings. */
         function buildFromCsv(csv) {
             var dataArray = csv.split(/(\r\n|\n|\r)/);
-            var reader = new ozone.rowStore.CsvReader();
+            var reader = new rowStore.CsvReader();
             var fieldInfo = (function () {
                 reader.onItem(dataArray[0]);
                 var result = {};
@@ -1611,27 +1705,27 @@ var ozone;
 
                     var fProto;
                     if (fd.multipleValuesPerRow)
-                        fProto = ozone.rowStore.JsonRowField;
+                        fProto = rowStore.JsonRowField;
                     else
-                        fProto = ozone.rowStore.UnaryJsonRowField;
+                        fProto = rowStore.UnaryJsonRowField;
                     var field = new fProto(fd.identifier, fd.displayName, fd.typeOfValue, null, fd.range(), fd.distinctValueEstimate());
                     fields.push(field);
                 }
             }
 
-            var result = new ozone.rowStore.RowStore(fields, data, rowTransformer);
+            var result = new rowStore.RowStore(fields, data, rowTransformer);
 
             if (toComputeDistinctValues.length > 0 || toComputeRange.length > 0) {
                 var rangeCalculators = {};
                 for (var i = 0; i < toComputeRange.length; i++) {
                     key = toComputeRange[i];
-                    rangeCalculators[key] = new ozone.rowStore.RangeCalculator(result.field(key));
+                    rangeCalculators[key] = new rowStore.RangeCalculator(result.field(key));
                 }
 
                 var valueCalculators = {};
                 for (var i = 0; i < toComputeDistinctValues.length; i++) {
                     key = toComputeDistinctValues[i];
-                    valueCalculators[key] = new ozone.rowStore.ValueFrequencyCalculator(result.field(key));
+                    valueCalculators[key] = new rowStore.ValueFrequencyCalculator(result.field(key));
                 }
 
                 result.eachRow(function (rowToken) {
@@ -1677,9 +1771,9 @@ var ozone;
 
         function proto(field) {
             if (typeof field["value"] === "function") {
-                return ozone.rowStore.UnaryJsonRowField;
+                return rowStore.UnaryJsonRowField;
             }
-            return ozone.rowStore.JsonRowField;
+            return rowStore.JsonRowField;
         }
     })(ozone.rowStore || (ozone.rowStore = {}));
     var rowStore = ozone.rowStore;
