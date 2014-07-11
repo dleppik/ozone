@@ -1395,9 +1395,36 @@ var ozone;
                 return new OrderedBitmapArrayWithOffsetIterator(this.words, this.maxValue, this.wordOffset);
             };
 
+            /** Iterate over all the packed words in order. */
+            BitmapArrayIntSet.prototype.wordIterator = function () {
+                return new OrderedWordIterator(this.words);
+            };
+
             /** Returns an IntSet containing only the elements that are found in both IntSets. */
             BitmapArrayIntSet.prototype.union = function (bm) {
-                return this.notWritten();
+                if (bm['isPacked']) {
+                    var that = bm;
+                    if (that.isPacked === true) {
+                        //if (bm.isPacked && bm.wordIterator && bm.minWord && bm.maxWord) {
+                        /**** NOTE: is this the right way to check if bm implements PackedIntSet? */
+                        var myIterator = this.wordIterator();
+                        var otherIterator = that.wordIterator();
+                        var array;
+                        var currentWord;
+                        var size = 0;
+
+                        var offset = (this.minWord() >= that.minWord()) ? this.minWord() : that.minWord();
+                        myIterator.skipTo(offset);
+                        otherIterator.skipTo(offset);
+
+                        while (myIterator.hasNext() && otherIterator.hasNext()) {
+                            currentWord = myIterator.next() & otherIterator.next();
+                            size += intSet.bits.countBits(currentWord);
+                            array.push(currentWord);
+                        }
+                        return new BitmapArrayIntSet(array, offset, size);
+                    }
+                }
             };
 
             /** Returns an IntSet containing all the elements in either IntSet. */

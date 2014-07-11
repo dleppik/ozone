@@ -189,6 +189,9 @@ module ozone {
         /** Word which has the maximum true bit */
         maxWord() : number;
 
+        /** Iterate over all the packed words in order. */
+        wordIterator() : OrderedIterator<number>;
+
         /** If true, the PackedIntSet methods are not just available, but preferred. */
         isPacked : boolean;
     }

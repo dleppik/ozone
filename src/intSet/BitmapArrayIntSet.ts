@@ -56,6 +56,7 @@ module ozone.intSet {
 
         }
 
+        public isPacked = true;
         private minValue : number;
         private maxValue : number;
 
@@ -144,9 +145,38 @@ module ozone.intSet {
             return new OrderedBitmapArrayWithOffsetIterator<number>(this.words, this.maxValue, this.wordOffset);
         }
 
+        /** Iterate over all the packed words in order. */
+        wordIterator() : OrderedWordIterator<number> {
+            return new OrderedWordIterator<number>(this.words);
+        }
+
         /** Returns an IntSet containing only the elements that are found in both IntSets. */
         union(bm : IntSet) : IntSet {
-            return this.notWritten();  // TODO
+
+            if (bm['isPacked']) {  // isPacked exists
+                var that : PackedIntSet = <PackedIntSet> bm;
+                if (that.isPacked === true) {
+                    var myIterator     = this.wordIterator();
+                    var otherIterator  = that.wordIterator();
+                    var array:number[];
+                    var currentWord:number;
+                    var size:number = 0;
+
+                    var offset:number = (this.minWord() >= that.minWord()) ? this.minWord() : that.minWord();
+                    myIterator.skipTo(offset);
+                    otherIterator.skipTo(offset);
+
+                    while (myIterator.hasNext() && otherIterator.hasNext()) {
+                        currentWord = myIterator.next() & otherIterator.next();
+                        size += bits.countBits(currentWord);
+                        array.push(currentWord);
+                    }
+                    return new BitmapArrayIntSet(array, offset, size);
+                }
+            }
+            else {
+                return bm.union(this);
+            }
         }
 
         /** Returns an IntSet containing all the elements in either IntSet. */
@@ -168,7 +198,6 @@ module ozone.intSet {
             return bits.inWord(this.maxValue);
         }
 
-        public isPacked = true;
     }
 
     /**
