@@ -13,11 +13,13 @@ var ozone = require('ozone-db');        // Usage when installed from npm
 
 var filename = "../test/SummerOlympicMedallists1896to2008.csv";
 var rowStore = ozone.rowStore.buildFromCsv(fs.readFileSync(filename, {encoding: 'utf-8'}));
+
+// metaData lets us override the import defaults.
 var metaData = {
     fields: {
-        Edition: { displayName: "Year" },
-        NOC:     { displayName: "Country" },
-        Medal:   { values : ["Bronze", "Silver", "Gold"]}
+        Edition: { displayName: "Year"                      }, // Replace the Olympic committee's cryptic names
+        NOC:     { displayName: "Country"                   },
+        Medal:   {     values : ["Bronze", "Silver", "Gold"]}  // Override default alphabetical order
     }
 };
 var columnStore = ozone.columnStore.buildFromStore(rowStore, metaData);
