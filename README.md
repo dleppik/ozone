@@ -34,7 +34,7 @@ Querying Ozone
 Start with a database, such as a CSV file:
 
 ```JavaScript
-var ozone = require("ozone-db");  // If you are running from node, rather than in a web browser
+var ozone = require("ozone-db");  // This line is only needed if you use require.js or node
 var db = ozone.columnStore.buildFromStore(o3.rowStore.buildFromCsv(rawData));
 ```
 
@@ -44,6 +44,8 @@ Filter or partition to create a subset of the database, which can be treated as 
 var dbOfWomen = db.filter('Gender', 'F');
 var dbOfMaleGermans = db.filter('Gender', 'M').filter('Country', 'Germany');
 var numberOfMaleGermans = dbOfMaleGermans.size;
+
+// A partition filters on all values for a particular field
 
 var genderDbs = db.partition('Gender');
 if (genderDbs['F'].size === dbOfWomen.size) {
@@ -115,11 +117,11 @@ dbOfMaleGermans.eachRow(function(row) {
 Getting data into Ozone
 -----------------------
 
-Node.js users can convert CSV files into Ozone's format; see [demo/buildDataStore.js](https://github.com/dleppik/ozone/blob/master/demo/buildDataStore.js) for an example.
+Although Ozone can read multiple data formats, querying is done from its native column-oriented format.  For more than a trivial amount of data, convert the data server-side, so that the browser downloads the native JSON format.
 
-Although Ozone supports multiple data formats, querying is only supported from its native column-oriented format.  For more than a trivial amount of data, the browser should read the data in a column-oriented format.  The native formats are intended to be easy to write to from a variety of server-side languages.
+Node.js users can convert CSV files into Ozone's format; see [demo/buildDataStore.js](https://github.com/dleppik/ozone/blob/master/demo/buildDataStore.js) for an example.  Ozone's JSON format is [documented in TypeScript](https://github.com/dleppik/ozone/blob/master/src/serialization/jsonInterfaces.ts) in case you wish to write JSON directly rather than via Node.
 
-For maximum efficiency, rows should be sorted on at least one column.
+To minimize file size and memory usage, sort the rows on at least one column before converting.
 
 
 Performance
