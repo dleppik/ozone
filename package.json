@@ -1,0 +1,16 @@
+{
+       "name"    : "ozone-db",
+    "version"    : "0.1.9",
+    "license"    : "Apache-2.0",
+   "description" : "A database for realtime data analysis and visualization",
+       "main"    : "ozone",
+     "author"    : {  "name"  : "David Leppik",
+                      "email" : "david@leppik.net"
+                   },
+    "repository" : {   "type" : "git",
+                        "url" : "http://github.com/dleppik/ozone.git"
+                   },
+         "bugs" : {     "url" : "http://github.com/dleppik/ozone/issues",
+                      "email" : "david@leppik.net"
+                  }
+}

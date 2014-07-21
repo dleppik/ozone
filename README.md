@@ -34,6 +34,7 @@ Querying Ozone
 Start with a database, such as a CSV file:
 
 ```JavaScript
+var ozone = require("ozone-db");  // This line is only needed if you use require.js or node
 var db = ozone.columnStore.buildFromStore(o3.rowStore.buildFromCsv(rawData));
 ```
 
@@ -43,6 +44,8 @@ Filter or partition to create a subset of the database, which can be treated as 
 var dbOfWomen = db.filter('Gender', 'F');
 var dbOfMaleGermans = db.filter('Gender', 'M').filter('Country', 'Germany');
 var numberOfMaleGermans = dbOfMaleGermans.size;
+
+// A partition filters on all values for a particular field
 
 var genderDbs = db.partition('Gender');
 if (genderDbs['F'].size === dbOfWomen.size) {
@@ -114,19 +117,17 @@ dbOfMaleGermans.eachRow(function(row) {
 Getting data into Ozone
 -----------------------
 
-Although Ozone supports many different data formats, querying is only supported from column-oriented formats.  For more than a trivial amount of data, the browser should read the data in a column-oriented format.  Ozone provides a node.js-based interface for converting more common row-oriented files into Ozone's native column-oriented formats.  The native formats are intended to be easy to write to from a variety of server-side languages.
+Although Ozone can read multiple data formats, querying is done from its native column-oriented format.  For more than a trivial amount of data, convert the data server-side, so that the browser downloads the native JSON format.
 
-For maximum efficiency, rows should be sorted on at least one column.
+Node.js users can convert CSV files into Ozone's format; see [demo/buildDataStore.js](https://github.com/dleppik/ozone/blob/master/demo/buildDataStore.js) for an example.  Ozone's JSON format is [documented in TypeScript](https://github.com/dleppik/ozone/blob/master/src/serialization/jsonInterfaces.ts) in case you wish to write JSON directly rather than via Node.
 
-*To Do:*  That interface hasn't been written yet, although there is sample code in the test directory.  For now, look at the demos.
-
-
+To minimize file size and memory usage, sort the rows on at least one column before converting.
 
 
 Performance
 -----------
 
-Ozone is intended to be low latency and memory efficient.  It should allow larger data sets than would otherwise be possible in a web browser.  However, JavaScript is a harsh environment for big datasets.  The language provides little support for memory management, it's easy to accidentally keep things in closure scope longer than needed, and different browsers on different devices have vastly different capabilities.  Test your code carefully under memory-constrained conditions on all supported platforms!
+Ozone is low latency and memory efficient.  It allows larger data sets than would otherwise be possible in a web browser.  However, JavaScript is a harsh environment for big datasets.  The language provides little support for memory management, it's easy to accidentally keep things in closure scope longer than needed, and different browsers on different devices have vastly different capabilities.  Test your code carefully under memory-constrained conditions on all supported platforms!
 
 Ozone will never be a "Big Data" tool, if by Big Data you mean it should handle more data than will fit on a single computer. However, Ozone can work on subsets of data provided by a server-side Big Data back end.
 

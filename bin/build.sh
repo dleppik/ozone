@@ -6,4 +6,5 @@
 
 cd "$( dirname "${BASH_SOURCE[0]}" )"
 cd ..
-tsc -m 'amd' --sourcemap src/*.ts src/intSet/*.ts src/rowStore/*.ts src/columnStore/*.ts src/serialization/*.ts --out ozone.js
+tsc -m 'commonjs' --sourcemap src/*.ts src/intSet/*.ts src/rowStore/*.ts src/columnStore/*.ts src/serialization/*.ts --out ozone.js
+echo 'module.exports = ozone;' >> ozone.js

@@ -1,25 +1,29 @@
 /**
- * Quick and dirty converter from the Olympics CSV file to an Ozone JSON file.
+ * Convert the Olympics CSV file to an Ozone JSON file.
  *
- * Run from Node REPL in this directory.
+ * Usage (must be run from this directory):
+ *
+ * node buildDataStore.js
  */
 var fs = require('fs');
-eval(fs.readFileSync('../ozone.js', {encoding: 'utf-8'}));
+var ozone = require('ozone-db');        // Usage when installed from npm
+// var ozone = require('../ozone.js');  // Usage when building from source
+
 
 
 var filename = "../test/SummerOlympicMedallists1896to2008.csv";
 var rowStore = ozone.rowStore.buildFromCsv(fs.readFileSync(filename, {encoding: 'utf-8'}));
+
+// metaData lets us override the import defaults.
 var metaData = {
     fields: {
-        Edition: { displayName: "Year" },
-        NOC:     { displayName: "Country" },
-        Medal:   { values : ["Bronze", "Silver", "Gold"]}
+        Edition: { displayName: "Year"                      }, // Replace the Olympic committee's cryptic names
+        NOC:     { displayName: "Country"                   },
+        Medal:   {     values : ["Bronze", "Silver", "Gold"]}  // Override default alphabetical order
     }
 };
 var columnStore = ozone.columnStore.buildFromStore(rowStore, metaData);
-var o3 = ozone;
-
-var columnStoreString = JSON.stringify(o3.serialization.writeStore(columnStore));
+var columnStoreString = JSON.stringify(ozone.serialization.writeStore(columnStore));
 
 fs.writeFileSync("SummerOlympicMedallists.json", columnStoreString, {encoding: 'utf-8'});
 
