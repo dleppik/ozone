@@ -102,7 +102,7 @@ module ozone.intSet.bits {
 
     /** Returns the 32-bit int 'bit' is in */
     export function inWord(bit : number) {
-        return Math.floor(bit / 32);
+        return Math.floor((bit | 0) / 32);
     }
 
     /** Returns the offset into a 32-bit int that 'bit' is in */

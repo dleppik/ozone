@@ -554,6 +554,9 @@ describe("IntSets", function() {
                         var it = intSet.iterator();
                         while (it.hasNext()) {
                             var element = it.next();
+                            if (!intSet.has(element)) {
+                                console.log("element " + element + " has = " + intSet.has(element)); // XXX
+                            }
                             expect(intSet.has(element)).toBe(true);
                         }
                     });
@@ -606,7 +609,9 @@ describe("IntSets", function() {
                 intSetForEachArray(intSetClass, function (array, intSet) {
                     var it = intSet.iterator();
                     intSet.each(function (element) {
-                        expect(element).toBe(it.next());
+                        var itElement = it.next();
+                        console.log("each found: " + element + " iterator found: " + itElement); //XXX
+                        expect(element).toBe(itElement);
                     });
                     expect(it.hasNext()).toBe(false);
                 });

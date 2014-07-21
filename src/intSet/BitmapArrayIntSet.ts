@@ -133,7 +133,7 @@ module ozone.intSet {
                 if (this.words[i] != null || this.words[i] != 0) {
                     for (var j = 0; j < 32; j++) {
                         if (this.words[i] & bits.singleBitMask(j)) {
-                            action(i*32 + j);
+                            action(i*32 + j + this.wordOffset*32);
                         }
                     }
                 }
@@ -142,13 +142,14 @@ module ozone.intSet {
 
         /** Iterate over all "true" elements in order. */
         iterator() : OrderedIterator<number> {
-            return new OrderedBitmapArrayWithOffsetIterator<number>(this.words, this.maxValue, this.wordOffset);
+            return new OrderedBitmapArrayWithOffsetIterator(this.words, this.maxValue, this.wordOffset);
         }
 
         /** Iterate over all the packed words in order. */
-        wordIterator() : OrderedWordIterator<number> {
-            return new OrderedWordIterator<number>(this.words);
+        wordIterator() : OrderedWordIterator {
+            return new OrderedWordIterator(this.words);
         }
+
 
         /** Returns an IntSet containing only the elements that are found in both IntSets. */
         union(bm : IntSet) : IntSet {
@@ -185,8 +186,8 @@ module ozone.intSet {
         }
 
         /** Returns true if the iterators produce identical results. */
-        equals(bm : IntSet) : boolean {
-            return this.notWritten();  // TODO
+        equals(set : IntSet) : boolean {
+            return equalIntSets(this, set);
         }
 
         minWord() : number {
@@ -203,8 +204,11 @@ module ozone.intSet {
     /**
      * Iterates over all the set bits in order.  This class does not support an index offset.
      */
-    export class OrderedBitmapArrayIterator<number> implements OrderedIterator<number> {
-        constructor( private words : number[], private maxBit : number ) {}
+    export class OrderedBitmapArrayIterator implements OrderedIterator<number> {
+        constructor( private words : number[], private maxBit : number ) {
+            console.log("==================================================="); //XXX
+            console.log(words.join(" "));//XXX
+        }
 
         private nextBit = 0;
 
@@ -218,10 +222,10 @@ module ozone.intSet {
          * @returns {number}
          */
         next() : number {
-            var word : number = this.words[bits.inWord(this.nextBit)];
             var result : number;
 
             while (this.hasNext() && typeof(result) === 'undefined') {
+                var word : number = this.words[bits.inWord(this.nextBit)];
                 if (word) {
                     if (word & bits.singleBitMask(this.nextBit)) {
                         result = this.nextBit;
@@ -244,7 +248,7 @@ module ozone.intSet {
     /**
      * Iterates over all the set bits in order.  This class does support an index offset.
      */
-    export class OrderedBitmapArrayWithOffsetIterator<number> extends OrderedBitmapArrayIterator<number>{
+    export class OrderedBitmapArrayWithOffsetIterator extends OrderedBitmapArrayIterator{
 
         private bitOffset : number;
 
@@ -268,7 +272,7 @@ module ozone.intSet {
     }
 
 
-    export class OrderedWordIterator<number> implements OrderedIterator<number> {
+    export class OrderedWordIterator implements OrderedIterator<number> {
         constructor( private words : number[]) {}
 
         private nextWord = 0;

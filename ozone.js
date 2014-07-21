@@ -939,7 +939,7 @@ var ozone;
 
             /** Returns the 32-bit int 'bit' is in */
             function inWord(bit) {
-                return Math.floor(bit / 32);
+                return Math.floor((bit | 0) / 32);
             }
             bits.inWord = inWord;
 
@@ -1115,6 +1115,35 @@ var ozone;
             return result;
         }
         intSet.intersectionOfIntSets = intersectionOfIntSets;
+
+        function equalIntSets(set1, set2) {
+            if (set1 === set2) {
+                return true;
+            }
+            if (set1 instanceof intSet.RangeIntSet) {
+                return set1.equals(set2);
+            }
+            if (set2 instanceof intSet.RangeIntSet) {
+                return set2.equals(set1);
+            }
+            if (set1.size !== set2.size || set1.min() !== set2.min() || set1.max() !== set2.max()) {
+                return false;
+            }
+            if (set1.size === 0) {
+                return true;
+            }
+
+            var it1 = set1.iterator();
+            var it2 = set2.iterator();
+
+            while (it1.hasNext()) {
+                if (it1.next() != it2.next()) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        intSet.equalIntSets = equalIntSets;
     })(ozone.intSet || (ozone.intSet = {}));
     var intSet = ozone.intSet;
 })(ozone || (ozone = {}));
@@ -1188,28 +1217,31 @@ var ozone;
             };
 
             ArrayIndexIntSet.prototype.equals = function (set) {
-                if (set === this) {
-                    return true;
+                return intSet.equalIntSets(this, set);
+                /***************************
+                if (set===this) {
+                return true;
                 }
-                if (set instanceof intSet.RangeIntSet) {
-                    return set.equals(this);
+                if (set instanceof RangeIntSet) {
+                return set.equals(this);
                 }
-                if (this.size !== set.size || this.min() !== set.min() || this.max() !== set.max()) {
-                    return false;
+                if (this.size !== set.size  || this.min() !== set.min()  || this.max() !== set.max()) {
+                return false;
                 }
-                if (this.size === 0) {
-                    return true;
+                if (this.size===0) {
+                return true;  // both empty
                 }
-
+                
                 var it1 = this.iterator();
                 var it2 = set.iterator();
-
-                while (it1.hasNext()) {
-                    if (it1.next() != it2.next()) {
-                        return false;
-                    }
+                
+                while(it1.hasNext()) {
+                if (it1.next() != it2.next()) {
+                return false;
+                }
                 }
                 return true;
+                *************************/
             };
 
             ArrayIndexIntSet.prototype.union = function (set) {
@@ -1383,7 +1415,7 @@ var ozone;
                     if (this.words[i] != null || this.words[i] != 0) {
                         for (var j = 0; j < 32; j++) {
                             if (this.words[i] & intSet.bits.singleBitMask(j)) {
-                                action(i * 32 + j);
+                                action(i * 32 + j + this.wordOffset * 32);
                             }
                         }
                     }
@@ -1405,8 +1437,6 @@ var ozone;
                 if (bm['isPacked']) {
                     var that = bm;
                     if (that.isPacked === true) {
-                        //if (bm.isPacked && bm.wordIterator && bm.minWord && bm.maxWord) {
-                        /**** NOTE: is this the right way to check if bm implements PackedIntSet? */
                         var myIterator = this.wordIterator();
                         var otherIterator = that.wordIterator();
                         var array;
@@ -1424,6 +1454,8 @@ var ozone;
                         }
                         return new BitmapArrayIntSet(array, offset, size);
                     }
+                } else {
+                    return bm.union(this);
                 }
             };
 
@@ -1433,8 +1465,8 @@ var ozone;
             };
 
             /** Returns true if the iterators produce identical results. */
-            BitmapArrayIntSet.prototype.equals = function (bm) {
-                return this.notWritten();
+            BitmapArrayIntSet.prototype.equals = function (set) {
+                return intSet.equalIntSets(this, set);
             };
 
             BitmapArrayIntSet.prototype.minWord = function () {
@@ -1457,6 +1489,8 @@ var ozone;
                 this.words = words;
                 this.maxBit = maxBit;
                 this.nextBit = 0;
+                console.log("==================================================="); //XXX
+                console.log(words.join(" ")); //XXX
             }
             OrderedBitmapArrayIterator.prototype.hasNext = function () {
                 return this.nextBit <= this.maxBit;
@@ -1468,10 +1502,10 @@ var ozone;
             * @returns {number}
             */
             OrderedBitmapArrayIterator.prototype.next = function () {
-                var word = this.words[intSet.bits.inWord(this.nextBit)];
                 var result;
 
                 while (this.hasNext() && typeof (result) === 'undefined') {
+                    var word = this.words[intSet.bits.inWord(this.nextBit)];
                     if (word) {
                         if (word & intSet.bits.singleBitMask(this.nextBit)) {
                             result = this.nextBit;

@@ -140,4 +140,33 @@ module ozone.intSet {
         }
         return result;
     }
+
+    export function equalIntSets(set1 : IntSet, set2 : IntSet) : boolean {
+        if (set1===set2) {
+            return true;
+        }
+        if (set1 instanceof RangeIntSet) {
+            return set1.equals(set2);
+        }
+        if (set2 instanceof RangeIntSet) {
+            return set2.equals(set1);
+        }
+        if (set1.size !== set2.size  || set1.min() !== set2.min()  || set1.max() !== set2.max()) {
+            return false;
+        }
+        if (set1.size===0) {
+            return true;  // both empty
+        }
+
+        var it1 = set1.iterator();
+        var it2 = set2.iterator();
+
+        while(it1.hasNext()) {
+            if (it1.next() != it2.next()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
 }

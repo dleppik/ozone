@@ -67,6 +67,8 @@ module ozone.intSet {
         }
 
         equals(set : IntSet) : boolean {
+            return equalIntSets(this, set);
+            /***************************
             if (set===this) {
                 return true;
             }
@@ -89,6 +91,7 @@ module ozone.intSet {
                 }
             }
             return true;
+             *************************/
         }
 
 
