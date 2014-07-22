@@ -14,6 +14,10 @@
             font-size: 18px;
         }
 
+        .controls {
+            margin-left: 200px;
+        }
+
         .menuBar {
             margin: 4px 0;
             font-size: 12px;
@@ -21,8 +25,6 @@
 
         .menuTitle {
             display: inline-block;
-            width: 200px;
-            text-align: right;
         }
 
         .menu {
@@ -30,7 +32,7 @@
         }
 
         .note {
-            padding: 4px 0 4px 200px;
+            padding: 4px 0 4px 80px;
             font-style: oblique;
         }
 
@@ -43,9 +45,8 @@
         /* Filter widget */
 
         #filter {
-            border: 1px solid #999;
+            border: 1px solid #ccc;
             border-radius: 3px;
-            background-color: #CCFFFF;
         }
 
         #filter,
@@ -123,23 +124,27 @@
 
     <h1>Counts of Summer Olympic Medals</h1>
 
-    <div id='filter' class="menuBar">
-        <div id="fieldMenu" class="menu"></div>
-        <div id="filterList"></div>
-    </div>
+    <div class="controls">
+        <div id='filter' class="menuBar">
+            <div id="fieldMenu" class="menu"></div>
+            <div id="filterList"></div>
+        </div>
 
-    <div class="menuBar">
-        <div class="menuTitle">Hierarchy Levels:</div>
-        <div id="fieldHierarchyMenu0" class="menu"></div>
-        <div id="fieldHierarchyMenu1" class="menu"></div>
-        <div id="fieldHierarchyMenu2" class="menu"></div>
-        <div id="fieldHierarchyMenu3" class="menu"></div>
-        <div id="fieldHierarchyMenu4" class="menu"></div>
 
-        <div class="note">
-            The hierarchy display is trimmed to keep the animation fast.  To show more detail, add a filter.
+        <div class="menuBar">
+            <div class="menuTitle">Hierarchy Levels:</div>
+            <div id="fieldHierarchyMenu0" class="menu"></div>
+            <div id="fieldHierarchyMenu1" class="menu"></div>
+            <div id="fieldHierarchyMenu2" class="menu"></div>
+            <div id="fieldHierarchyMenu3" class="menu"></div>
+            <div id="fieldHierarchyMenu4" class="menu"></div>
+
+            <div class="note">
+                The hierarchy display is trimmed to keep the animation fast.  To show more detail, add a filter.
+            </div>
         </div>
     </div>
+
 
     <div id="visContainer">
         <div class="loading">
@@ -380,7 +385,16 @@
                 data = {name: "Empty Data set"};
             }
             else {
-                data = partitionForD3("Olympics", filteredDb, fieldsInVisualization);
+                var noPartitionName = "Olympics";
+                if (filters.length > 0) {
+                    var filterNames = [];
+                    for (i=0; i<filters.length; i++) {
+                        var filter = filters[i];
+                        filterNames.push(filters[i].value);
+                    }
+                    noPartitionName = filterNames.join(", ");
+                }
+                data = partitionForD3(noPartitionName, filteredDb, fieldsInVisualization);
             }
             setupPartitionVis(data);
         };
