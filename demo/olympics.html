@@ -40,6 +40,56 @@
             text-align: center;
         }
 
+        /* Filter widget */
+
+        #filter {
+            border: 1px solid #999;
+            border-radius: 3px;
+            background-color: #CCFFFF;
+        }
+
+        #filter,
+        #filter .menu {
+            width: 350px;
+        }
+
+        .filterItem {
+            border-top: 1px solid #ccc;
+            padding: 8px;
+            clear: both;
+        }
+
+        .filterItemTitle {
+            font-weight: bold;
+            display: inline-block;
+            width: 100px;
+            padding: 8px;
+            text-align: right;
+        }
+
+        .fieldSelect {
+            padding: 8px;
+        }
+
+        .filterItem > select {
+            display: inline-block;
+        }
+
+        .removeFilter {
+            display: inline-block;
+            margin: 8px;
+            float: right;
+        }
+
+        .closeButton       > circle { fill: #6c6c8d; }
+        .closeButton:hover > circle { fill: black; }
+        .closeButton > line {
+            stroke: white;
+            stroke-width: 2;
+        }
+
+        /* Visualization */
+
         #visContainer {
             margin: 8px 0;
         }
@@ -73,11 +123,11 @@
 
     <h1>Counts of Summer Olympic Medals</h1>
 
-    <div class="menuBar">
-        <div class="menuTitle">Filter:</div>
+    <div id='filter' class="menuBar">
         <div id="fieldMenu" class="menu"></div>
-        <div id="valueMenu" class="menu"></div>
+        <div id="filterList"></div>
     </div>
+
     <div class="menuBar">
         <div class="menuTitle">Hierarchy Levels:</div>
         <div id="fieldHierarchyMenu0" class="menu"></div>
@@ -121,41 +171,167 @@
 
         var fieldsInVisualization = defaultFieldsInVisualization;
 
-        var fieldMenu = d3.select("#fieldMenu").append("select");
-        var noFieldOptName = "Choose a Field";
+        var noFieldOptName = "Add a filter";
+        var filters = [];
+        var indexedFields = [];
+        var filterList = d3.selectAll("#filterList");
+
+
         var fieldsByDisplayName = {};
-        var fieldOptions = [];
         var valueMenu = d3.select("#valueMenu").append("select");
         var valueOptions = [];
 
-        var onFieldChange = function() {
-            valueMenu.selectAll("option").remove();
-            var field = selectedField();
-            if (field === null) {
-                valueMenu.selectAll("option").data([]);
-            }
-            else {
-                valueMenu.selectAll("option")
-                        .data(field.allValues())
-                        .enter().append("option")
-                            .text(function(d) {return d});
 
-                valueMenu.on("change", updateUsingMenus);
-            }
-            updateUsingMenus();
-        };
+        var db;
+        var filteredDb;
 
-        var selectedField = function() {
-            var fieldName = fieldMenu.property("value");
-            if (fieldName === noFieldOptName) {
-                return null;
-            }
-            return fieldsByDisplayName[fieldName];
-        };
+        d3.json("SummerOlympicMedallists.json", function(rawData) {
 
-        var selectedValue = function() {
-            return valueMenu.property("value");
-        };
+            // Because data files can be large, you want to discard raw data and intermediate data
+            // as quickly as possible.  We don't create intermediate variables if we can avoid it,
+            // and we don't define any callbacks inside this function or inside any function
+            // called from here.
+            db = o3.serialization.readStore(rawData);
+
+            // Filtering
+
+            filteredDb = db;
+
+            var maxFields = db.fields().length;
+
+            for (var i=0; i<maxFields; i++) {
+                var field = db.fields()[i];
+                if (field instanceof o3.columnStore.IndexedField) {
+                    indexedFields.push(field);
+                }
+                fieldsByDisplayName[field.displayName] = field;
+            }
+
+            createFilterDropDown();
+
+            // Hierarchy Menus
+
+
+
+            initHierarchyMenus();
+
+            var o3Partition = partitionForD3("Olympics", db, fieldsInVisualization);
+            setupPartitionVis(o3Partition);
+        });
+
+        //
+        // Filtering
+        //
+
+
+        function createFilterDropDown() {
+            var fields = [noFieldOptName].concat(indexedFields);
+
+            var filterDropDown = d3.select("#fieldMenu")
+                    .append("div")
+                    .classed("fieldSelect", true)
+                    .append("select");
+
+            filterDropDown.selectAll("option")
+                    .data(fields)
+                    .enter().append("option")
+                    .text(         function (d) { return (typeof d === "string")  ?  d     :  d.displayName; })
+                    .attr("value", function (d) { return (typeof d === "string")  ?  null  :  d.identifier;  });
+
+            filterDropDown.on("change", function () {
+                var selection = filterDropDown.property("value");
+                if (selection !== null) {
+                    addFilter(db.field(selection));
+                    filterDropDown.property("value", noFieldOptName);
+                }
+            });
+        }
+
+        function addFilter (selectedField) {
+            var filterIndex = filters.length;
+            var selectedValue = selectedField.allValues()[0];
+            var filter = new ozone.ValueFilter(selectedField,selectedValue);
+
+            filters.push(filter);
+
+            update();
+        }
+
+        function drawValueMenu() {
+
+            filterList.selectAll("div").remove();
+
+            var filterItemDivs = filterList.selectAll("div")
+                    .data(filters);
+
+            filterItemDivs
+                    .enter()
+                    .append("div")
+                    .classed("filterItem", true);
+
+            filterItemDivs.exit().remove();
+
+            filterItemDivs.append("div")
+                    .classed("filterItemTitle", true)
+                    .text(function(filter) { return filter.fieldDescriptor.displayName; } );
+
+            var valueMenus = filterItemDivs.append("select")
+                    .classed("valueMenu", true);
+
+            var valueOptions = valueMenus.selectAll("option")
+                    .data(function(filter) {
+                        return  filter.fieldDescriptor.allValues(); // Possible since we're using ValueFilters on IndexedFields
+                    });
+
+            valueOptions
+                    .enter().append("option")
+                    .text(function(d)  { return d; });
+
+            valueOptions.exit().remove();
+
+            valueMenus
+                    .property("value", function(filter) {
+                        return filter.value;
+                    })
+                    .on("change", function(filter, index) {
+                        filters[index] = new ozone.ValueFilter(filter.fieldDescriptor, this.value);
+                        update();
+                    });
+
+            var removeButtons = filterItemDivs.append("svg")
+                    .classed("removeFilter", true)
+                    .classed("closeButton", true)
+                    .attr("width",  20)
+                    .attr("height", 20);
+
+            removeButtons.append("circle")
+                    .attr("r",  10)
+                    .attr("cy", 10)
+                    .attr("cx", 10);
+            removeButtons.append("line")
+                    .attr("x1",  6).attr("y1",  6)
+                    .attr("x2", 14).attr("y2", 14);
+            removeButtons.append("line")
+                    .attr("x1", 14).attr("y1",  6)
+                    .attr("x2",  6).attr("y2", 14);
+
+
+            removeButtons.on("click", function(filter, index) {
+                filters.splice(index, 1);
+                update();
+            });
+        }
+
+        function updateFilteredDb() {
+            filteredDb = db;
+            for(var i=0; i < filters.length; i++){
+                filteredDb = filteredDb.filter(filters[i]);
+            }
+        }
+
+        //
+        // Hierarchy menus
+        //
 
         var initHierarchyMenus = function() {
             for (var i=0; i<defaultFieldsInVisualization.length; i++) {
@@ -173,8 +349,8 @@
                         .selectAll("option")
                         .data(fields)
                         .enter().append("option")
-                            .attr("value", fieldIdForName)
-                            .text(function(d) {return d;});
+                        .attr("value", fieldIdForName)
+                        .text(function(d) {return d;});
 
                 d3.select("#fieldHierarchyMenu"+i+" select").on("change", updateUsingMenus);
 
@@ -199,61 +375,25 @@
                 fieldsInVisualization = defaultFieldsInVisualization;
             }
 
-            var field = selectedField();
             var data;
-
-
-            if (field===null) {
-                data = partitionForD3("Olympics", db, fieldsInVisualization);
+            if (filteredDb.size === 0) {
+                data = {name: "Empty Data set"};
             }
             else {
-                var value = selectedValue();
-                var filteredDb = db.filter(field, value);
-                if (filteredDb.size === 0) {
-                    data = {name: "Empty Data set"};
-                }
-                else {
-                    data = partitionForD3(value, filteredDb, fieldsInVisualization);
-                }
+                data = partitionForD3("Olympics", filteredDb, fieldsInVisualization);
             }
             setupPartitionVis(data);
         };
 
-        var db;
+        function update() {
+            updateFilteredDb();
+            drawValueMenu();
+            updateUsingMenus();
+        }
 
-        d3.json("SummerOlympicMedallists.json", function(rawData) {
-
-            // Because data files can be large, you want to discard raw data and intermediate data
-            // as quickly as possible.  We don't create intermediate variables if we can avoid it,
-            // and we don't define any callbacks inside this function or inside any function
-            // called from here.
-            db = o3.serialization.readStore(rawData);
-
-            // Field/value filtering
-
-            fieldOptions = (function() {
-                var result = [noFieldOptName];
-                for (var i=0; i<db.fields().length; i++) {
-                    var field = db.fields()[i];
-                    if (field instanceof o3.columnStore.IndexedField) {
-                        result.push(field.displayName);
-                        fieldsByDisplayName[field.displayName] = field;
-                    }
-                }
-                return result;
-            })();
-
-            fieldMenu.selectAll("option")
-                    .data(fieldOptions)
-                    .enter().append("option")
-                        .text(function(d) { return d; });
-
-            fieldMenu.on("change", onFieldChange);
-            initHierarchyMenus();
-
-            var o3Partition = partitionForD3("Olympics", db, fieldsInVisualization);
-            setupPartitionVis(o3Partition);
-        });
+        //
+        //  The data visualization
+        //
 
         var vis;
 
