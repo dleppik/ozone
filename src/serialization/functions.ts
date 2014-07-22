@@ -9,6 +9,16 @@
  */
 module ozone.serialization {
 
+    /**
+     * Convenience function for reading a string containing CSV.  This simply calls rowStore.buildFromCsv() and sends
+     * the result to columnStore.buildFromStore().
+     */
+    export function buildFromCsv(csvText : string, metaData : any = {}) : columnStore.ColumnStore {
+        return columnStore.buildFromStore(rowStore.buildFromCsv(csvText), metaData);
+    }
+
+
+    /** Read Ozone's native JSON format. */
     export function readStore(storeData : StoreData) : columnStore.ColumnStore {
         var fields = <RandomAccessField<any>[]> [];
         for (var i=0; i<storeData.fields.length; i++) {

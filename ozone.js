@@ -7,7 +7,7 @@
 */
 /// <reference path='_all.ts' />
 /**
-*  Contains tiny classes that are too small to merit their own file.
+*  Contains public functions and tiny classes that are too small to merit their own file.
 */
 var ozone;
 (function (ozone) {
@@ -2146,6 +2146,17 @@ var ozone;
     * Convert ColumnStores, IntSets, etc. to JSON-compatible data objects.
     */
     (function (serialization) {
+        /**
+        * Convenience function for reading a string containing CSV.  This simply calls rowStore.buildFromCsv() and sends
+        * the result to columnStore.buildFromStore().
+        */
+        function buildFromCsv(csvText, metaData) {
+            if (typeof metaData === "undefined") { metaData = {}; }
+            return ozone.columnStore.buildFromStore(ozone.rowStore.buildFromCsv(csvText), metaData);
+        }
+        serialization.buildFromCsv = buildFromCsv;
+
+        /** Read Ozone's native JSON format. */
         function readStore(storeData) {
             var fields = [];
             for (var i = 0; i < storeData.fields.length; i++) {
@@ -2419,4 +2430,4 @@ var ozone;
     ozone.FieldDescriptor = FieldDescriptor;
 })(ozone || (ozone = {}));
 //# sourceMappingURL=ozone.js.map
-module.exports = ozone;
+if (typeof(module) !== "undefined") { module.exports = ozone;}

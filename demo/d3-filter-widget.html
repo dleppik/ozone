@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="../ozone.js" charset="utf-8"></script>
+    <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+    <title>Vertical Filter Widget Sample</title>
+    <style type="text/css">
+        body {
+            font-family: "Helvetica", "Arial", sans-serif;
+            background: #eee;
+        }
+
+        h1 {
+            font-size: 18px;
+        }
+
+        .menuBar {
+            margin: 4px 0;
+            font-size: 12px;
+        }
+
+        .menu {
+            display: inline-block;
+        }
+
+        #filter {
+            border: 1px solid #999;
+            border-radius: 3px;
+            background-color: #CCFFFF;
+        }
+
+        #filter,
+        #filter .menu {
+            width: 350px;
+        }
+
+        .filterItem {
+            border-top: 1px solid #ccc;
+            padding: 8px;
+            clear: both;
+        }
+
+        .filterItemTitle {
+            font-weight: bold;
+            display: inline-block;
+            width: 100px;
+            padding: 8px;
+            text-align: right;
+        }
+
+        .fieldSelect {
+            padding: 8px;
+        }
+
+        .filterItem > select {
+            display: inline-block;
+        }
+
+        .removeFilter {
+            display: inline-block;
+            margin: 8px;
+            float: right;
+        }
+
+        #visContainer {
+           margin: 8px 0;
+           border: 1px solid #ccc;
+        }
+
+        text {
+            pointer-events: none;
+        }
+
+        .closeButton       > circle { fill: #6c6c8d; }
+        .closeButton:hover > circle { fill: black; }
+        .closeButton > line {
+            stroke: white;
+            stroke-width: 2;
+        }
+
+    </style>
+
+</head>
+<body>
+
+This is an example of a filter widget built using D3.
+
+<h1>Counts of Summer Olympic Medals</h1>
+
+<div id='filter' class="menuBar">
+    <div id="fieldMenu" class="menu"></div>
+    <div id="filterList"></div>
+</div>
+
+<div id="visContainer">
+</div>
+
+<script>
+
+var o3 = ozone;
+var fieldsByDisplayName = {}; //Empty object.
+var noFieldOptName = "Select a field to filter"; //Default setup.
+var filters = [];
+var currentDb;
+var indexedFields = [];
+
+var filterList = d3.selectAll("#filterList");
+
+//
+//  Load the data and initialize
+//
+
+var db;
+d3.text("../test/SummerOlympicMedallists1896to2008.csv", function(rawData) {
+
+    var metaData = {
+        fields: {
+            Edition: { displayName: "Year" },
+            NOC:     { displayName: "Country" },
+            Medal:   { values:      ["Bronze", "Silver", "Gold"]}
+        }
+    };
+
+    db = o3.columnStore.buildFromStore(o3.rowStore.buildFromCsv(rawData), metaData);
+    currentDb = db;
+
+    var maxFields = db.fields().length;
+
+    for (var i=0; i<maxFields; i++) {
+        var field = db.fields()[i];
+        if (field instanceof o3.columnStore.IndexedField) {
+            indexedFields.push(field);
+        }
+    }
+
+    drawVisualization();
+    createFilterDropDown();
+
+});
+
+function createFilterDropDown() {
+    var fields = [noFieldOptName].concat(indexedFields);
+
+    var filterDropDown = d3.select("#fieldMenu")
+            .append("div")
+            .classed("fieldSelect", true)
+            .append("select");
+
+    filterDropDown.selectAll("option")
+            .data(fields)
+            .enter().append("option")
+            .text(         function (d) { return (typeof d === "string")  ?  d     :  d.displayName; })
+            .attr("value", function (d) { return (typeof d === "string")  ?  null  :  d.identifier;  });
+
+    filterDropDown.on("change", function () {
+        var selection = filterDropDown.property("value");
+        if (selection !== null) {
+            addFilter(db.field(selection));
+            filterDropDown.property("value", noFieldOptName);
+        }
+    });
+}
+
+function addFilter (selectedField) {
+    var filterIndex = filters.length;
+    var selectedValue = selectedField.allValues()[0];
+    var filter = new ozone.ValueFilter(selectedField,selectedValue);
+
+    filters.push(filter);
+
+    update();
+}
+
+function drawValueMenu() {
+
+    filterList.selectAll("div").remove();
+
+    var filterItemDivs = filterList.selectAll("div")
+            .data(filters);
+
+    filterItemDivs
+            .enter()
+            .append("div")
+            .classed("filterItem", true);
+
+    filterItemDivs.exit().remove();
+
+    filterItemDivs.append("div")
+            .classed("filterItemTitle", true)
+            .text(function(filter) { return filter.fieldDescriptor.displayName; } );
+
+    var valueMenus = filterItemDivs.append("select")
+            .classed("valueMenu", true);
+
+    var valueOptions = valueMenus.selectAll("option")
+            .data(function(filter) {
+                return  filter.fieldDescriptor.allValues(); // Possible since we're using ValueFilters on IndexedFields
+            });
+
+    valueOptions
+            .enter().append("option")
+            .text(function(d)  { return d; });
+
+    valueOptions.exit().remove();
+
+    valueMenus
+            .property("value", function(filter) {
+                return filter.value;
+            })
+            .on("change", function(filter, index) {
+                    filters[index] = new ozone.ValueFilter(filter.fieldDescriptor, this.value);
+                    update();
+                });
+
+    var removeButtons = filterItemDivs.append("svg")
+            .classed("removeFilter", true)
+            .classed("closeButton", true)
+            .attr("width",  20)
+            .attr("height", 20);
+
+    removeButtons.append("circle")
+            .attr("r",  10)
+            .attr("cy", 10)
+            .attr("cx", 10);
+    removeButtons.append("line")
+            .attr("x1",  6).attr("y1",  6)
+            .attr("x2", 14).attr("y2", 14);
+    removeButtons.append("line")
+            .attr("x1", 14).attr("y1",  6)
+            .attr("x2",  6).attr("y2", 14);
+
+
+    removeButtons.on("click", function(filter, index) {
+        filters.splice(index, 1);
+        update();
+    });
+}
+
+function update() {
+    updateCurrentDb();
+    drawValueMenu();
+    drawVisualization();
+}
+
+
+function updateCurrentDb() {
+    currentDb = db;
+    for(var i=0; i < filters.length; i++){
+        currentDb = currentDb.filter(filters[i]);
+    }
+}
+
+function drawVisualization() {
+    updateCurrentDb();
+
+    d3.select("#visContainer").selectAll("svg").remove();
+    d3.select("#visContainer").selectAll("text").remove();
+
+    var rawPartition = currentDb.partition("NOC");  // NOC is what the Olympic Committee calls countries
+
+
+    var maxValueSize = 0;
+    var partition = [];
+    for (var item in rawPartition) {
+        (function() {
+            var data = {value : item, db : rawPartition[item]};
+            partition.push(data);
+            if (data.db.size > maxValueSize) {
+                maxValueSize = data.db.size;
+            }
+        })();
+
+    }
+
+    if (partition.length === 0) {
+        svgContainer = d3.select(document.getElementById('visContainer')).append("text")
+                .text("You've selected too many filters! There's nothing left!");
+    }
+    else {
+        var svgContainer = d3.select(document.getElementById('visContainer')).append("svg")
+                .attr("width", 980)
+                .attr("height", 620);
+
+        var g = svgContainer.selectAll("g")
+                .data(partition)
+                .enter()
+                .append("g")
+                .classed("g", true);
+
+        var circles = g
+                .append("circle")
+                .attr("r", 18)
+                .style("fill", function (d) {
+                    return createColors(d.value)
+                })
+                .style("stroke", "black");
+
+        var text = g
+                .append("text")
+                .attr("text-anchor", "middle")
+                .attr("font-size", "12px")
+                .attr("dy", 5)
+                .text(function (d) {
+                    return d.value;
+                });
+
+        g.attr("transform", function (d, i) {
+            var x = ((i * 10) % (980-40)) + 20;
+            var y = (620-20) - ( (d.db.size / maxValueSize) * (620-40));
+            return "translate(" + x + "," + y + ")";
+        });
+
+
+    }
+}
+
+function createColors(text) {
+    var num = 0;
+    for (var i=0; i < text.length; i++) {
+        num += text.charCodeAt(i);
+    }
+    var hue = (num % 45) * 8;
+    return d3.hsl( hue, 0.8, 0.75 );
+}
+
+</script>
+
+</body>
+</html>

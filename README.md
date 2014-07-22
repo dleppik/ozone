@@ -31,11 +31,11 @@ Demo
 Querying Ozone
 --------------
 
-Start with a database, such as a CSV file:
+Start with data, such as a CSV file:
 
 ```JavaScript
-var ozone = require("ozone-db");  // This line is only needed if you use require.js or node
-var db = ozone.columnStore.buildFromStore(o3.rowStore.buildFromCsv(rawData));
+var ozone = require("ozone-db");                     // This line is only needed if you use require.js or node
+var db = ozone.serialization.buildFromCsv(rawData);  // rawData is a string with comma-separated values
 ```
 
 Filter or partition to create a subset of the database, which can be treated as its own database:
@@ -99,11 +99,11 @@ You cannot access rows directly.  Instead, filter down to the size that you want
 ```JavaScript
 
 var nameField = db.field('Name');
-var q8Field   = db.field('Question8Responses');
+var q8Field   = db.field('Question8Responses');  // In this example we are analyzing responses from a survey
 dbOfMaleGermans.eachRow(function(row) {
     console.log( nameField.value(row) + " has these responses to question 8:");
 
-    // Question 8 is multiple choice, so q8Field doesn't have a value function.
+    // Question 8 is multiple choice with multiple selections allowed, so q8Field doesn't have a value function.
 
     var responses = q8Field.values(row);
     for (var i=0 i<responses.length; i++) {
@@ -121,7 +121,44 @@ Although Ozone can read multiple data formats, querying is done from its native 
 
 Node.js users can convert CSV files into Ozone's format; see [demo/buildDataStore.js](https://github.com/dleppik/ozone/blob/master/demo/buildDataStore.js) for an example.  Ozone's JSON format is [documented in TypeScript](https://github.com/dleppik/ozone/blob/master/src/serialization/jsonInterfaces.ts) in case you wish to write JSON directly rather than via Node.
 
-To minimize file size and memory usage, sort the rows on at least one column before converting.
+For example, in node:
+
+```JavaScript
+    var       fs = require('fs');
+    var    ozone = require('ozone-db'); 
+    var filename = "MyData.csv";
+    var       db = ozone.serialization.buildFromCsv(fs.readFileSync(filename, {encoding: 'utf-8'}));
+    var   dbJson = JSON.stringify(ozone.serialization.writeStore(db));
+    fs.writeFileSync("MyOzoneData.json", dbJson, {encoding: 'utf-8'});
+```
+
+Then in the browser:
+
+```JavaScript
+   var db;
+   
+   $.getJSON( "MyOzoneData.json", function( data ) {  // If you like jQuery...
+       db = ozone.serialization.readStore(data);
+   }
+   
+   d3.json("MyOzoneData.json", function(data) {       // ...or if you prefer D3
+       db = ozone.serialization.readStore(data);
+    }
+```
+
+You can pass in metadata as a second parameter to ozone.serialization.buildFromCsv() to alter how the fields are 
+created.  See [demo/buildDataStore.js](https://github.com/dleppik/ozone/blob/master/demo/buildDataStore.js) for an 
+example, or [https://github.com/dleppik/ozone/blob/master/src/interfaces.ts](the FieldDescribing interface) to see
+what's possible.
+
+Internally, Ozone converts CSV into a database that it can iterate over but not query (called a RowStore, since data is
+stored in rows), and uses that to produce its native ColumnStore.  If your data is already a JavaScript array, you can
+ skip the conversion to CSV by calling 
+[https://github.com/dleppik/ozone/blob/master/src/rowStore/functions.ts](ozone.rowStore.build()) and presenting your
+ data as
+[https://github.com/dleppik/ozone/blob/master/test/trivialSampleData.json](RowStore data).
+
+To minimize file size and memory usage, sort the rows on at least one column before converting to Ozone format.
 
 
 Performance
