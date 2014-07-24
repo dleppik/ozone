@@ -4,10 +4,13 @@
     <meta charset="UTF-8">
     <title>Ozone Olympics Demo using jQueryUI and Flot</title>
 
-    <script src="../ozone.js" charset="utf-8"></script>
-    <script src="lib/jquery-ui-1.11.0/external/jquery/jquery.js"></script>
+    <script src="../ozone.js" charset="utf-8"></script> <!--  Can be loaded before or after jQuery  -->
+    <script src="lib/flot/jquery.js"></script>
+    <script src="../jquery.ozone.filter.js"></script>   <!--  Depends on ozone and jQuery           -->
+
     <script src="lib/flot/jquery.flot.js"></script>
     <script src="lib/flot/jquery.flot.categories.js"></script>
+
 </head>
 <style type="text/css">
     .flot-container {
@@ -52,8 +55,10 @@
 
 <h3>Show/Hide</h3>
 <div class="filter-widget">
-
 </div>
+
+<h3>Filters in use:</h3>
+<div class="filter-list"></div>
 
 <div>
     <p>
@@ -68,8 +73,6 @@
     //
     // We keep these variables global so you can mess around with them from the console
     //
-
-    var db, filteredDb;
 
     var data = [[]];
 
@@ -92,17 +95,21 @@
         }
     };
 
+    var dbContext = {};  // Holds the current filtered view of the database
+
     $(function() {
 
         //
         // Setup and load data
         //
 
-        $.getJSON("SummerOlympicMedals.json", function( data ) {
-            db = ozone.serialization.readStore(data);
-            filteredDb = db;
-            updateXAxisField("NOC");
+        $.getJSON("SummerOlympicMedals.json", function( storeJson ) {
+            dbContext = {
+                db: ozone.serialization.readStore(storeJson),
+                onChange: redraw
+            };
 
+            updateXAxisField("NOC");
             resetControllers();
 
         }).fail(function(){
@@ -146,7 +153,7 @@
                 var $el = $(this);
                 $el.html("");
 
-                var fields = db.fields();
+                var fields = dbContext.db.fields();
                 for (var i=0; i<fields.length; i++) {
                     var field = fields[i];
                     var selected = (xAxisField === field) ? " selected" : "";
@@ -156,39 +163,10 @@
         }
 
         function populateFilterController() {
-            $(".filter-widget")
-                    .html("")
-                    .each(function() {
-                        var $widget = $(this);
-
-                        var fields = db.fields();
-                        for (var fieldIndex=0; fieldIndex<fields.length; fieldIndex++) {
-                            var field = fields[fieldIndex];
-                            if (! field.allValues) {
-                                continue;
-                            }
-                            var $fieldGroup = $("<div class='fieldsForFilter'><h3>"+field.displayName+"</h3></div>");
-                            $widget.append($fieldGroup);
-                            var values = field.allValues();
-                            for (var valueIndex=0; valueIndex < values.length; valueIndex++) {
-                                var value = values[valueIndex];
-                                var $filter = $("<div class='valueFilter'><label><input type='checkbox'>"+value+"</label></div>");
-                                $fieldGroup.append($filter);
-
-                                (function(f,v, $f) {  // f and v don't change, but field and value do
-                                    $f.find("input").change(function() {
-                                        if (this.checked) {
-                                            addValueFilter(f, v);
-                                        }
-                                        else {
-                                            removeValueFilter(f, v);
-                                        }
-                                    });
-                                })(field, value, $filter);
-                            }
-                        }
-                    })
-                    .append("<div style='clear:both'></div>")
+            $(".filter-widget").ozoneFilterToggle( {
+                ctx: dbContext,
+                field: "Gender"  // Optional:  use this if you want to restrict the widget to a specific field
+            });
         }
 
         //
@@ -196,51 +174,41 @@
         //
 
 
-        var addValueFilter = function(field, value) {
-            filteredDb = filteredDb.filter(new ozone.ValueFilter(field, value));
-            updateData();
-            plot = $.plot("#flot-placeholder", data, plotArgs);
-        };
-
-        var removeValueFilter = function(field, value) {
-            filteredDb = filteredDb.removeFilter(new ozone.ValueFilter(field, value));
-            updateData();
-            plot = $.plot("#flot-placeholder", data, plotArgs);
-        };
-
-
         function updateXAxisField(newFieldId) {
-            var newField = db.field(newFieldId);
+            var newField = dbContext.db.field(newFieldId);
             if (xAxisField === newField) {
                 return;
             }
             xAxisField = newField;
-            updateData();
-            plot = $.plot("#flot-placeholder", data, plotArgs);
+            redraw();
         }
 
         function updateData() {
             var singleAxisData = [];
-            var columns = filteredDb.partition(xAxisField);
+            var columns = dbContext.db.partition(xAxisField);
             var values = xAxisField.allValues();
             for (var valueIndex = 0; valueIndex < values.length; valueIndex++) {
                 var value = values[valueIndex];
-                var splitDb = columns[value];
-                if (splitDb) {
-                    singleAxisData.push([value, splitDb.size]);
+                var filteredDb = columns[value];
+                if (filteredDb) {
+                    singleAxisData.push([value, filteredDb.size]);
                 }
             }
             data = [singleAxisData];
             filterTopN(maxCategories, ! sortByCount);
         }
 
-        /*
-        function updatePlot() {
-            plot.setData(data);
-            plot.setupGrid();  // Needed when axes change
-            plot.draw();
+        function redraw() {
+            updateData();
+            plot = $.plot("#flot-placeholder", data, plotArgs);
+
+            var $filterList = $(".filter-list").html("");
+            var filters = dbContext.db.filters();
+            for (var i=0; i<filters.length; i++) {
+                var filter = filters[i];
+                $filterList.append("<span class='filter-list-item'>"+filter.displayName+"</span>")
+            }
         }
-        */
 
     });
 

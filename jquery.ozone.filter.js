@@ -31,15 +31,15 @@
         var args = decorateArgs(argObject);
 
         $els.each(function() {
-            reset(this, args.ctx);
+            reset(this, args);
         });
     };
 
     function decorateArgs(args) {
         var result = { ctx: args.ctx };
-        result.field           = (args.hasOwnProperty("field"))           ?  ctx.db.field(args.field)  :  null;
-        result.chooseFieldText = (args.hasOwnProperty("chooseFieldText")) ? args.chooseFieldText       : "Select a field";
-        result.chooseValueText = (args.hasOwnProperty("chooseValueText")) ? args.chooseValueText       : "Select a value";
+        result.field           = (args.hasOwnProperty("field"))           ? args.ctx.db.field(args.field) :  null;
+        result.chooseFieldText = (args.hasOwnProperty("chooseFieldText")) ? args.chooseFieldText          : "Select a field";
+        result.chooseValueText = (args.hasOwnProperty("chooseValueText")) ? args.chooseValueText          : "Select a value";
         return result;
     }
 
@@ -51,11 +51,7 @@
             throw new Error("Field selector not supported yet, please specify a field"); // TODO
         }
         else {
-            var field = args.ctx.db.field(args.field);
-            if (field===null) {
-                throw new Error("Unknown field: '"+field+"'");
-            }
-            resetValuePicker(el, field, args.ctx, args.chooseValueText);
+            resetValuePicker(el, args.field, args.ctx, args.chooseValueText);
         }
     }
 
@@ -64,7 +60,7 @@
             .appendTo(el);
 
         $("<option></option>")
-            .text(args.chooseValueText)
+            .text(chooseValueText)
             .appendTo($values)
             .get(0).value = chooseValueText;  // Handle HTML escaping
 
@@ -80,7 +76,7 @@
             if (filter !== null) {
                 $values.get(0).value = ""+filter.value;
             }
-        })(field.allValues());
+        })(field.values());
 
 
         $values.change(function() {
@@ -102,7 +98,8 @@
     }
 
     function isValueFilterOnField(filter, field) {
-        return filter instanceof ozone.ValueFilter && filter.field.identifier === field.identifier;
+        return  (filter instanceof ozone.ValueFilter)
+            &&  (filter.fieldDescriptor.identifier === field.identifier);
     }
 
     function valueFilterForField(db, field) {
