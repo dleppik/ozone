@@ -13,10 +13,8 @@
  *     };
  *     $(".widgetContainer").ozoneFilterToggle( {
  *             ctx: dbContext,
-  *            field: "Gender"  // Optional:  use this if you want to restrict the widget to a specific field
+ *             field: "Gender"  // Optional:  use this if you want to restrict the widget to a specific field
  *         });
- *
- *     console.log( "The context now has "dbContext.listeners.length +" listeners. " );  // Added itself to the listeners
  *
  *
  * Copyright 2014 by Vocal Laboratories, Inc. Shared under the Apache License 2.0.
@@ -38,7 +36,7 @@
     function decorateArgs(args) {
         var result = { ctx: args.ctx };
         result.field           = (args.hasOwnProperty("field"))           ? args.ctx.db.field(args.field) :  null;
-        result.chooseFieldText = (args.hasOwnProperty("chooseFieldText")) ? args.chooseFieldText          : "Select a field";
+        result.chooseFieldText = (args.hasOwnProperty("chooseFieldText")) ? args.chooseFieldText          : "Select a field to filter";
         result.chooseValueText = (args.hasOwnProperty("chooseValueText")) ? args.chooseValueText          : "Select a value";
         return result;
     }
@@ -48,29 +46,58 @@
         $el.data("ozoneContext", args.ctx);
         $el.html("");
         if (args.field === null) {
-            throw new Error("Field selector not supported yet, please specify a field"); // TODO
+            resetFieldPicker(el, args.ctx, args.chooseFieldText, args.chooseValueText);
         }
         else {
             resetValuePicker(el, args.field, args.ctx, args.chooseValueText);
         }
     }
 
-    function resetValuePicker(el, field, ctx, chooseValueText) {
-        var $values = $("<select class='valueFilter'></select>")
+    function resetFieldPicker(el, ctx, chooseFieldText, chooseValueText) {
+        var $fields = $("<select class='ozoneFilterFieldPicker'></select>")
             .appendTo(el);
 
-        $("<option></option>")
-            .text(chooseValueText)
-            .appendTo($values)
-            .get(0).value = chooseValueText;  // Handle HTML escaping
+        var $valueContainer = $("<div class='ozoneFilterValuePickerContainer'></div>")
+            .appendTo(el);
 
+        appendOption($fields, chooseFieldText);
+        (function (fields) {
+            for (var i=0; i<fields.length; i++) {
+                var field = fields[i];
+                appendOption($fields, field.displayName, field.identifier);
+
+            }
+        })( ctx.db.fields() );
+
+        var currentlySelectedField = null;
+
+        $fields.change(function() {
+            var newDb = removeFiltersForField(ctx.db, currentlySelectedField);
+            changeDb(ctx, newDb);
+
+            $valueContainer.html("");
+            var field = ctx.db.field(this.value);
+            if (field) {
+                currentlySelectedField = field;
+                resetValuePicker($valueContainer.get(0), field, ctx, chooseValueText);
+            }
+            else {
+                currentlySelectedField = null;
+            }
+        });
+    }
+
+
+
+    function resetValuePicker(el, field, ctx, chooseValueText) {
+        var $values = $("<select class='ozoneFilterValuePicker'></select>")
+            .appendTo(el);
+
+        appendOption($values, chooseValueText);
         (function (values) {
             for (var valueIndex=0; valueIndex < values.length; valueIndex++) {
                 var value = values[valueIndex];
-                $("<option></option>")
-                    .text(value)
-                    .appendTo($values)
-                    .get(0).value = ""+value;  // Handle HTML escaping
+                appendOption($values, value);
             }
             var filter = valueFilterForField(ctx.db, field);
             if (filter !== null) {
@@ -80,21 +107,40 @@
 
 
         $values.change(function() {
-            // Remove all filters for the field, add one as needed.
-            var oldFilters = ctx.db.filters();
-            var newDb = ctx.db;
-            for (var i=0; i<oldFilters.length; i++) {
-                var filter = oldFilters[i];
-                if (isValueFilterOnField(filter, field)) {
-                    newDb = newDb.removeFilter(filter);
-                }
-            }
+            var newDb = removeFiltersForField(ctx.db, field);
             var newValue = this.value;
             if (newValue !== chooseValueText) {
                 newDb = newDb.filter(field, newValue);
             }
             changeDb(ctx, newDb);
         });
+    }
+
+    function removeFiltersForField(db, field) {
+        if (field === null) {
+            return db;
+        }
+        var oldFilters = db.filters();
+        var newDb = db;
+        for (var i=0; i<oldFilters.length; i++) {
+            var filter = oldFilters[i];
+            if (isValueFilterOnField(filter, field)) {
+                newDb = newDb.removeFilter(filter);
+            }
+        }
+        return newDb;
+    }
+
+    /** Append an option element to a select element, with proper escaping. */
+    function appendOption($select, text, value) {
+        text = ""+text;
+        if (typeof value === "undefined" || value===null) {
+            value = text;
+        }
+        $("<option></option>")
+            .text(""+text)
+            .appendTo($select)
+            .get(0).value = ""+value;
     }
 
     function isValueFilterOnField(filter, field) {
@@ -116,6 +162,9 @@
 
     function changeDb(ctx, newDb) {
         var oldDb = ctx.db;
+        if (oldDb === newDb) {
+            return;
+        }
         ctx.db = newDb;
         if (ctx.onChange) {
             if (ctx.onChange(oldDb, newDb) === false) {

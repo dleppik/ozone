@@ -163,10 +163,7 @@
         }
 
         function populateFilterController() {
-            $(".filter-widget").ozoneFilterToggle( {
-                ctx: dbContext,
-                field: "Gender"  // Optional:  use this if you want to restrict the widget to a specific field
-            });
+            $(".filter-widget").ozoneFilterToggle( { ctx: dbContext });
         }
 
         //
