@@ -2,8 +2,12 @@
 .ozoneFilterWidget {
   border: 1px solid #999;
   border-radius: 3px;
-  background-color: #CCFFFF;
+  background-color: #f5edf6;
   width: 350px;
+
+  -webkit-box-shadow: 1px 1px 1px 0 rgba(50, 50, 50, 0.25);
+  -moz-box-shadow:    1px 1px 1px 0 rgba(50, 50, 50, 0.25);
+  box-shadow:         1px 1px 1px 0 rgba(50, 50, 50, 0.25);
 }
 
 .ozoneFilterFieldPickerContainer {
@@ -34,8 +38,8 @@
   float: right;
   cursor: pointer;
   color: transparent;
-  background-size: 50px 18px;
   background: url(images/ozone-sprites-1x.png) no-repeat 0 0;
+  background-size: 50px 18px;
   width:  19px;
   height: 19px;
 }
@@ -46,6 +50,6 @@
 
 @media (-webkit-min-device-pixel-ratio:1.5),(min-resolution:150dppx) {
   .ozoneFilterFieldRemove {
-    background: url(images/ozone-sprites-2x.png) no-repeat;
+    background-image: url(images/ozone-sprites-2x.png);
   }
 }
