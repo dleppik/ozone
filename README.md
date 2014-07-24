@@ -139,11 +139,11 @@ Then in the browser:
    
    $.getJSON( "MyOzoneData.json", function( data ) {  // If you like jQuery...
        db = ozone.serialization.readStore(data);
-   }
+   });
    
    d3.json("MyOzoneData.json", function(data) {       // ...or if you prefer D3
        db = ozone.serialization.readStore(data);
-    }
+    });
 ```
 
 You can pass in metadata as a second parameter to ozone.serialization.buildFromCsv() to alter how the fields are 

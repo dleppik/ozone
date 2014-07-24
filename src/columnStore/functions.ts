@@ -14,7 +14,7 @@ module ozone.columnStore {
      *          fields:  maps from field identifiers in the source to field-specific params.  All FieldDescribing
      *                  properties and Builder parameters can be specified here.
      *
-     *                   class: a Field class, such as UnIndexedField, or other object with a "builder" method.
+     *                   class: (within fields:) a Field class, such as UnIndexedField, or other object with a "builder" method.
      *
      *          buildAllFields: boolean, default is true.  If false, any fields not listed under 'Fields' are ignored.
      */

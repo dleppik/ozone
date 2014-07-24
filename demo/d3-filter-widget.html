@@ -63,8 +63,9 @@
         }
 
         #visContainer {
-           margin: 8px 0;
-           border: 1px solid #ccc;
+            margin: 8px 0;
+            border: 1px solid #ccc;
+            width: 980px;
         }
 
         text {
@@ -111,17 +112,8 @@ var filterList = d3.selectAll("#filterList");
 //
 
 var db;
-d3.text("../test/SummerOlympicMedallists1896to2008.csv", function(rawData) {
-
-    var metaData = {
-        fields: {
-            Edition: { displayName: "Year" },
-            NOC:     { displayName: "Country" },
-            Medal:   { values:      ["Bronze", "Silver", "Gold"]}
-        }
-    };
-
-    db = o3.columnStore.buildFromStore(o3.rowStore.buildFromCsv(rawData), metaData);
+d3.json("SummerOlympicMedals.json", function(jsonData) {
+    db = o3.serialization.readStore(jsonData);
     filteredDb = db;
 
     var maxFields = db.fields().length;
@@ -277,9 +269,12 @@ function drawVisualization() {
                 .text("You've selected too many filters! There's nothing left!");
     }
     else {
+        var containerWidth = 980;
+        var containerHeight = 620;
+
         var svgContainer = d3.select(document.getElementById('visContainer')).append("svg")
-                .attr("width", 980)
-                .attr("height", 620);
+                .attr("width", containerWidth)
+                .attr("height", containerHeight);
 
         var g = svgContainer.selectAll("g")
                 .data(partition)
@@ -305,8 +300,8 @@ function drawVisualization() {
                 });
 
         g.attr("transform", function (d, i) {
-            var x = ((i * 10) % (980-40)) + 20;
-            var y = (620-20) - ( (d.db.size / maxValueSize) * (620-40));
+            var x = ((i * 20) % (containerWidth-40)) + 20;
+            var y = (containerHeight-20) - ( (d.db.size / maxValueSize) * (containerHeight-40));
             return "translate(" + x + "," + y + ")";
         });
     }

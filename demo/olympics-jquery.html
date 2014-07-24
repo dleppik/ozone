@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title>Ozone Olympics Demo using jQueryUI and Flot</title>
+
+    <script src="../ozone.js" charset="utf-8"></script>
+    <script src="lib/jquery-ui-1.11.0/external/jquery/jquery.js"></script>
+    <script src="lib/flot/jquery.flot.js"></script>
+    <script src="lib/flot/jquery.flot.categories.js"></script>
+</head>
+<style type="text/css">
+    .flot-container {
+        width: 1000px;
+        height: 400px;
+        border: 1px solid #ccc;
+    }
+
+    #flot-placeholder {
+        width: 100%;
+        height: 100%;
+        background: white;
+    }
+
+    .fieldsForFilter {
+        float: left;
+        width: 150px;
+        border: 1px solid #ccc;
+        display: inline-block;
+    }
+
+</style>
+<body>
+
+<div class="flot-container">
+    <div id="flot-placeholder"></div>
+</div>
+
+<div class="controls">
+    <table>
+        <tr>
+            <th>Field to Plot:</th>
+            <td><select class="x-axis-field-control"></select></td>
+        </tr>
+        <tr>
+            <th>Show top:</th>
+            <td><input type="number" class="max-category-control"></td>
+            <td><label><input type="checkbox" class="sort-by-count-control"> in increasing order</label></td>
+        </tr>
+    </table>
+</div>
+
+<h3>Show/Hide</h3>
+<div class="filter-widget">
+
+</div>
+
+<div>
+    <p>
+        This is a demo of <a href="https://github.com/dleppik/ozone/">Ozone,</a> an open source JavaScript database
+        for data visualization.
+    </p>
+</div>
+
+</body>
+
+<script>
+    //
+    // We keep these variables global so you can mess around with them from the console
+    //
+
+    var db, filteredDb;
+
+    var data = [[]];
+
+    // Variables users can modify
+    var xAxisField;
+    var maxCategories = 10;
+    var sortByCount = false;
+
+    var plotArgs = {
+        series: {
+            bars: {
+                show: true,
+                barWidth: 0.6,
+                align: "center"
+            }
+        },
+        xaxis: {
+            mode: "categories",
+            tickLength: 0
+        }
+    };
+
+    $(function() {
+
+        //
+        // Setup and load data
+        //
+
+        $.getJSON("SummerOlympicMedals.json", function( data ) {
+            db = ozone.serialization.readStore(data);
+            filteredDb = db;
+            updateXAxisField("NOC");
+
+            resetControllers();
+
+        }).fail(function(){
+            alert("Failed to load database.");
+        });
+
+        var plot = $.plot("#flot-placeholder", data, plotArgs);
+
+        //
+        // Controller setup
+        //
+
+        $(".max-category-control").change(function() {
+            maxCategories = Number(this.value);
+            updateData();
+            plot = $.plot("#flot-placeholder", data, plotArgs);
+        });
+
+        $(".sort-by-count-control").change(function() {
+            sortByCount = this.checked;
+            updateData();
+            plot = $.plot("#flot-placeholder", data, plotArgs);
+        });
+
+        $(".x-axis-field-control").change(function() {
+            updateXAxisField(this.value);
+        });
+
+        function resetControllers() {
+            populateXAxisFieldController();
+            populateMaxCategoryControl();
+            populateFilterController();
+        }
+
+        function populateMaxCategoryControl() {
+            $(".max-category-control").each(function(){ this.value = maxCategories; });
+        }
+
+        function populateXAxisFieldController() {
+            $(".x-axis-field-control").each(function() {
+                var $el = $(this);
+                $el.html("");
+
+                var fields = db.fields();
+                for (var i=0; i<fields.length; i++) {
+                    var field = fields[i];
+                    var selected = (xAxisField === field) ? " selected" : "";
+                    $el.append("<option "+selected+" value='"+field.identifier+"'>"+field.displayName+"</option>");
+                }
+            });
+        }
+
+        function populateFilterController() {
+            $(".filter-widget")
+                    .html("")
+                    .each(function() {
+                        var $widget = $(this);
+
+                        var fields = db.fields();
+                        for (var fieldIndex=0; fieldIndex<fields.length; fieldIndex++) {
+                            var field = fields[fieldIndex];
+                            if (! field.allValues) {
+                                continue;
+                            }
+                            var $fieldGroup = $("<div class='fieldsForFilter'><h3>"+field.displayName+"</h3></div>");
+                            $widget.append($fieldGroup);
+                            var values = field.allValues();
+                            for (var valueIndex=0; valueIndex < values.length; valueIndex++) {
+                                var value = values[valueIndex];
+                                var $filter = $("<div class='valueFilter'><label><input type='checkbox'>"+value+"</label></div>");
+                                $fieldGroup.append($filter);
+
+                                (function(f,v, $f) {  // f and v don't change, but field and value do
+                                    $f.find("input").change(function() {
+                                        if (this.checked) {
+                                            addValueFilter(f, v);
+                                        }
+                                        else {
+                                            removeValueFilter(f, v);
+                                        }
+                                    });
+                                })(field, value, $filter);
+                            }
+                        }
+                    })
+                    .append("<div style='clear:both'></div>")
+        }
+
+        //
+        // Functions
+        //
+
+
+        var addValueFilter = function(field, value) {
+            filteredDb = filteredDb.filter(new ozone.ValueFilter(field, value));
+            updateData();
+            plot = $.plot("#flot-placeholder", data, plotArgs);
+        };
+
+        var removeValueFilter = function(field, value) {
+            filteredDb = filteredDb.removeFilter(new ozone.ValueFilter(field, value));
+            updateData();
+            plot = $.plot("#flot-placeholder", data, plotArgs);
+        };
+
+
+        function updateXAxisField(newFieldId) {
+            var newField = db.field(newFieldId);
+            if (xAxisField === newField) {
+                return;
+            }
+            xAxisField = newField;
+            updateData();
+            plot = $.plot("#flot-placeholder", data, plotArgs);
+        }
+
+        function updateData() {
+            var singleAxisData = [];
+            var columns = filteredDb.partition(xAxisField);
+            var values = xAxisField.allValues();
+            for (var valueIndex = 0; valueIndex < values.length; valueIndex++) {
+                var value = values[valueIndex];
+                var splitDb = columns[value];
+                if (splitDb) {
+                    singleAxisData.push([value, splitDb.size]);
+                }
+            }
+            data = [singleAxisData];
+            filterTopN(maxCategories, ! sortByCount);
+        }
+
+        /*
+        function updatePlot() {
+            plot.setData(data);
+            plot.setupGrid();  // Needed when axes change
+            plot.draw();
+        }
+        */
+
+    });
+
+    function filterTopN(n, preserveOrder) {
+        var sorted = data[0].concat().sort(function(a, b) { return b[1] - a[1]; } ); // High to low
+        sorted.splice(n, sorted.length);
+
+        if ( ! preserveOrder) {
+            data = [sorted.reverse()];
+            return;
+        }
+
+        var categories = {};
+        for (var i = 0; i < sorted.length; i++) {
+            categories[sorted[i][0]] = true;
+        }
+        var singleAxisData = [];
+        for (i=0; i<data[0].length; i++) {
+            var datum = data[0][i];
+            if (categories[datum[0]]) {
+                singleAxisData.push(datum);
+            }
+        }
+        data = [singleAxisData];
+    }
+
+</script>
+</html>
