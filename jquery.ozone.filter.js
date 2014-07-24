@@ -1,11 +1,11 @@
 /**
  * Create a filter toggle widget.  Takes an Ozone DB context, which the widget will modify whenever there is a change.
- * This is because Ozone databases are immutable, and filters are immutable views of the unfiltered database.
+ * This is needed because Ozone databases are immutable, and filters are immutable views of the unfiltered database.
  *
  * Usage:
  *
  *     var dbContext = {
- *         db: myFilteredDatabase,
+ *         db: myFilteredDatabaseView,
  *         onChange : function(oldDb, newDb) {
  *             alert("Filter was added or removed.");
  *             return true;  // To cancel the change, return false.
@@ -23,7 +23,7 @@
 (function ($) {
     "use strict";
 
-    $.fn.ozoneFilterToggle = function( argObject ) {
+    $.fn.ozoneFilterWidget = function( argObject ) {
         var $els = this;
 
         var args = decorateArgs(argObject);
@@ -44,21 +44,27 @@
     function reset(el, args) {
         var $el = $(this);
         $el.data("ozoneContext", args.ctx);
-        $el.html("");
+
+        var $widget = $("<div class='ozoneFilterWidget'></div>")
+            .appendTo(el);
         if (args.field === null) {
-            resetFieldPicker(el, args.ctx, args.chooseFieldText, args.chooseValueText);
+            createFieldPicker($widget, args.ctx, args.chooseFieldText, args.chooseValueText);
         }
         else {
-            resetValuePicker(el, args.field, args.ctx, args.chooseValueText);
+            createValuePicker($widget, args.field, args.ctx, args.chooseValueText);
         }
     }
 
-    function resetFieldPicker(el, ctx, chooseFieldText, chooseValueText) {
-        var $fields = $("<select class='ozoneFilterFieldPicker'></select>")
-            .appendTo(el);
+    function createFieldPicker($widget, ctx, chooseFieldText, chooseValueText) {
 
-        var $valueContainer = $("<div class='ozoneFilterValuePickerContainer'></div>")
-            .appendTo(el);
+        var $fieldsContainer = $("<div class='ozoneFilterFieldPickerContainer'></div>")
+            .appendTo($widget);
+
+        var $fields = $("<select class='ozoneFilterFieldPicker'></select>")
+            .appendTo($fieldsContainer);
+
+        var $valueList = $("<div class='ozoneFilterValuePickerList'></div>")
+            .appendTo($widget);
 
         appendOption($fields, chooseFieldText);
         (function (fields) {
@@ -69,27 +75,32 @@
             }
         })( ctx.db.fields() );
 
-        var currentlySelectedField = null;
-
         $fields.change(function() {
-            var newDb = removeFiltersForField(ctx.db, currentlySelectedField);
-            changeDb(ctx, newDb);
-
-            $valueContainer.html("");
             var field = ctx.db.field(this.value);
             if (field) {
-                currentlySelectedField = field;
-                resetValuePicker($valueContainer.get(0), field, ctx, chooseValueText);
-            }
-            else {
-                currentlySelectedField = null;
+                var $valueContainer = $("<div class='ozoneFilterValueContainer'></div>")
+                    .appendTo($valueList);
+                $("<div class='ozoneFilterFieldName'></div>")
+                    .text(field.displayName)
+                    .appendTo($valueContainer);
+                createValuePicker($valueContainer.get(0), field, ctx, chooseValueText);
+
+                $("<div class='ozoneFilterFieldRemove'>Remove</div>")
+                    .appendTo($valueContainer)
+                    .click(function() {
+                        var newDb = removeFiltersForField(ctx.db, field);
+                        changeDb(ctx, newDb);
+                        $valueContainer.remove();
+                    });
+
+                this.value = chooseFieldText;
             }
         });
     }
 
 
 
-    function resetValuePicker(el, field, ctx, chooseValueText) {
+    function createValuePicker(el, field, ctx, chooseValueText) {
         var $values = $("<select class='ozoneFilterValuePicker'></select>")
             .appendTo(el);
 

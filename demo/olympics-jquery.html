@@ -11,28 +11,36 @@
     <script src="lib/flot/jquery.flot.js"></script>
     <script src="lib/flot/jquery.flot.categories.js"></script>
 
+    <link href="../jquery.ozone.filter.css" rel="stylesheet" type="text/css">
+
+    <style type="text/css">
+        .flot-container {
+            width: 1000px;
+            height: 400px;
+            border: 1px solid #ccc;
+        }
+
+        #flot-placeholder {
+            width: 100%;
+            height: 100%;
+            background: white;
+        }
+
+
+        .filters-in-use h3 {
+            display: inline-block;
+        }
+        .filters-in-use .filter-list {
+            display: inline-block;
+        }
+        .filters-in-use .filter-list-item {
+            padding: 8px;
+        }
+
+    </style>
+
+
 </head>
-<style type="text/css">
-    .flot-container {
-        width: 1000px;
-        height: 400px;
-        border: 1px solid #ccc;
-    }
-
-    #flot-placeholder {
-        width: 100%;
-        height: 100%;
-        background: white;
-    }
-
-    .fieldsForFilter {
-        float: left;
-        width: 150px;
-        border: 1px solid #ccc;
-        display: inline-block;
-    }
-
-</style>
 <body>
 
 <div class="flot-container">
@@ -53,12 +61,13 @@
     </table>
 </div>
 
-<h3>Show/Hide</h3>
 <div class="filter-widget">
 </div>
 
-<h3>Filters in use:</h3>
-<div class="filter-list"></div>
+<div class="filters-in-use">
+    <h3>Filters in use:</h3>
+    <div class="filter-list"></div>
+</div>
 
 <div>
     <p>
@@ -163,7 +172,7 @@
         }
 
         function populateFilterController() {
-            $(".filter-widget").ozoneFilterToggle( { ctx: dbContext });
+            $(".filter-widget").ozoneFilterWidget( { ctx: dbContext } );
         }
 
         //
