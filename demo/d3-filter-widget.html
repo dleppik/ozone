@@ -98,7 +98,6 @@ This is an example of a filter widget built using D3.
 
 <script>
 
-var o3 = ozone;
 var fieldsByDisplayName = {}; //Empty object.
 var noFieldOptName = "Select a field to filter"; //Default setup.
 var filters = [];
@@ -113,14 +112,14 @@ var filterList = d3.selectAll("#filterList");
 
 var db;
 d3.json("SummerOlympicMedals.json", function(jsonData) {
-    db = o3.serialization.readStore(jsonData);
+    db = ozone.serialization.readStore(jsonData);
     filteredDb = db;
 
-    var maxFields = db.fields().length;
+    var fields = db.fields();
 
-    for (var i=0; i<maxFields; i++) {
-        var field = db.fields()[i];
-        if (field instanceof o3.columnStore.IndexedField) {
+    for (var i=0; i<fields.length; i++) {
+        var field = fields[i];
+        if (field instanceof ozone.columnStore.IndexedField) {
             indexedFields.push(field);
         }
     }

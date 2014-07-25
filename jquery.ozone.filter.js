@@ -92,7 +92,6 @@
                         changeDb(ctx, newDb);
                         $valueContainer.remove();
                     });
-
                 this.value = chooseFieldText;
             }
         });
@@ -110,18 +109,26 @@
                 var value = values[valueIndex];
                 appendOption($values, value);
             }
-            var filter = valueFilterForField(ctx.db, field);
-            if (filter !== null) {
-                $values.get(0).value = ""+filter.value;
-            }
         })(field.values());
+        $values.get(0).value = chooseValueText;
 
+
+        var oldSelectedValue = $values.get(0).value;
+        if (oldSelectedValue===chooseValueText) {
+            oldSelectedValue = null;
+        }
 
         $values.change(function() {
-            var newDb = removeFiltersForField(ctx.db, field);
+            var newDb = (oldSelectedValue === null)
+                ? ctx.db
+                : ctx.db.removeFilter(new ozone.ValueFilter(field, oldSelectedValue));
             var newValue = this.value;
-            if (newValue !== chooseValueText) {
+            if (newValue === chooseValueText) {
+                oldSelectedValue = null;
+            }
+            else {
                 newDb = newDb.filter(field, newValue);
+                oldSelectedValue = newValue;
             }
             changeDb(ctx, newDb);
         });
