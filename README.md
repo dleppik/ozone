@@ -26,7 +26,11 @@ The major differences between Ozone and a traditional SQL database (most of thes
 Demo
 ----
 
-[Summer Olympics Medals](http://www.vocalabs.com/open-source/ozone/demo/olympics.html)
+[Summer Olympics Medals, using D3](http://www.vocalabs.com/open-source/ozone/demo/olympics.html)
+
+[Simpler D3 demo](http://www.vocalabs.com/open-source/ozone/demo/d3-filter-widget.html)
+
+[jQuery demo](http://www.vocalabs.com/open-source/ozone/demo/jquery-demo.html)
 
 Querying Ozone
 --------------
