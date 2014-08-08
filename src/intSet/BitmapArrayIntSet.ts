@@ -150,7 +150,7 @@ module ozone.intSet {
             return new OrderedWordWithOffsetIterator(this.words, this.wordOffset);
         }
 
-        /** Returns an IntSet containing only the elements that are found in both IntSets. */
+        /** Returns an IntSet containing all the elements in either IntSet. */
         union(set : IntSet) : IntSet {
             if (this.size === 0) {
                 return set;
@@ -172,12 +172,20 @@ module ozone.intSet {
             return ozone.intSet.unionOfOrderedIterators(this.iterator(), set.iterator());
         }
 
-        /** Returns an IntSet containing all the elements in either IntSet. */
+        /** Returns an IntSet containing only the elements that are found in both IntSets. */
         intersection(set : IntSet) : IntSet {
-            if (set['isPacked']) {  // isPacked exists
-                //  When we get more packed types, might need to rethink this.
+            if (this.size === 0 || set.size === 0) {
+                return empty;
             }
-            return intersectionOfOrderedIterators(this.iterator(), set.iterator());
+
+            if (set['isPacked']) {  // isPacked exists
+                var bitwiseCompare = (word1 : number, word2 : number) : number => {return word1 & word2;};
+                var hasNextCompare = (next1 : boolean, next2 : boolean) : boolean => {return next1 && next2;};
+                var minPicker = (min1 : number, min2 : number) : number => {return min1 >= min2 ? min1 : min2;};
+
+                return ozone.intSet.packedBitwiseCompare(this, <PackedIntSet> set, bitwiseCompare, hasNextCompare, minPicker);
+            }
+            return ozone.intSet.intersectionOfOrderedIterators(this.iterator(), set.iterator());
         }
 
         /** Returns true if the iterators produce identical results. */

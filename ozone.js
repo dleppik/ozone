@@ -1517,7 +1517,7 @@ var ozone;
                 return new OrderedWordWithOffsetIterator(this.words, this.wordOffset);
             };
 
-            /** Returns an IntSet containing only the elements that are found in both IntSets. */
+            /** Returns an IntSet containing all the elements in either IntSet. */
             BitmapArrayIntSet.prototype.union = function (set) {
                 if (this.size === 0) {
                     return set;
@@ -1545,12 +1545,26 @@ var ozone;
                 return ozone.intSet.unionOfOrderedIterators(this.iterator(), set.iterator());
             };
 
-            /** Returns an IntSet containing all the elements in either IntSet. */
+            /** Returns an IntSet containing only the elements that are found in both IntSets. */
             BitmapArrayIntSet.prototype.intersection = function (set) {
-                if (set['isPacked']) {
-                    //  When we get more packed types, might need to rethink this.
+                if (this.size === 0 || set.size === 0) {
+                    return intSet.empty;
                 }
-                return intSet.intersectionOfOrderedIterators(this.iterator(), set.iterator());
+
+                if (set['isPacked']) {
+                    var bitwiseCompare = function (word1, word2) {
+                        return word1 & word2;
+                    };
+                    var hasNextCompare = function (next1, next2) {
+                        return next1 && next2;
+                    };
+                    var minPicker = function (min1, min2) {
+                        return min1 >= min2 ? min1 : min2;
+                    };
+
+                    return ozone.intSet.packedBitwiseCompare(this, set, bitwiseCompare, hasNextCompare, minPicker);
+                }
+                return ozone.intSet.intersectionOfOrderedIterators(this.iterator(), set.iterator());
             };
 
             /** Returns true if the iterators produce identical results. */

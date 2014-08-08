@@ -454,10 +454,16 @@ describe("BitmapArrayIntSet tests", function() {
         expect(bitmap.iterator() instanceof ozone.intSet.OrderedBitmapArrayIterator).toBe(true);
     });
 
+    var bitmap1 = new ozone.intSet.BitmapArrayIntSet([1|0, 5|0], 0, 3);
+    var bitmap2 = new ozone.intSet.BitmapArrayIntSet([6|0], 1, 2);
+    var unionBitmap = new ozone.intSet.BitmapArrayIntSet([1|0, 7|0], 0, 4);
+    var intersectionBitmap = new ozone.intSet.BitmapArrayIntSet([0|0, 4|0], 0, 1);
+
+    it("intersects 2 bitmaps", function() {
+        expect(bitmap1.intersection(bitmap2).equals(intersectionBitmap)).toBe(true);
+    });
+
     it("unions 2 bitmaps", function() {
-        var bitmap1 = new ozone.intSet.BitmapArrayIntSet([1|0, 5|0], 0, 3);
-        var bitmap2 = new ozone.intSet.BitmapArrayIntSet([6|0], 1, 2);
-        var unionBitmap = new ozone.intSet.BitmapArrayIntSet([1|0, 7|0], 0, 4);
         expect(bitmap1.union(bitmap2).equals(unionBitmap)).toBe(true);
     });
 });
