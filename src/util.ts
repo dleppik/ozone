@@ -6,7 +6,7 @@
 
 
 /**
- *  Contains tiny classes that are too small to merit their own file.
+ *  Contains public functions and tiny classes that are too small to merit their own file.
  */
 module ozone {
 

@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title>Ozone Olympics Demo using jQueryUI and Flot</title>
+
+    <script src="../ozone.js" charset="utf-8"></script> <!--  Can be loaded before or after jQuery  -->
+    <script src="lib/flot/jquery.js"></script>
+    <script src="../jquery.ozone.filter.js"></script>   <!--  Depends on ozone and jQuery           -->
+
+    <script src="lib/flot/jquery.flot.js"></script>
+    <script src="lib/flot/jquery.flot.categories.js"></script>
+
+    <link href="jquery-demo.css" rel="stylesheet" type="text/css"/>
+</head>
+<body>
+
+<h1>Bar graph demo using jQuery and <a href="http://www.flotcharts.org/">Flot</a></h1>
+
+<div class="flot-container">
+    <div id="flot-placeholder"></div>
+</div>
+
+<div class="controls">
+    <table>
+        <tr>
+            <th>Field to Plot:</th>
+            <td><select class="x-axis-field-control"></select></td>
+        </tr>
+        <tr>
+            <th>Show top:</th>
+            <td><input type="number" class="max-category-control"></td>
+            <td><label><input type="checkbox" class="sort-by-count-control"> in increasing order</label></td>
+        </tr>
+    </table>
+</div>
+
+<div class="filter-widget">
+</div>
+
+<div class="filters-in-use">
+    <div class="filter-list"></div>
+</div>
+
+<div class="upload-csv">
+    <h1>
+        Use your own data (comma-separated)
+    </h1>
+
+    <div class="section">
+        <h2>Upload...</h2>
+
+        <input type="file" class="upload-csv-file"/>
+
+        <div class="note">IE 9 and below don't support JavaScript file uploads.</div>
+
+    </div>
+    <div class="section">
+        <h2>... or paste:</h2>
+
+        <form class="csv-upload-form" onsubmit="return false;">
+            <textarea class="enter-csv-field"></textarea>
+            <button class="submit-cs" value="submit-text" type="submit">Use Pasted Text</button>
+        </form>
+    </div>
+    <div style="clear:both"></div>
+</div>
+
+</div>
+
+<div>
+    <p>
+        This is a demo of <a href="https://github.com/dleppik/ozone/">Ozone,</a> an open source JavaScript database
+        for data visualization.
+    </p>
+</div>
+
+</body>
+
+<!-- ############################################################################################################## -->
+
+<script>
+    //
+    // We keep these variables global so you can mess around with them from the console
+    //
+
+    var data = [[]];
+
+    // Variables users can modify
+    var xAxisField;
+    var maxCategories = 10;
+    var sortByCount = false;
+
+    var plotArgs = {
+        series: {
+            bars: {
+                show: true,
+                barWidth: 0.6,
+                align: "center"
+            }
+        },
+        xaxis: {
+            mode: "categories",
+            tickLength: 0
+        }
+    };
+
+    var dbContext = {};  // Holds the current filtered view of the database
+
+    $(function() {
+
+        //
+        // Setup and load default data
+        //
+
+        $.getJSON("SummerOlympicMedals.json", function( storeJson ) {
+            dbContext = {
+                db: ozone.serialization.readStore(storeJson),
+                onChange: redraw
+            };
+
+            updateXAxisField("NOC");
+            resetControllers();
+
+        }).fail(function(){
+            alert("Failed to load database.");
+        });
+
+        //
+        // Load from CSV
+        //
+
+        $(".upload-csv-file").change(function(changeEvent) {
+            if (window.File && window.FileReader) {
+                var files = changeEvent.target.files;
+                if (files.length > 0) {
+                    var file = files[0];
+                    var reader = new FileReader();
+                    reader.onload = function(event) { replaceDbWithCsv(reader.result); };
+                    reader.readAsText(file);
+                }
+            }
+            else {
+                alert("Your browser doesn't support JavaScript file uploads.");
+            }
+        });
+
+        $("form.csv-upload-form").submit(function(event) {
+            replaceDbWithCsv( $(this).find(".enter-csv-field").get(0).value );
+            event.preventDefault();
+        });
+
+        function replaceDbWithCsv( csv ) {
+            var newDb = ozone.serialization.buildFromCsv( csv );
+
+            dbContext = {
+                db: newDb,
+                onChange: redraw
+            };
+
+            var newXAxisField = chooseBestXAxisField(newDb.fields());
+            if (newXAxisField === null) {
+                var alertText = (newDb.fields().length === 0) ?  "No data."  :  "None of the fields make good categories.";
+                alert(alertText);
+            }
+            else {
+                updateXAxisField(newXAxisField.identifier);
+                resetControllers();
+            }
+        }
+
+        function chooseBestXAxisField(fields) {
+            var newXAxisField = null;
+            for (var i=0; i<fields.length; i++) {
+                var field = fields[i];
+                if (typeof(field.allValues) === "function") {  // Make sure it's an IndexedField
+                    if (newXAxisField === null) {
+                        newXAxisField = field;
+                    }
+                    else {
+                        var newXAxisCardinality = newXAxisField.allValues().length;
+                        var    fieldCardinality = field.allValues().length;
+                        if (newXAxisCardinality <= 10) {
+                            if (fieldCardinality <= 10  &&  newXAxisCardinality < fieldCardinality) {
+                                newXAxisField = field;  // As close to 10 as possible but not over
+                            }
+                        }
+                        else if ( 1 < fieldCardinality  &&  fieldCardinality < newXAxisCardinality) {
+                            newXAxisField = field;
+                        }
+                    }
+                }
+            }
+            return newXAxisField;
+        }
+
+        var plot = $.plot("#flot-placeholder", data, plotArgs);
+
+        //
+        // Controller setup
+        //
+
+        $(".max-category-control").change(function() {
+            maxCategories = Number(this.value);
+            updateData();
+            plot = $.plot("#flot-placeholder", data, plotArgs);
+        });
+
+        $(".sort-by-count-control").change(function() {
+            sortByCount = this.checked;
+            updateData();
+            plot = $.plot("#flot-placeholder", data, plotArgs);
+        });
+
+        $(".x-axis-field-control").change(function() {
+            updateXAxisField(this.value);
+        });
+
+        function resetControllers() {
+            populateXAxisFieldController();
+            populateMaxCategoryControl();
+            populateFilterController();
+        }
+
+        function populateMaxCategoryControl() {
+            $(".max-category-control").each(function(){ this.value = maxCategories; });
+        }
+
+        function populateXAxisFieldController() {
+            $(".x-axis-field-control").each(function() {
+                var $el = $(this);
+                $el.html("");
+
+                var fields = dbContext.db.fields();
+                for (var i=0; i<fields.length; i++) {
+                    var field = fields[i];
+                    var selected = (xAxisField === field) ? " selected" : "";
+                    $el.append("<option "+selected+" value='"+field.identifier+"'>"+field.displayName+"</option>");
+                }
+            });
+        }
+
+        function populateFilterController() {
+            $(".filter-widget")
+                    .html("")  // Remove old filter widgets
+                    .ozoneFilterWidget( { ctx: dbContext } );
+        }
+
+        //
+        // Functions
+        //
+
+
+        function updateXAxisField(newFieldId) {
+            var newField = dbContext.db.field(newFieldId);
+            if (xAxisField === newField) {
+                return;
+            }
+            xAxisField = newField;
+            redraw();
+        }
+
+        function updateData() {
+            var singleAxisData = [];
+            var columns = dbContext.db.partition(xAxisField);
+            var values = xAxisField.allValues();
+            for (var valueIndex = 0; valueIndex < values.length; valueIndex++) {
+                var value = values[valueIndex];
+                var filteredDb = columns[value];
+                if (filteredDb) {
+                    singleAxisData.push([value, filteredDb.size]);
+                }
+            }
+            data = [singleAxisData];
+            filterTopN(maxCategories, ! sortByCount);
+        }
+
+        function redraw() {
+            updateData();
+            plot = $.plot("#flot-placeholder", data, plotArgs);
+
+            var $filterList = $(".filter-list").html("");
+            var filters = dbContext.db.filters();
+            for (var i=0; i<filters.length; i++) {
+                var filter = filters[i];
+                $filterList.append("<span class='filter-list-item'>"+filter.displayName+"</span>")
+            }
+        }
+
+    });
+
+    function filterTopN(n, preserveOrder) {
+        var sorted = data[0].concat().sort(function(a, b) { return b[1] - a[1]; } ); // High to low
+        sorted.splice(n, sorted.length);
+
+        if ( ! preserveOrder) {
+            data = [sorted.reverse()];
+            return;
+        }
+
+        var categories = {};
+        for (var i = 0; i < sorted.length; i++) {
+            categories[sorted[i][0]] = true;
+        }
+        var singleAxisData = [];
+        for (i=0; i<data[0].length; i++) {
+            var datum = data[0][i];
+            if (categories[datum[0]]) {
+                singleAxisData.push(datum);
+            }
+        }
+        data = [singleAxisData];
+    }
+
+</script>
+</html>
