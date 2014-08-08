@@ -41,11 +41,44 @@ module ozone.intSet {
     }
 
     /**
-     * Return a IntSet builder.  If min and max are provided, a builder optimized for that size may be returned.
+     * Return the default IntSet builder.  If min and max are provided, a builder optimized for that size may be returned.
      */
     export function builder(min : number = 0, max: number = -1) : Reducer<number,IntSet> {
-        return ArrayIndexIntSet.builder();
+        return BitmapArrayIntSet.builder();
     }
+
+    export function mostEfficientIntSet(input : IntSet) : IntSet {
+        if (input.size == 0) {
+            return empty;
+        }
+        if (input.max() - input.min() + 1 == input.size) {
+            return ozone.intSet.RangeIntSet.fromTo(input.min(), input.max());
+        }
+
+        // If the data is sparse, use an ArrayIndexIntSet, if it is dense, use BitmapArrayIntSet.
+        // The values here are an educated guess, need to to some testing to optimize
+        var builder : Reducer<number, IntSet>;
+        var iterator = input.iterator();
+        if ((input.max() - input.min() + 1) / input.size > 128) {
+            if (input instanceof ArrayIndexIntSet) {
+                return input;
+            }
+            builder = ArrayIndexIntSet.builder(input.min(), input.max());
+        }
+        else {
+            if (input instanceof BitmapArrayIntSet) {
+                return input;
+            }
+            builder = BitmapArrayIntSet.builder(input.min(), input.max());
+        }
+
+        while (iterator.hasNext()) {
+            builder.onItem(iterator.next());
+        }
+
+        return builder.onEnd();
+    }
+
 
     /** Return a IntSet containing all the numbers provided by the iterators. */
     export function unionOfIterators(...iterators : Iterator<number>[]) : IntSet {
@@ -78,6 +111,47 @@ module ozone.intSet {
         return builder.onEnd();
     }
 
+    /** Return a IntSet containing all the numbers provided by the ordered iterators. This is more efficient
+     * than unionOfIterators.  Returns the type of IntSet most appropriate for the size of the data.
+     * */
+    export function unionOfOrderedIterators(...iterators : OrderedIterator<number>[]) : IntSet {
+        if (iterators.length===0) {
+            return empty;
+        }
+
+        var builder = ozone.intSet.builder();
+        var nexts : number[] = [];
+        var previous : number = -1;
+        var smallestIndex : number = 0;
+        for (var i = 0; i < iterators.length; i++) {
+            if (iterators[i].hasNext()) {
+                nexts[i] = iterators[i].next();
+                if (nexts[i] < nexts[smallestIndex]) {
+                    smallestIndex = i;
+                }
+            }
+            else {
+                nexts[i] = -1;
+            }
+        }
+        while (nexts[smallestIndex] >= 0) {
+            if (nexts[smallestIndex] > previous) {
+                builder.onItem(nexts[smallestIndex]);
+                previous = nexts[smallestIndex];
+            }
+            nexts[smallestIndex] = iterators[smallestIndex].hasNext() ? iterators[smallestIndex].next() : -1;
+
+            // Find the new smallest value in nexts
+            smallestIndex = 0;
+            for (var i = 0; i < nexts.length; i++) {
+                if ((nexts[smallestIndex] == -1) || (nexts[i] != -1 && nexts[i] < nexts[smallestIndex])) {
+                    smallestIndex = i;
+                }
+            }
+        }
+        return mostEfficientIntSet(builder.onEnd());
+    }
+
     export function unionOfIntSets(...intSets : IntSet[]) : IntSet {
         if (intSets.length === 0) {
             return empty;
@@ -96,13 +170,22 @@ module ozone.intSet {
             return empty;
         }
         if (iterators.length === 1) {
-            return unionOfIterators(iterators[0]);  // The algorithm below assumes at least 2 iterators.
+            return unionOfOrderedIterators(iterators[0]);  // The algorithm below assumes at least 2 iterators.
         }
+
+
+        return mostEfficientIntSet(intersectionOfOrderedIteratorsWithBuilder(builder(), iterators));
+    }
+
+    export function intersectionOfOrderedIteratorsWithBuilder(builder : Reducer<number,IntSet>,
+                                                   iterators : OrderedIterator<number>[]) : IntSet {
+        if (iterators.length === 0) {
+            return builder.onEnd();
+        }
+
 
         // Cycle through the iterators round-robbin style, skipping to the highest element so far.  When we have N
         // iterators in a row giving us the same value, that element goes into the builder.
-
-        var builder = ArrayIndexIntSet.builder();
         var currentIteratorIndex = 0;
         var numIteratorsWithCurrentValue = 1; // Always start with 1, for the current iterator
         var previousValue : number = NaN;
@@ -168,5 +251,33 @@ module ozone.intSet {
         }
         return true;
     }
+
+
+    export function packedBitwiseCompare(set1 : PackedIntSet, set2 : PackedIntSet,
+                                         bitwiseCompare : (word1 : number, word2 : number) => number,
+                                         hasNextCompare : (next1 : boolean, next2 : boolean) => boolean,
+                                         minPicker : (min1 : number, min2 : number) => number) : IntSet {
+        //  When we get more packed types, might need to rethink this.
+        if (set2.isPacked === true) {
+            var myIterator      = set1.wordIterator();
+            var otherIterator   = set2.wordIterator();
+            var array : number[] = [];
+            var currentWord : number;
+            var size : number     = 0;
+
+            var offset : number = minPicker(set1.minWord(), set2.minWord());
+            myIterator.skipTo(offset);
+            otherIterator.skipTo(offset);
+
+            while (hasNextCompare(myIterator.hasNext(), otherIterator.hasNext())) {
+                currentWord = bitwiseCompare(myIterator.next(), otherIterator.next());
+                size += bits.countBits(currentWord);
+                array.push(currentWord);
+            }
+            return mostEfficientIntSet(new BitmapArrayIntSet(array, offset, size));
+        }
+        return ozone.intSet.unionOfOrderedIterators(set1.iterator(), set2.iterator());
+    }
+
 
 }

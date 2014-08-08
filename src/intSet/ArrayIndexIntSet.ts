@@ -68,30 +68,6 @@ module ozone.intSet {
 
         equals(set : IntSet) : boolean {
             return equalIntSets(this, set);
-            /***************************
-            if (set===this) {
-                return true;
-            }
-            if (set instanceof RangeIntSet) {
-                return set.equals(this);
-            }
-            if (this.size !== set.size  || this.min() !== set.min()  || this.max() !== set.max()) {
-                return false;
-            }
-            if (this.size===0) {
-                return true;  // both empty
-            }
-
-            var it1 = this.iterator();
-            var it2 = set.iterator();
-
-            while(it1.hasNext()) {
-                if (it1.next() != it2.next()) {
-                    return false;
-                }
-            }
-            return true;
-             *************************/
         }
 
 
@@ -105,7 +81,7 @@ module ozone.intSet {
             if (set instanceof RangeIntSet && set.min() <= this.min() && set.max() >= this.max()) {
                 return set;
             }
-            return unionOfIterators(this.iterator(), set.iterator());
+            return unionOfOrderedIterators(this.iterator(), set.iterator());
         }
 
         intersection(set : IntSet) : IntSet {

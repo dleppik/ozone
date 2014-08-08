@@ -95,7 +95,7 @@ module ozone.intSet {
             }
         }
 
-        private notWritten() : any {
+        private static notWritten() : any {
             throw new Error("This method has not been implemented yet."); // XXX
         }
 
@@ -146,43 +146,38 @@ module ozone.intSet {
         }
 
         /** Iterate over all the packed words in order. */
-        wordIterator() : OrderedWordIterator {
-            return new OrderedWordIterator(this.words);
+        wordIterator() : OrderedWordWithOffsetIterator {
+            return new OrderedWordWithOffsetIterator(this.words, this.wordOffset);
         }
 
-
         /** Returns an IntSet containing only the elements that are found in both IntSets. */
-        union(bm : IntSet) : IntSet {
-
-            if (bm['isPacked']) {  // isPacked exists
-                var that : PackedIntSet = <PackedIntSet> bm;
-                if (that.isPacked === true) {
-                    var myIterator     = this.wordIterator();
-                    var otherIterator  = that.wordIterator();
-                    var array:number[];
-                    var currentWord:number;
-                    var size:number = 0;
-
-                    var offset:number = (this.minWord() >= that.minWord()) ? this.minWord() : that.minWord();
-                    myIterator.skipTo(offset);
-                    otherIterator.skipTo(offset);
-
-                    while (myIterator.hasNext() && otherIterator.hasNext()) {
-                        currentWord = myIterator.next() & otherIterator.next();
-                        size += bits.countBits(currentWord);
-                        array.push(currentWord);
-                    }
-                    return new BitmapArrayIntSet(array, offset, size);
-                }
+        union(set : IntSet) : IntSet {
+            if (this.size === 0) {
+                return set;
             }
-            else {
-                return bm.union(this);
+            if (set.size === 0) {
+                return this; // Min and max aren't useful for comparisons with unions
             }
+            if (set instanceof RangeIntSet && set.min() <= this.min() && set.max() >= this.max()) {
+                return set;
+            }
+
+            if (set['isPacked']) {  // isPacked exists
+                var bitwiseCompare = (word1 : number, word2 : number) : number => {return word1 | word2;};
+                var hasNextCompare = (next1 : boolean, next2 : boolean) : boolean => {return next1 || next2;};
+                var minPicker = (min1 : number, min2 : number) : number => {return min1 <= min2 ? min1 : min2;};
+
+                return ozone.intSet.packedBitwiseCompare(this, <PackedIntSet> set, bitwiseCompare, hasNextCompare, minPicker);
+            }
+            return ozone.intSet.unionOfOrderedIterators(this.iterator(), set.iterator());
         }
 
         /** Returns an IntSet containing all the elements in either IntSet. */
-        intersection(bm : IntSet) : IntSet {
-            return this.notWritten();  // TODO
+        intersection(set : IntSet) : IntSet {
+            if (set['isPacked']) {  // isPacked exists
+                //  When we get more packed types, might need to rethink this.
+            }
+            return intersectionOfOrderedIterators(this.iterator(), set.iterator());
         }
 
         /** Returns true if the iterators produce identical results. */
@@ -224,7 +219,7 @@ module ozone.intSet {
         next() : number {
             var result : number;
 
-            while (this.hasNext() && typeof(result) === 'undefined') {
+            while (this.hasNext() && result === undefined) {
                 var word : number = this.words[bits.inWord(this.nextBit)];
                 if (word) {
                     if (word & bits.singleBitMask(this.nextBit)) {
@@ -272,25 +267,29 @@ module ozone.intSet {
     }
 
 
-    export class OrderedWordIterator implements OrderedIterator<number> {
-        constructor( private words : number[]) {}
+    export class OrderedWordWithOffsetIterator implements OrderedIterator<number> {
+        constructor( private words : number[], private wordOffset) {}
 
-        private nextWord = 0;
+        private nextWord = 0 - this.wordOffset;
 
         hasNext() : boolean {
             return this.nextWord < this.words.length;
         }
 
         next() : number {
-            var result : number = this.words[this.nextWord++];
-            if (typeof(result) === 'undefined') {
-                result = 0;
+            var result : number = 0|0;
+            if (this.nextWord >= 0) {
+                result = this.words[this.nextWord];
+                if (typeof(result) === 'undefined') {
+                    result = 0|0;
+                }
             }
-             return result;
+            this.nextWord++
+            return result;
         }
 
         skipTo(item : number) {
-            this.nextWord = item;
+            this.nextWord = item - this.wordOffset ;
         }
     }
 

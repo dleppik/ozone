@@ -7,9 +7,38 @@
 describe("IntSet functions", function() {
     var ArrayIterator = ozone.intSet.OrderedArrayIterator;
 
-    describe("unionOfIterators", function() {
+    describe("mostEfficientIntSet", function() {
+        var bits = ozone.intSet.bits;
+        var sparseArrayIntSet = new ozone.intSet.ArrayIndexIntSet([3, 324]);
+        var denseArrayIntSet = new ozone.intSet.ArrayIndexIntSet([0,2,3,4,10]);
+        var sparseBitmapIntSet = new ozone.intSet.BitmapArrayIntSet(
+            [bits.base2ToBits( "1000"), undefined, undefined, undefined,
+                undefined, undefined, undefined, undefined, undefined, undefined,
+                bits.base2ToBits( "10000")], 0, 2);
+        var denseBitmapIntSet = new ozone.intSet.BitmapArrayIntSet(
+            [bits.base2ToBits( "10000011101")], 0, 5);
+
+        it("Produces RangeIntSet with consecutive data", function() {
+            expect(ozone.intSet.mostEfficientIntSet(new ozone.intSet.ArrayIndexIntSet([3,4,5,6,7,8]))
+                instanceof ozone.intSet.RangeIntSet).toEqual(true);
+        });
+        it("Produces ArrayIndexIntSet with sparse data", function() {
+            expect(ozone.intSet.mostEfficientIntSet(sparseArrayIntSet)
+                instanceof ozone.intSet.ArrayIndexIntSet).toEqual(true);
+            expect(ozone.intSet.mostEfficientIntSet(sparseBitmapIntSet)
+                instanceof ozone.intSet.ArrayIndexIntSet).toEqual(true);
+        });
+        it("Produces BitmapIndexIntSet with dense data", function() {
+            expect(ozone.intSet.mostEfficientIntSet(denseBitmapIntSet)
+                instanceof ozone.intSet.BitmapArrayIntSet).toEqual(true);
+            expect(ozone.intSet.mostEfficientIntSet(denseArrayIntSet)
+                instanceof ozone.intSet.BitmapArrayIntSet).toEqual(true);
+        });
+    });
+
+    describe("unionOfOrderedIterators", function() {
         it("unions", function() {
-            var union = ozone.intSet.unionOfIterators;
+            var union = ozone.intSet.unionOfOrderedIterators;
 
             expect(union(new ArrayIterator([])).size).toBe(0);
 
@@ -20,7 +49,7 @@ describe("IntSet functions", function() {
             // Tricky case:  overlap, empty array, elements out of order.
             // We cheat:  OrderedArrayIterator isn't supposed to have elements out of order, but it doesn't
             // currently fix or reject bad input;  skip simply doesn't work.
-            var a = union(  new ArrayIterator([3,4,5]),
+            var a = ozone.intSet.unionOfIterators(  new ArrayIterator([3,4,5]),
                 new ArrayIterator([]),
                 new ArrayIterator([4, 8, 2, 16, 8]));
             var aExpected = [2, 3,4,5, 8, 16];
@@ -422,14 +451,21 @@ describe("BitmapArrayIntSet tests", function() {
     it("Creates an iterator", function() {
         // ["00000000000000000000000000000000" , "101"] or "10100000000000000000000000000000000"
         var bitmap = new ozone.intSet.BitmapArrayIntSet([0|0, 5|0], 0, 3);
-        expect(typeof (bitmap.iterator())).toBe("object");
+        expect(bitmap.iterator() instanceof ozone.intSet.OrderedBitmapArrayIterator).toBe(true);
+    });
+
+    it("unions 2 bitmaps", function() {
+        var bitmap1 = new ozone.intSet.BitmapArrayIntSet([1|0, 5|0], 0, 3);
+        var bitmap2 = new ozone.intSet.BitmapArrayIntSet([6|0], 1, 2);
+        var unionBitmap = new ozone.intSet.BitmapArrayIntSet([1|0, 7|0], 0, 4);
+        expect(bitmap1.union(bitmap2).equals(unionBitmap)).toBe(true);
     });
 });
 
 describe("IntSets", function() {
     var RangeIntSet = ozone.intSet.RangeIntSet;
     var ArrayIterator = ozone.intSet.OrderedArrayIterator;
-    var unionOfIterators = ozone.intSet.unionOfIterators;
+    var unionOfIterators = ozone.intSet.unionOfOrderedIterators;
     var intersectionOfOrderedIterators = ozone.intSet.intersectionOfOrderedIterators;
 
     // Many of these were generated randomly.  We need to test boundaries around 32 for packed bitmaps
@@ -704,8 +740,8 @@ describe("IntSets", function() {
                 expect(set1.union(set2).size).toEqual(5);  // Hard coded, to keep other bugs from hiding failure
                 expect(set1.union(set2).min()).toEqual(2);
                 expect(set1.union(set2).max()).toEqual(9);
-                expect(set1.union(set2)).toEqual(intSetClass.fromArray(au));
-                expect(set2.union(set1)).toEqual(intSetClass.fromArray(au));
+                expect(set1.union(set2).equals(intSetClass.fromArray(au))).toEqual(true);
+                expect(set2.union(set1).equals(intSetClass.fromArray(au))).toEqual(true);
 
             });
 
@@ -721,8 +757,8 @@ describe("IntSets", function() {
                 expect(set1.intersection(set2).size).toEqual(2);  // Hard coded, to keep other bugs from hiding failure
                 expect(set1.intersection(set2).min()).toEqual(5);
                 expect(set1.intersection(set2).max()).toEqual(8);
-                expect(set1.intersection(set2)).toEqual(intSetClass.fromArray(ai));
-                expect(set2.intersection(set1)).toEqual(intSetClass.fromArray(ai));
+                expect(set1.intersection(set2).equals(intSetClass.fromArray(ai))).toEqual(true);
+                expect(set2.intersection(set1).equals(intSetClass.fromArray(ai))).toEqual(true);
             });
         });
     };

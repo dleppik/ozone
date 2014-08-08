@@ -77,7 +77,12 @@ module ozone.intSet {
 
         union(bm : IntSet) : IntSet {
             if (this.size===0) {
-                return bm;
+                if (bm.size === 0) {
+                    return this;
+                }
+                else {
+                    return bm;
+                }
             }
             if (bm.size===0) {
                 return this;
@@ -97,7 +102,7 @@ module ozone.intSet {
                     return RangeIntSet.fromTo(lowBm.min(), Math.max(lowBm.max(), highBm.max()));
                 }
             }
-            return ozone.intSet.unionOfIterators(highBm.iterator(), lowBm.iterator());
+            return ozone.intSet.unionOfOrderedIterators(highBm.iterator(), lowBm.iterator());
         }
 
         intersection(bm : IntSet) : IntSet {
