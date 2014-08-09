@@ -7,7 +7,7 @@
 */
 /// <reference path='_all.ts' />
 /**
-*  Contains tiny classes that are too small to merit their own file.
+*  Contains public functions and tiny classes that are too small to merit their own file.
 */
 var ozone;
 (function (ozone) {
@@ -223,7 +223,7 @@ var ozone;
         *          fields:  maps from field identifiers in the source to field-specific params.  All FieldDescribing
         *                  properties and Builder parameters can be specified here.
         *
-        *                   class: a Field class, such as UnIndexedField, or other object with a "builder" method.
+        *                   class: (within fields:) a Field class, such as UnIndexedField, or other object with a "builder" method.
         *
         *          buildAllFields: boolean, default is true.  If false, any fields not listed under 'Fields' are ignored.
         */
@@ -1092,7 +1092,7 @@ var ozone;
             for (var i = 0; i < iterators.length; i++) {
                 if (iterators[i].hasNext()) {
                     nexts[i] = iterators[i].next();
-                    if (nexts[i] < nexts[smallestIndex]) {
+                    if (nexts[smallestIndex] == -1 || nexts[i] < nexts[smallestIndex]) {
                         smallestIndex = i;
                     }
                 } else {
@@ -1592,8 +1592,6 @@ var ozone;
                 this.words = words;
                 this.maxBit = maxBit;
                 this.nextBit = 0;
-                console.log("==================================================="); //XXX
-                console.log(words.join(" ")); //XXX
             }
             OrderedBitmapArrayIterator.prototype.hasNext = function () {
                 return this.nextBit <= this.maxBit;
@@ -2292,6 +2290,17 @@ var ozone;
     * Convert ColumnStores, IntSets, etc. to JSON-compatible data objects.
     */
     (function (serialization) {
+        /**
+        * Convenience function for reading a string containing CSV.  This simply calls rowStore.buildFromCsv() and sends
+        * the result to columnStore.buildFromStore().
+        */
+        function buildFromCsv(csvText, metaData) {
+            if (typeof metaData === "undefined") { metaData = {}; }
+            return ozone.columnStore.buildFromStore(ozone.rowStore.buildFromCsv(csvText), metaData);
+        }
+        serialization.buildFromCsv = buildFromCsv;
+
+        /** Read Ozone's native JSON format. */
         function readStore(storeData) {
             var fields = [];
             for (var i = 0; i < storeData.fields.length; i++) {
@@ -2565,4 +2574,4 @@ var ozone;
     ozone.FieldDescriptor = FieldDescriptor;
 })(ozone || (ozone = {}));
 //# sourceMappingURL=ozone.js.map
-module.exports = ozone;
+if (typeof(module) !== "undefined") { module.exports = ozone;}

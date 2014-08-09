@@ -471,7 +471,7 @@ describe("BitmapArrayIntSet tests", function() {
 describe("IntSets", function() {
     var RangeIntSet = ozone.intSet.RangeIntSet;
     var ArrayIterator = ozone.intSet.OrderedArrayIterator;
-    var unionOfIterators = ozone.intSet.unionOfOrderedIterators;
+    var unionOfIterators = ozone.intSet.unionOfIterators;
     var intersectionOfOrderedIterators = ozone.intSet.intersectionOfOrderedIterators;
 
     // Many of these were generated randomly.  We need to test boundaries around 32 for packed bitmaps
@@ -489,7 +489,13 @@ describe("IntSets", function() {
         [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 ]
     ];
 
-
+    var intSetFromArray = function(intSetClass, arrayOfIndexes) {
+        var builder = intSetClass.builder();
+        for (var i=0; i< arrayOfIndexes.length; i++) {
+            builder.onItem(arrayOfIndexes[i]);
+        }
+        return builder.onEnd();
+    };
 
     var forEachArray = function(beforeElements, onEachElement, afterElements) {
         for (var i=0; i< arrays.length; i++) {
@@ -740,31 +746,31 @@ describe("IntSets", function() {
                 var a2 = [ 2, 5, 8    ];
                 var au = [ 2, 3, 5, 8, 9 ];
 
-                var set1 = intSetClass.fromArray(a1);
-                var set2 = intSetClass.fromArray(a2);
+                var set1 = intSetFromArray(intSetClass, a1);
+                var set2 = intSetFromArray(intSetClass, a2);
 
-                expect(set1.union(set2).size).toEqual(5);  // Hard coded, to keep other bugs from hiding failure
-                expect(set1.union(set2).min()).toEqual(2);
-                expect(set1.union(set2).max()).toEqual(9);
-                expect(set1.union(set2).equals(intSetClass.fromArray(au))).toEqual(true);
-                expect(set2.union(set1).equals(intSetClass.fromArray(au))).toEqual(true);
+                expect(set1.union( set2 ).size  ).toEqual( 5 );  // Hard coded, to keep other bugs from hiding failure
+                expect(set1.union( set2 ).min() ).toEqual( 2 );
+                expect(set1.union( set2 ).max() ).toEqual( 9 );
+                expect(set1.union( set2 ).equals( intSetFromArray(intSetClass, au) )).toEqual(true);
+                expect(set2.union( set1 ).equals( intSetFromArray(intSetClass, au) )).toEqual(true);
 
             });
 
 
             it("Does a trivial intersection properly", function () {  // Less trivial cases are handled below
                 var a1 = [    3, 5, 8, 9 ];
-                var a2 = [ 2, 5, 8    ];
-                var ai = [        5, 8];
+                var a2 = [ 2,    5, 8    ];
+                var ai = [       5, 8    ];
 
-                var set1 = intSetClass.fromArray(a1);
-                var set2 = intSetClass.fromArray(a2);
+                var set1 = intSetFromArray(intSetClass, a1);
+                var set2 = intSetFromArray(intSetClass, a2);
 
-                expect(set1.intersection(set2).size).toEqual(2);  // Hard coded, to keep other bugs from hiding failure
+                expect(set1.intersection(set2) .size).toEqual(2);  // Hard coded, to keep other bugs from hiding failure
                 expect(set1.intersection(set2).min()).toEqual(5);
                 expect(set1.intersection(set2).max()).toEqual(8);
-                expect(set1.intersection(set2).equals(intSetClass.fromArray(ai))).toEqual(true);
-                expect(set2.intersection(set1).equals(intSetClass.fromArray(ai))).toEqual(true);
+                expect(set1.intersection(set2).equals( intSetFromArray(intSetClass, ai) )).toEqual(true);
+                expect(set2.intersection(set1).equals( intSetFromArray(intSetClass, ai) )).toEqual(true);
             });
         });
     };
@@ -773,10 +779,10 @@ describe("IntSets", function() {
         describe("Operations on "+intSetClassName0+" with "+intSetClassName1, function() {
 
             it("intersect() is equivalent to ozone.intSet.intersectionOfOrderedIterators()", function() {
-                intSetForEachArray(intSetClass0.builder(), function(array0, intSet0) {
+                intSetForEachArray(intSetClass0, function(array0, intSet0) {
                     for (var index1=0; index1< arrays.length; index1++) {
                         var array1 = arrays[index1];
-                        var intSet1 = intSetClass1.fromArray(array1);
+                        var intSet1 = intSetFromArray(intSetClass1, array1);
 
                         var expected = intersectionOfOrderedIterators(intSet0.iterator(), intSet1.iterator());
                         expect(  intSet0.intersection(intSet1).equals(expected)  ).toBe(true);
@@ -785,13 +791,15 @@ describe("IntSets", function() {
             });
 
             it("union() is equivalent to ozone.intSet.unionOfIterators()", function() {
-                intSetForEachArray(intSetClass0.builder(), function(array0, intSet0) {
+                intSetForEachArray(intSetClass0, function(array0, intSet0) {
                     for (var index1 = 0; index1 < arrays.length; index1++) {
                         var array1 = arrays[index1];
-                        var intSet1 = intSetClass1.fromArray(array1);
+                        var intSet1 = intSetFromArray(intSetClass1, array1);
 
                         var expected = unionOfIterators(intSet0.iterator(), intSet1.iterator());
-                        expect(intSet0.union(intSet1).equals(expected)).toBe(true);
+                        var actual = intSet0.union(intSet1);
+                        console.log(actual.equals(expected));
+                        expect(actual.equals(expected)).toBe(true);
                     }
                 });
             });

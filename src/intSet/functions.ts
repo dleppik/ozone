@@ -126,7 +126,7 @@ module ozone.intSet {
         for (var i = 0; i < iterators.length; i++) {
             if (iterators[i].hasNext()) {
                 nexts[i] = iterators[i].next();
-                if (nexts[i] < nexts[smallestIndex]) {
+                if (nexts[smallestIndex] == -1 || nexts[i] < nexts[smallestIndex]) {
                     smallestIndex = i;
                 }
             }

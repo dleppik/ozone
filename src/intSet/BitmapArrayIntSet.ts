@@ -209,8 +209,6 @@ module ozone.intSet {
      */
     export class OrderedBitmapArrayIterator implements OrderedIterator<number> {
         constructor( private words : number[], private maxBit : number ) {
-            console.log("==================================================="); //XXX
-            console.log(words.join(" "));//XXX
         }
 
         private nextBit = 0;
