@@ -145,6 +145,11 @@ Then in the browser:
        db = ozone.serialization.readStore(data);
    });
    
+   $http.get("MyOzoneData.json")                      // If you like angular.js
+        .success(function(data){
+            db = ozone.serialization.readStore(data);
+        });
+   
    d3.json("MyOzoneData.json", function(data) {       // ...or if you prefer D3
        db = ozone.serialization.readStore(data);
     });
