@@ -84,8 +84,8 @@ module ozone.columnStore {
                         }
                     }
                     for (var i=0; i< valueList.length; i++) {
-                        var value = valueList[i];
-                        valueMap[value.toString()] = intSetBuilders[value].onEnd();
+                        var valueStr = valueList[i].toString();
+                        valueMap[valueStr] = intSetBuilders[valueStr].onEnd();
                     }
                     return new IndexedField<T>(descriptor, valueList, valueMap);
                 }
