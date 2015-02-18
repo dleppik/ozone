@@ -157,15 +157,15 @@ Then in the browser:
 
 You can pass in metadata as a second parameter to ozone.serialization.buildFromCsv() to alter how the fields are 
 created.  See [demo/buildDataStore.js](https://github.com/dleppik/ozone/blob/master/demo/buildDataStore.js) for an 
-example, or [https://github.com/dleppik/ozone/blob/master/src/interfaces.ts](the FieldDescribing interface) to see
+example, or [the FieldDescribing interface](https://github.com/dleppik/ozone/blob/master/src/interfaces.ts) to see
 what's possible.
 
 Internally, Ozone converts CSV into a database that it can iterate over but not query (called a RowStore, since data is
 stored in rows), and uses that to produce its native ColumnStore.  If your data is already a JavaScript array, you can
  skip the conversion to CSV by calling 
-[https://github.com/dleppik/ozone/blob/master/src/rowStore/functions.ts](ozone.rowStore.build()) and presenting your
+[ozone.rowStore.build()](https://github.com/dleppik/ozone/blob/master/src/rowStore/functions.ts) and presenting your
  data as
-[https://github.com/dleppik/ozone/blob/master/test/trivialSampleData.json](RowStore data).
+[RowStore data](https://github.com/dleppik/ozone/blob/master/test/trivialSampleData.json).
 
 To minimize file size and memory usage, sort the rows on at least one column before converting to Ozone format.
 
