@@ -585,7 +585,7 @@ var ozone;
                 this.source = source;
                 this.filterArray = filterArray;
                 this.filterBits = filterBits;
-                this.size = filterBits.size;
+                this.size = filterBits.size();
             }
             FilteredColumnStore.prototype.intSet = function () {
                 return this.filterBits;
@@ -925,17 +925,17 @@ var ozone;
         }
         intSet.builder = builder;
         function mostEfficientIntSet(input) {
-            if (input.size == 0) {
+            if (input.size() == 0) {
                 return intSet.empty;
             }
-            if (input.max() - input.min() + 1 == input.size) {
+            if (input.max() - input.min() + 1 == input.size()) {
                 return ozone.intSet.RangeIntSet.fromTo(input.min(), input.max());
             }
             // If the data is sparse, use an ArrayIndexIntSet, if it is dense, use BitmapArrayIntSet.
             // The values here are an educated guess, need to to some testing to optimize
             var builder;
             var iterator = input.iterator();
-            if ((input.max() - input.min() + 1) / input.size > 128) {
+            if ((input.max() - input.min() + 1) / input.size() > 128) {
                 if (input instanceof intSet.ArrayIndexIntSet) {
                     return input;
                 }
@@ -1115,10 +1115,10 @@ var ozone;
             if (set2 instanceof intSet.RangeIntSet) {
                 return set2.equals(set1);
             }
-            if (set1.size !== set2.size || set1.min() !== set2.min() || set1.max() !== set2.max()) {
+            if (set1.size() !== set2.size() || set1.min() !== set2.min() || set1.max() !== set2.max()) {
                 return false;
             }
-            if (set1.size === 0) {
+            if (set1.size() === 0) {
                 return true; // both empty
             }
             var it1 = set1.iterator();
@@ -1172,7 +1172,6 @@ var ozone;
             /** Always use builder() to construct. */
             function ArrayIndexIntSet(indexes) {
                 this.indexes = indexes;
-                this.size = indexes.length;
             }
             /** Matches the API of other IntSet builders. */
             ArrayIndexIntSet.builder = function (min, max) {
@@ -1195,6 +1194,9 @@ var ozone;
             };
             ArrayIndexIntSet.fromArray = function (elements) {
                 return new ArrayIndexIntSet(elements.concat());
+            };
+            ArrayIndexIntSet.prototype.size = function () {
+                return this.indexes.length;
             };
             ArrayIndexIntSet.prototype.toArray = function () {
                 return this.indexes.concat();
@@ -1220,10 +1222,10 @@ var ozone;
                 return intSet.equalIntSets(this, set);
             };
             ArrayIndexIntSet.prototype.union = function (set) {
-                if (this.size === 0) {
+                if (this.size() === 0) {
                     return set;
                 }
-                if (set.size === 0) {
+                if (set.size() === 0) {
                     return this; // Min and max aren't useful for comparisons with unions
                 }
                 if (set instanceof intSet.RangeIntSet && set.min() <= this.min() && set.max() >= this.max()) {
@@ -1277,15 +1279,15 @@ var ozone;
              * Constructs a BitmapArrayIntSet.
              * @param words         The bitmap (not including the offset bits) as a number array
              * @param wordOffset    The number of 32-bit words which are all zeroes which proceed the given array.
-             * @param size          The number of ones in the array (0 if 'words' is empty)
+             * @param theSize       The number of ones in the array (0 if 'words' is empty)
              */
-            function BitmapArrayIntSet(words, wordOffset, size) {
+            function BitmapArrayIntSet(words, wordOffset, theSize) {
                 this.words = words;
                 this.wordOffset = wordOffset;
-                this.size = size;
+                this.theSize = theSize;
                 this.isPacked = true;
                 if (words == null || words.length == 0) {
-                    size = 0;
+                    this.theSize = 0;
                     this.minValue = -1;
                     this.maxValue = -1;
                 }
@@ -1349,8 +1351,8 @@ var ozone;
                     }
                 };
             };
-            BitmapArrayIntSet.notWritten = function () {
-                throw new Error("This method has not been implemented yet.");
+            BitmapArrayIntSet.prototype.size = function () {
+                return this.theSize;
             };
             BitmapArrayIntSet.prototype.has = function (theBit) {
                 var indexOffset = theBit - this.wordOffset * 32;
@@ -1397,10 +1399,10 @@ var ozone;
             };
             /** Returns an IntSet containing all the elements in either IntSet. */
             BitmapArrayIntSet.prototype.union = function (set) {
-                if (this.size === 0) {
+                if (this.size() === 0) {
                     return set;
                 }
-                if (set.size === 0) {
+                if (set.size() === 0) {
                     return this; // Min and max aren't useful for comparisons with unions
                 }
                 if (set instanceof intSet.RangeIntSet && set.min() <= this.min() && set.max() >= this.max()) {
@@ -1422,7 +1424,7 @@ var ozone;
             };
             /** Returns an IntSet containing only the elements that are found in both IntSets. */
             BitmapArrayIntSet.prototype.intersection = function (set) {
-                if (this.size === 0 || set.size === 0) {
+                if (this.size() === 0 || set.size() === 0) {
                     return intSet.empty;
                 }
                 if (set['isPacked']) {
@@ -1519,7 +1521,7 @@ var ozone;
             function OrderedWordWithOffsetIterator(words, wordOffset) {
                 this.words = words;
                 this.wordOffset = wordOffset;
-                this.nextWord = 0 - this.wordOffset;
+                this.nextWord = 0 - wordOffset;
             }
             OrderedWordWithOffsetIterator.prototype.hasNext = function () {
                 return this.nextWord < this.words.length;
@@ -1555,10 +1557,10 @@ var ozone;
          * A trivial intSet which contains all values in a range.
          */
         var RangeIntSet = (function () {
-            function RangeIntSet(minValue, size) {
+            function RangeIntSet(minValue, rangeSize) {
                 this.minValue = minValue;
-                this.size = size;
-                if (size === 0) {
+                this.rangeSize = rangeSize;
+                if (rangeSize === 0) {
                     this.minValue = -1;
                 }
             }
@@ -1579,20 +1581,23 @@ var ozone;
                 }
                 return new RangeIntSet(minValue, length);
             };
+            RangeIntSet.prototype.size = function () {
+                return this.rangeSize;
+            };
             RangeIntSet.prototype.has = function (index) {
-                return this.size > 0 && index >= this.minValue && index <= this.max();
+                return this.size() > 0 && index >= this.minValue && index <= this.max();
             };
             RangeIntSet.prototype.min = function () {
                 return this.minValue;
             };
             RangeIntSet.prototype.max = function () {
-                if (this.size === 0) {
+                if (this.size() === 0) {
                     return -1;
                 }
-                return this.minValue + (this.size - 1);
+                return this.minValue + (this.size() - 1);
             };
             RangeIntSet.prototype.each = function (action) {
-                for (var i = 0; i < this.size; i++) {
+                for (var i = 0; i < this.size(); i++) {
                     action(i + this.minValue);
                 }
             };
@@ -1600,7 +1605,7 @@ var ozone;
                 var index = this.minValue;
                 var bm = this;
                 var hasNext = function () {
-                    return bm.size > 0 && index <= bm.max();
+                    return bm.size() > 0 && index <= bm.max();
                 };
                 return {
                     hasNext: hasNext,
@@ -1616,18 +1621,18 @@ var ozone;
             RangeIntSet.prototype.equals = function (bm) {
                 // In the case of RangeIntSets, we need only check min, max, and size
                 // because size is a function of min and max.
-                return this.size === bm.size && this.min() === bm.min() && this.max() === bm.max();
+                return this.size() === bm.size() && this.min() === bm.min() && this.max() === bm.max();
             };
             RangeIntSet.prototype.union = function (bm) {
-                if (this.size === 0) {
-                    if (bm.size === 0) {
+                if (this.size() === 0) {
+                    if (bm.size() === 0) {
                         return this;
                     }
                     else {
                         return bm;
                     }
                 }
-                if (bm.size === 0) {
+                if (bm.size() === 0) {
                     return this;
                 }
                 if (typeof (bm["unionWithRangeIntSet"]) === "function") {
@@ -1635,7 +1640,7 @@ var ozone;
                 }
                 var lowBm = (this.min() < bm.min()) ? this : bm;
                 if (bm instanceof RangeIntSet) {
-                    if (bm.min() === this.min() && bm.size === this.size) {
+                    if (bm.min() === this.min() && bm.size() === this.size()) {
                         return this;
                     }
                     var highBm = (lowBm === this) ? bm : this;
@@ -1646,7 +1651,7 @@ var ozone;
                 return ozone.intSet.unionOfOrderedIterators(highBm.iterator(), lowBm.iterator());
             };
             RangeIntSet.prototype.intersection = function (bm) {
-                if (this.size === 0 || bm.size === 0) {
+                if (this.size() === 0 || bm.size() === 0) {
                     return intSet.empty;
                 }
                 if (typeof (bm["intersectionWithRangeIntSet"]) === "function") {
@@ -1663,7 +1668,7 @@ var ozone;
                 return ozone.intSet.intersectionOfOrderedIterators(this.iterator(), bm.iterator());
             };
             RangeIntSet.prototype.toString = function () {
-                if (this.size === 0) {
+                if (this.size() === 0) {
                     return "empty";
                 }
                 return this.min() + "-" + this.max();
@@ -2228,7 +2233,7 @@ var ozone;
         }
         serialization.readIntSet = readIntSet;
         function writeIntSet(toWrite) {
-            if (toWrite.size === 0)
+            if (toWrite.size() === 0)
                 return writeEmptyIntSet(toWrite);
             if (toWrite instanceof ozone.intSet.RangeIntSet)
                 return writeRangeIntSet(toWrite);
@@ -2351,4 +2356,5 @@ var ozone;
     })();
     ozone.FieldDescriptor = FieldDescriptor;
 })(ozone || (ozone = {}));
-//# sourceMappingURL=ozone.js.mapif (typeof(module) !== "undefined") { module.exports = ozone;}
+//# sourceMappingURL=ozone.js.map
+if (typeof(module) !== "undefined") { module.exports = ozone;}

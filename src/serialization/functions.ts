@@ -140,7 +140,7 @@ module ozone.serialization {
     }
 
     export function writeIntSet( toWrite : IntSet ) : IntSetMetaData {
-        if (toWrite.size === 0)                    return writeEmptyIntSet(toWrite);
+        if (toWrite.size() === 0)                  return writeEmptyIntSet(toWrite);
         if (toWrite instanceof intSet.RangeIntSet) return writeRangeIntSet(<intSet.RangeIntSet> toWrite);
         return writeIntSetArrayData(toWrite);
     }

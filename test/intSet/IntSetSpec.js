@@ -40,10 +40,10 @@ describe("IntSet functions", function() {
         it("unions", function() {
             var union = ozone.intSet.unionOfOrderedIterators;
 
-            expect(union(new ArrayIterator([])).size).toBe(0);
+            expect(union(new ArrayIterator([])).size()).toBe(0);
 
             var allThrees = union(new ArrayIterator([3,3,3,3,3,3,3,3,3]));
-            expect(allThrees.size).toBe(1);
+            expect(allThrees.size()).toBe(1);
             expect(allThrees.max()).toBe(3);
 
             // Tricky case:  overlap, empty array, elements out of order.
@@ -53,7 +53,7 @@ describe("IntSet functions", function() {
                 new ArrayIterator([]),
                 new ArrayIterator([4, 8, 2, 16, 8]));
             var aExpected = [2, 3,4,5, 8, 16];
-            expect(a.size).toBe(aExpected.length);
+            expect(a.size()).toBe(aExpected.length);
             for (var i=0; i<aExpected.length; i++) {
                 expect(a.has(aExpected[i])).toBe(true);
             }
@@ -62,7 +62,7 @@ describe("IntSet functions", function() {
             var b = union(  new ArrayIterator([3,4,5]),
                 new ArrayIterator([8,9,10]));
             var bExpected = [3,4,5,8,9,10];
-            expect(b.size).toBe(bExpected.length);
+            expect(b.size()).toBe(bExpected.length);
             for (i=0; i<bExpected.length; i++) {
                 expect(b.has(bExpected[i])).toBe(true);
             }
@@ -73,9 +73,9 @@ describe("IntSet functions", function() {
         it("intersects", function() {
             var intersection = ozone.intSet.intersectionOfOrderedIterators;
 
-            expect(intersection(new ArrayIterator([])).size).toBe(0);
+            expect(intersection(new ArrayIterator([])).size()).toBe(0);
             var allThrees = intersection(new ArrayIterator([3,3,3,3,3,3,3,3,3]));
-            expect(allThrees.size).toBe(1);
+            expect(allThrees.size()).toBe(1);
             expect(allThrees.max()).toBe(3);
 
 
@@ -83,7 +83,7 @@ describe("IntSet functions", function() {
             var a = intersection( new ArrayIterator([3,4,5]),
                                   new ArrayIterator([4,5,6]));
             var aExpected = [4,5];
-            expect(a.size).toBe(aExpected.length);
+            expect(a.size()).toBe(aExpected.length);
             for (var i=0; i<aExpected.length; i++) {
                 expect(a.has(aExpected[i])).toBe(true);
             }
@@ -92,7 +92,7 @@ describe("IntSet functions", function() {
             var b = intersection( new ArrayIterator([0,1,  3,5,  7,  9,   11,13]),
                                   new ArrayIterator([  1,2,  5, 6, 8,9,10]));
             var bExpected = [1,5,9];
-            expect(b.size).toBe(bExpected.length);
+            expect(b.size()).toBe(bExpected.length);
             for (i=0; i<bExpected.length; i++) {
                 expect(b.has(bExpected[i])).toBe(true);
             }
@@ -101,7 +101,7 @@ describe("IntSet functions", function() {
             var c = intersection( new ArrayIterator([0,1,1,1,1,1,            3,5,  7,  9,   11,13,13,13,13,13]),
                                   new ArrayIterator([  1,        2,2,2,2,2,2,  5, 6, 8,9,10]));
             var cExpected = bExpected;
-            expect(c.size).toBe(cExpected.length);
+            expect(c.size()).toBe(cExpected.length);
             for (i=0; i<cExpected.length; i++) {
                 expect(c.has(cExpected[i])).toBe(true);
             }
@@ -232,7 +232,7 @@ describe("RangeIntSet", function() {
     });
     it("Reports size accurately", function() {
         for (var i=0; i<intSets.length; i++) {
-            expect(intSets[i].size).toBe(minMaxLengths[i][2]);
+            expect(intSets[i].size()).toBe(minMaxLengths[i][2]);
         }
     });
 
@@ -255,7 +255,7 @@ describe("RangeIntSet", function() {
             if (nonEmpty) {
                 expect(first).toBe(intSet.min());
                 expect(last).toBe(intSet.max());
-                expect(count).toBe(intSet.size);
+                expect(count).toBe(intSet.size());
             }
             else {
                 expect(count).toBe(1);
@@ -296,7 +296,7 @@ describe("RangeIntSet", function() {
             if (nonEmpty) {
                 expect(first).toBe(intSet.min());
                 expect(last).toBe(intSet.max());
-                expect(count).toBe(intSet.size);
+                expect(count).toBe(intSet.size());
             }
             else {
                 expect(first).toBe("Not set");
@@ -309,7 +309,7 @@ describe("RangeIntSet", function() {
     it("Unions with itself produce itself", function() {
         for (var i=0; i<intSets.length; i++) {
             var intSet = intSets[i];
-            if (intSet.size > 0) {
+            if (intSet.size() > 0) {
                 expect(intSet.union(intSet)).toBe(intSet);
             }
         }
@@ -354,7 +354,7 @@ describe("RangeIntSet", function() {
         var aUnionB = a.union(b);
 
         expect(b.union(a).equals(aUnionB)).toBe(true);
-        expect(aUnionB.size).toBe(a.size + b.size);
+        expect(aUnionB.size()).toBe(a.size() + b.size());
         expect(aUnionB.min()).toBe(a.min());
         expect(aUnionB.max()).toBe(b.max());
         aUnionB.each(function(num) {
@@ -366,7 +366,7 @@ describe("RangeIntSet", function() {
         var a = RangeIntSet.fromTo(10, 20);
         var b = RangeIntSet.fromTo(21, 30);
         var aAndB = a.intersection(b);
-        expect(aAndB.size).toBe(0);
+        expect(aAndB.size()).toBe(0);
 
         var c = RangeIntSet.fromTo(15, 25);
         var expectedAAndC = RangeIntSet.fromTo(15, 20);
@@ -552,7 +552,7 @@ describe("IntSets", function() {
                         builder.onItem(element);
                     },
                     function (array) {
-                        expect(builder.onEnd().size).toEqual(array.length);
+                        expect(builder.onEnd().size()).toEqual(array.length);
                     }
                 );
             });
@@ -617,7 +617,7 @@ describe("IntSets", function() {
                             it.next();
                             count++;
                         }
-                        expect(count).toBe(intSet.size);
+                        expect(count).toBe(intSet.size());
                     });
                 });
                 it("Skips properly", function () {
@@ -671,7 +671,7 @@ describe("IntSets", function() {
                     var sameSizeUnion = intSet.union(sameSize);
                     if (!sameSizeUnion.equals(sameSize)) {
                         console.log("sameSizeUnion min: " + sameSizeUnion.min() + ", max: " + sameSizeUnion.max() +
-                            ", size: " + sameSizeUnion.size + ", equality: " + sameSizeUnion.equals(sameSize));
+                            ", size: " + sameSizeUnion.size() + ", equality: " + sameSizeUnion.equals(sameSize));
                     }
                     expect(sameSizeUnion.equals(sameSize)).toBe(true);
                     expect(sameSizeUnion instanceof RangeIntSet).toBe(true);
@@ -694,11 +694,11 @@ describe("IntSets", function() {
                     var r2 = RangeIntSet.fromTo(intSet.max(), intSet.max() + 2);
                     expect(intSet.union(r2).equals(unionOfIterators(r2.iterator(), intSet.iterator()))).toBe(true);
 
-                    if (intSet.size > 1) {
+                    if (intSet.size() > 1) {
                         var r3 = RangeIntSet.fromTo(intSet.min() + 1, intSet.max());
                         expect(intSet.union(r3).equals(unionOfIterators(r3.iterator(), intSet.iterator()))).toBe(true);
                     }
-                    if (intSet.size > 2) {
+                    if (intSet.size() > 2) {
                         var r4 = RangeIntSet.fromTo(intSet.min() + 1, intSet.max() - 1);
                         expect(intSet.union(r4).equals(unionOfIterators(r4.iterator(), intSet.iterator()))).toBe(true);
                     }
@@ -730,11 +730,11 @@ describe("IntSets", function() {
                     var r2 = RangeIntSet.fromTo(intSet.max(), intSet.max() + 2);
                     expect(intSet.intersection(r2).equals(intersectionOfOrderedIterators(r2.iterator(), intSet.iterator()))).toBe(true);
 
-                    if (intSet.size > 1) {
+                    if (intSet.size() > 1) {
                         var r3 = RangeIntSet.fromTo(intSet.min() + 1, intSet.max());
                         expect(intSet.intersection(r3).equals(intersectionOfOrderedIterators(r3.iterator(), intSet.iterator()))).toBe(true);
                     }
-                    if (intSet.size > 2) {
+                    if (intSet.size() > 2) {
                         var r4 = RangeIntSet.fromTo(intSet.min() + 1, intSet.max() - 1);
                         expect(intSet.intersection(r4).equals(intersectionOfOrderedIterators(r4.iterator(), intSet.iterator()))).toBe(true);
                     }
@@ -749,7 +749,7 @@ describe("IntSets", function() {
                 var set1 = intSetFromArray(intSetClass, a1);
                 var set2 = intSetFromArray(intSetClass, a2);
 
-                expect(set1.union( set2 ).size  ).toEqual( 5 );  // Hard coded, to keep other bugs from hiding failure
+                expect(set1.union( set2 ).size()  ).toEqual( 5 );  // Hard coded, to keep other bugs from hiding failure
                 expect(set1.union( set2 ).min() ).toEqual( 2 );
                 expect(set1.union( set2 ).max() ).toEqual( 9 );
                 expect(set1.union( set2 ).equals( intSetFromArray(intSetClass, au) )).toEqual(true);
@@ -766,7 +766,7 @@ describe("IntSets", function() {
                 var set1 = intSetFromArray(intSetClass, a1);
                 var set2 = intSetFromArray(intSetClass, a2);
 
-                expect(set1.intersection(set2) .size).toEqual(2);  // Hard coded, to keep other bugs from hiding failure
+                expect(set1.intersection(set2) .size()).toEqual(2);  // Hard coded, to keep other bugs from hiding failure
                 expect(set1.intersection(set2).min()).toEqual(5);
                 expect(set1.intersection(set2).max()).toEqual(8);
                 expect(set1.intersection(set2).equals( intSetFromArray(intSetClass, ai) )).toEqual(true);

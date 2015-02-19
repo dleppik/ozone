@@ -131,7 +131,7 @@ declare module ozone {
          */
         max(): number;
         /** The number of values for which has() returns true. */
-        size: number;
+        size(): number;
         /** Iterate over all "true" elements in order. */
         each(action: (index: number) => void): any;
         /** Iterate over all "true" elements in order. */
@@ -504,7 +504,7 @@ declare module ozone.intSet {
         /** Matches the API of other IntSet builders. */
         static builder(min?: number, max?: number): Reducer<number, IntSet>;
         static fromArray(elements: number[]): ArrayIndexIntSet;
-        size: number;
+        size(): number;
         /** Always use builder() to construct. */
         constructor(indexes: number[]);
         toArray(): number[];
@@ -537,7 +537,7 @@ declare module ozone.intSet {
     class BitmapArrayIntSet implements PackedIntSet {
         private words;
         private wordOffset;
-        size: number;
+        private theSize;
         /***** Note: should we be ignoring min and max like this?  ******/
         static builder(min?: number, max?: number): Reducer<number, IntSet>;
         isPacked: boolean;
@@ -547,10 +547,10 @@ declare module ozone.intSet {
          * Constructs a BitmapArrayIntSet.
          * @param words         The bitmap (not including the offset bits) as a number array
          * @param wordOffset    The number of 32-bit words which are all zeroes which proceed the given array.
-         * @param size          The number of ones in the array (0 if 'words' is empty)
+         * @param theSize       The number of ones in the array (0 if 'words' is empty)
          */
-        constructor(words: number[], wordOffset: number, size: number);
-        private static notWritten();
+        constructor(words: number[], wordOffset: number, theSize: number);
+        size(): number;
         has(theBit: number): boolean;
         /**
          * The lowest value for which has() returns true, or -1 if size === 0.  This should be
@@ -609,8 +609,8 @@ declare module ozone.intSet {
     class OrderedWordWithOffsetIterator implements OrderedIterator<number> {
         private words;
         private wordOffset;
-        constructor(words: number[], wordOffset: any);
         private nextWord;
+        constructor(words: number[], wordOffset: number);
         hasNext(): boolean;
         next(): number;
         skipTo(item: number): void;
@@ -625,10 +625,11 @@ declare module ozone.intSet {
      */
     class RangeIntSet implements IntSet {
         private minValue;
-        size: number;
+        private rangeSize;
         /** Return a RangeIntSet from minValue to maxValue inclusive. */
         static fromTo(minValue: number, maxValue: number): RangeIntSet;
-        constructor(minValue: number, size: number);
+        constructor(minValue: number, rangeSize: number);
+        size(): number;
         has(index: number): boolean;
         min(): number;
         max(): number;

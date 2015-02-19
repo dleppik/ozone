@@ -48,10 +48,10 @@ module ozone.intSet {
     }
 
     export function mostEfficientIntSet(input : IntSet) : IntSet {
-        if (input.size == 0) {
+        if (input.size() == 0) {
             return empty;
         }
-        if (input.max() - input.min() + 1 == input.size) {
+        if (input.max() - input.min() + 1 == input.size()) {
             return ozone.intSet.RangeIntSet.fromTo(input.min(), input.max());
         }
 
@@ -59,7 +59,7 @@ module ozone.intSet {
         // The values here are an educated guess, need to to some testing to optimize
         var builder : Reducer<number, IntSet>;
         var iterator = input.iterator();
-        if ((input.max() - input.min() + 1) / input.size > 128) {
+        if ((input.max() - input.min() + 1) / input.size() > 128) {
             if (input instanceof ArrayIndexIntSet) {
                 return input;
             }
@@ -234,10 +234,10 @@ module ozone.intSet {
         if (set2 instanceof RangeIntSet) {
             return set2.equals(set1);
         }
-        if (set1.size !== set2.size  || set1.min() !== set2.min()  || set1.max() !== set2.max()) {
+        if (set1.size() !== set2.size()  || set1.min() !== set2.min()  || set1.max() !== set2.max()) {
             return false;
         }
-        if (set1.size===0) {
+        if (set1.size()===0) {
             return true;  // both empty
         }
 

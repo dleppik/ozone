@@ -28,14 +28,16 @@ module ozone.intSet {
             return new RangeIntSet(minValue, length);
         }
 
-        constructor(private minValue : number, public size : number) {
-            if (size===0) {
+        constructor(private minValue : number, private rangeSize : number) {
+            if (rangeSize===0) {
                 this.minValue = -1;
             }
         }
 
+        size() { return this.rangeSize; }
+
         has(index:number):boolean {
-            return this.size > 0  &&  index >= this.minValue  && index <= this.max();
+            return this.size() > 0  &&  index >= this.minValue  && index <= this.max();
         }
 
         min():number {
@@ -43,14 +45,14 @@ module ozone.intSet {
         }
 
         max():number {
-            if (this.size===0) {
+            if (this.size() === 0) {
                     return -1;
             }
-            return this.minValue+(this.size-1);
+            return this.minValue+(this.size()-1);
         }
 
         each(action : (index : number) => void) {
-            for (var i=0; i<this.size; i++) {
+            for (var i=0; i<this.size(); i++) {
                 action(i+this.minValue);
             }
         }
@@ -59,7 +61,7 @@ module ozone.intSet {
             var index = this.minValue;
             var bm = this;
             var hasNext = function() {
-                return bm.size > 0  && index <= bm.max();
+                return bm.size() > 0  && index <= bm.max();
             };
 
             return {
@@ -72,19 +74,19 @@ module ozone.intSet {
         equals(bm : IntSet) : boolean {
             // In the case of RangeIntSets, we need only check min, max, and size
             // because size is a function of min and max.
-            return this.size === bm.size  && this.min() === bm.min()  && this.max() === bm.max();
+            return this.size() === bm.size()  && this.min() === bm.min()  && this.max() === bm.max();
         }
 
         union(bm : IntSet) : IntSet {
-            if (this.size===0) {
-                if (bm.size === 0) {
+            if (this.size()===0) {
+                if (bm.size() === 0) {
                     return this;
                 }
                 else {
                     return bm;
                 }
             }
-            if (bm.size===0) {
+            if (bm.size()===0) {
                 return this;
             }
             if (typeof(bm["unionWithRangeIntSet"]) === "function") {
@@ -94,7 +96,7 @@ module ozone.intSet {
             var lowBm = (this.min() < bm.min()) ? this : bm;
 
             if (bm instanceof RangeIntSet) {
-                if (bm.min()===this.min() && bm.size===this.size) {
+                if (bm.min()===this.min() && bm.size()===this.size()) {
                     return this;
                 }
                 var highBm = (lowBm===this) ? bm : this;
@@ -106,7 +108,7 @@ module ozone.intSet {
         }
 
         intersection(bm : IntSet) : IntSet {
-            if (this.size === 0 || bm.size === 0) {
+            if (this.size() === 0 || bm.size() === 0) {
                 return intSet.empty;
             }
             if (typeof(bm["intersectionWithRangeIntSet"]) === "function") {
@@ -125,7 +127,7 @@ module ozone.intSet {
         }
 
         toString() {
-            if (this.size===0) {
+            if (this.size() === 0) {
                 return "empty";
             }
             return this.min()+"-"+this.max();

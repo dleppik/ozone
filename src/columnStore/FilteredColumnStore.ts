@@ -129,7 +129,7 @@ module ozone.columnStore {
 
         constructor( public source : ColumnStore, private filterArray : Filter[], private filterBits : IntSet) {
             super(source);
-            this.size = filterBits.size;
+            this.size = filterBits.size();
         }
 
         intSet() : IntSet {

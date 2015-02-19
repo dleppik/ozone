@@ -6,8 +6,8 @@
  * node buildDataStore.js
  */
 var fs = require('fs');
-var ozone = require('ozone-db');        // Usage when installed from npm
-// var ozone = require('../ozone.js');  // Usage when building from source
+//var ozone = require('ozone-db');        // Usage when installed from npm
+var ozone = require('../ozone.js');  // Usage when building from source
 
 
 

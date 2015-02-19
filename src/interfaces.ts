@@ -162,7 +162,7 @@ module ozone {
         max() : number;
 
         /** The number of values for which has() returns true. */
-        size : number;
+        size() : number;
 
         /** Iterate over all "true" elements in order. */
         each(action : (index : number) => void);

@@ -32,12 +32,10 @@ module ozone.intSet {
         }
 
 
-        public size : number;
+        size() : number { return this.indexes.length; }
 
         /** Always use builder() to construct. */
-        constructor(private indexes : number[]) {
-            this.size = indexes.length;
-        }
+        constructor(private indexes : number[]) { }
 
         public toArray() : number[] {
             return this.indexes.concat();
@@ -72,10 +70,10 @@ module ozone.intSet {
 
 
         union(set : IntSet) : IntSet {
-            if (this.size === 0) {
+            if (this.size() === 0) {
                 return set;
             }
-            if (set.size === 0) {
+            if (set.size() === 0) {
                 return this; // Min and max aren't useful for comparisons with unions
             }
             if (set instanceof RangeIntSet && set.min() <= this.min() && set.max() >= this.max()) {

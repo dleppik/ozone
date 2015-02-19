@@ -64,15 +64,15 @@ module ozone.intSet {
          * Constructs a BitmapArrayIntSet.
          * @param words         The bitmap (not including the offset bits) as a number array
          * @param wordOffset    The number of 32-bit words which are all zeroes which proceed the given array.
-         * @param size          The number of ones in the array (0 if 'words' is empty)
+         * @param theSize       The number of ones in the array (0 if 'words' is empty)
          */
         constructor(
             private words : number[],
             private wordOffset : number,
-            public size : number)
+            private theSize : number) // TODO calculate on demand
         {
             if (words == null || words.length == 0) {
-                size = 0;
+                this.theSize = 0;
                 this.minValue = -1;
                 this.maxValue = -1;
             }
@@ -95,8 +95,8 @@ module ozone.intSet {
             }
         }
 
-        private static notWritten() : any {
-            throw new Error("This method has not been implemented yet."); // XXX
+        size() : number {
+            return this.theSize;
         }
 
 
@@ -152,10 +152,10 @@ module ozone.intSet {
 
         /** Returns an IntSet containing all the elements in either IntSet. */
         union(set : IntSet) : IntSet {
-            if (this.size === 0) {
+            if (this.size() === 0) {
                 return set;
             }
-            if (set.size === 0) {
+            if (set.size() === 0) {
                 return this; // Min and max aren't useful for comparisons with unions
             }
             if (set instanceof RangeIntSet && set.min() <= this.min() && set.max() >= this.max()) {
@@ -174,7 +174,7 @@ module ozone.intSet {
 
         /** Returns an IntSet containing only the elements that are found in both IntSets. */
         intersection(set : IntSet) : IntSet {
-            if (this.size === 0 || set.size === 0) {
+            if (this.size() === 0 || set.size() === 0) {
                 return empty;
             }
 
@@ -274,9 +274,12 @@ module ozone.intSet {
 
 
     export class OrderedWordWithOffsetIterator implements OrderedIterator<number> {
-        constructor( private words : number[], private wordOffset) {}
+        private nextWord : number;
 
-        private nextWord = 0 - this.wordOffset;
+        constructor( private words : number[], private wordOffset : number) {
+            this.nextWord = 0 - wordOffset;
+        }
+
 
         hasNext() : boolean {
             return this.nextWord < this.words.length;
@@ -290,7 +293,7 @@ module ozone.intSet {
                     result = 0|0;
                 }
             }
-            this.nextWord++
+            this.nextWord++;
             return result;
         }
 
