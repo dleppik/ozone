@@ -138,6 +138,10 @@ var ozone;
 /// <reference path='_all.ts' />
 var ozone;
 (function (ozone) {
+    /**
+     * Selects rows where a specific field has a specific value.  Note:  RowStore typically uses indexes to filter by
+     * value, so this class is generally used only to trigger that code.
+     */
     var ValueFilter = (function () {
         function ValueFilter(fieldDescriptor, value, displayName) {
             if (displayName === void 0) { displayName = null; }
@@ -148,6 +152,10 @@ var ozone;
                 this.displayName = value + " (" + fieldDescriptor.displayName + ")";
             }
         }
+        /**
+         * Returns true if the row has the given value.  Note:  RowStore typically uses indexes to filter by
+         * value, bypassing this method.
+         */
         ValueFilter.prototype.matches = function (store, rowToken) {
             var field = store.field(this.fieldDescriptor.identifier);
             return field.rowHasValue(rowToken, this.value);

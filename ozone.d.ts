@@ -224,11 +224,19 @@ declare module ozone {
          */
         equals(filter: Filter): boolean;
     }
+    /**
+     * Selects rows where a specific field has a specific value.  Note:  RowStore typically uses indexes to filter by
+     * value, so this class is generally used only to trigger that code.
+     */
     class ValueFilter implements Filter {
         fieldDescriptor: FieldDescribing;
         value: any;
         displayName: string;
         constructor(fieldDescriptor: FieldDescribing, value: any, displayName?: string);
+        /**
+         * Returns true if the row has the given value.  Note:  RowStore typically uses indexes to filter by
+         * value, bypassing this method.
+         */
         matches(store: RandomAccessStore, rowToken: any): boolean;
         equals(f: Filter): boolean;
     }

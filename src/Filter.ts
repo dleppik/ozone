@@ -4,6 +4,7 @@
 /// <reference path='_all.ts' />
 
 module ozone {
+
     export interface Filter {
         displayName : string;
 
@@ -18,6 +19,10 @@ module ozone {
         equals(filter : Filter) : boolean;
     }
 
+    /**
+     * Selects rows where a specific field has a specific value.  Note:  RowStore typically uses indexes to filter by
+     * value, so this class is generally used only to trigger that code.
+     */
     export class ValueFilter implements  Filter {
         constructor(public fieldDescriptor : FieldDescribing, public value : any, public displayName : string = null) {
             if (displayName===null) {
@@ -25,6 +30,10 @@ module ozone {
             }
         }
 
+        /**
+         * Returns true if the row has the given value.  Note:  RowStore typically uses indexes to filter by
+         * value, bypassing this method.
+         */
         matches(store : RandomAccessStore, rowToken : any) : boolean {
             var field = <RandomAccessField<any>> store.field(this.fieldDescriptor.identifier);
             return field.rowHasValue(rowToken, this.value);
