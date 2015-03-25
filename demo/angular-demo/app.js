@@ -6,9 +6,21 @@
 
     var app = angular.module('angularDemo', []);
 
+    app.controller('FilterController',function(){
+        this.currentFilters=[];
 
-    app.controller('DataController', function(){
-        this.db = columnStore;
+    });
+
+    app.controller('DataController', [ '$http', function($http){
+        var dataCtrl = this;
+        dataCtrl.db = {};
+
+        $http.get("../SummerOlympicMedals.json")
+            .success(function(data){
+                dataCtrl.db = ozone.serialization.readStore(data);
+                dataCtrl.fields = dataCtrl.db.fields();
+            });
+
         this.distinct = function(field){
             return field.distinctValueEstimate()+" distinct values.";
         }
@@ -19,39 +31,19 @@
             else return "Data is not indexed";
         }
 
-    });
+        this.fields = [];
 
-
-
-    var data =
-        "name,   color, animal, pin\n"+
-        "Alice,    red,    cow, 101\n"+
-        "Bob,    green,    dog, 102\n"+
-        "Chris,   blue,    cat, 103\n"+
-        "Doug,     red,    rat, 104\n"+
-        "Ellie,  green,    cow, 105\n"+
-        "Frank,   blue,    dog, 106\n"+
-        "Greg,     red,    cat, 107\n"+
-        "Hubert, green,    rat, 108\n"+
-        "George,  red,    rat, 109\n";
-
-    var storeParams = {
-        fields: {
-            name: { class: ozone.columnStore.UnIndexedField },
-            pin:  { class: ozone.columnStore.UnIndexedField,
-                typeOfValue: "number",
-                range: new ozone.Range(101, 108, true)
-            }
+        this.displayField=function(field){
+            return field.displayName + " has " + this.distinct(field);
         }
-    };
 
-    var    rowStore = ozone.rowStore.buildFromCsv(data);
-    var columnStore = ozone.columnStore.buildFromStore( rowStore, storeParams );
-    var   nameField = columnStore.field("name");
-    var  colorField = columnStore.field("color");
-    var animalField = columnStore.field("animal");
-    var    pinField = columnStore.field("pin");
+        this.applyFilter= function() {
+          if(this.db!=={}){
+              this.db= this.db.filter('Gender','M');
+          }
+        }
 
-    var ValueFilter = ozone.ValueFilter;
+    }]);
+
 
 })();

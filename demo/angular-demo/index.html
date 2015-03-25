@@ -11,9 +11,9 @@
 </head>
 <body ng-controller = "DataController as data">
 
-<ul ng-repeat ="field in data.db.fields()">
-    <li  >
-        {{field.displayName +" has " + data.distinct(field)}}
+<ul ng-repeat ="field in data.fields">
+    <li>
+        {{data.displayField(field)}}
         <ul ng-repeat="occurance in field.valueList">
             <li >
                 {{occurance + ",  "}} {{data.occuranceValue(field,occurance)}}
@@ -23,7 +23,10 @@
 
     </li>
 </ul>
-{{}}
+
+    <form name="filterForm" ng-controller="FilterController as filter" ng-submit="data.applyFilter()">
+    <input type="submit"  value="filter" />
+    </form>
 
 <b>{{data.db.size}}</b>
 
