@@ -1,5 +1,5 @@
 /**
- * Created by ecgaschott on 3/24/15.
+ * Created by Erin Gaschott and Reilly Grant on 3/24/15.
  */
 
 (function(){
