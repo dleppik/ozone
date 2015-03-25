@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html ng-app="angularDemo">
+<head lang="en">
+    <meta charset="UTF-8">
+
+    <script type="text/javascript" src="../../ozone.min.js"></script>
+    <script type="text/javascript" src="angular.min.js"></script>
+    <script type="text/javascript" src="app.js"></script>
+
+    <title></title>
+</head>
+<body ng-controller = "DataController as data">
+
+<ul ng-repeat ="field in data.db.fields()">
+    <li  >
+        {{field.displayName +" has " + data.distinct(field)}}
+        <ul ng-repeat="occurance in field.valueList">
+            <li >
+                {{occurance + ",  "}} {{data.occuranceValue(field,occurance)}}
+
+            </li>
+        </ul>
+
+    </li>
+</ul>
+{{}}
+
+<b>{{data.db.size}}</b>
+
+
+
+</body>
+</html>
