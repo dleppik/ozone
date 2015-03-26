@@ -11,6 +11,24 @@
 </head>
 <body ng-app="angularDemo" ng-controller = "DataController as data">
 
+<form name="filterForm" ng-controller="FilterController as filterCtrl" ng-submit="filterCtrl.updateFilters()">
+    <div ng-repeat="filter in filterCtrl.fieldsForFilter">
+        <fieldset style= "margin:-1px 0px; padding:3px; border:1px solid black; width:180px" >
+            <input type="checkbox"
+                   ng-model="filter.applied">
+            {{filter.name}}
+            <br>
+            <select ng-model="filter.sValue"
+                    ng-options="values for values in filter.values"
+                    ng-show="filter.applied">
+                <option value>Select a {{filter.name}}</option>
+            </select>
+        </fieldset>
+    </div>
+    <input type="submit"  value="filter" />
+</form>
+
+
 <ul ng-repeat ="field in data.fields">
     <li>
         {{data.displayField(field)}}
@@ -24,16 +42,9 @@
     </li>
 </ul>
 
-    <form name="filterForm" ng-controller="FilterController as filterCtrl" ng-submit="data.applyFilters()">
-        <ul ng-repeat="filter in filterCtrl.fieldsForFilter">
-            <li>
-                {{filter.id}}
-            </li>
-        </ul>
-        <input type="submit"  value="filter" />
-    </form>
 
 <b>{{data.db.size}}</b>
+
 
 
 

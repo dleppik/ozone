@@ -13,6 +13,17 @@
         this.fieldsForFilter=[];
         filterCtrl=this;
 
+        this.updateFilters= function(){
+            dataCtrl.clearFilters();
+            for(var i =0; i<this.fieldsForFilter.length;i++){
+                var filterField=this.fieldsForFilter[i];
+                if(filterField.applied){
+                    dataCtrl.addFilter(filterField.id,filterField.sValue);
+                }
+            }
+            dataCtrl.applyFilters();
+        };
+
         this.processFields=function(fields){
             for (var i = 0; i < fields.length; i++) {
                 var field = fields[i];
@@ -25,7 +36,8 @@
                                             values : values,
                                             id     : id,
                                             applied: applied,
-                                            name   : name});
+                                            name   : name,
+                                            sValue : ""});
             }
             return this.fieldsForFilter;
         };
@@ -34,15 +46,15 @@
                 var selector;
                 if (field.distinctValueEstimate() < 5) {
                     selector = "checkbox";
-                    console.log("checkbox\n");
+
                 }
                 else if (field.distinctValueEstimate() < 100 ) {
                     selector = "drop-down menu";
-                    console.log("drop-down menu\n");
+
                 }
                 else {
                     selector = "search field";
-                    console.log("search field\n");
+
                 }
             return selector;
         }
@@ -54,6 +66,7 @@
         dataCtrl = this;
         dataCtrl.nfdb = {}; // data that will not have filters applied
         this.db={};
+        this.counter=0;
 
         this.fields = [];
         this.recivedData=false;
@@ -76,8 +89,13 @@
             this.currentFilters.push({ id:identifier, value:value });
         };
 
+        this.clearFilters=function(){
+            this.db=this.nfdb;
+            this.currentFilters=[];
+        };
+
         this.occuranceValue = function(field,occurance) {
-                return field.valueMap[occurance]["indexes"].length;
+                return this.db.filter(field,occurance).size;
         };
 
         /*this.occuranceDisplay= function(field,occurance){
@@ -96,8 +114,12 @@
                   var cFilter= cFilters[i];
                   this.db = this.db.filter(cFilter.id, cFilter.value);
               }
+              this.fields= this.db.fields();
+              this.counter++;
           }
         };
+
+
 
     }]);
 
