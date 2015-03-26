@@ -39,7 +39,7 @@
 
         this.applyFilter= function() {
           if(this.db!=={}){
-              this.db= this.db.filter('Gender','M');
+              this.db= this.db.filter('Gender','Men');
           }
         }
 
