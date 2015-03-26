@@ -10,13 +10,27 @@
     var dataCtrl;
 
     app.controller('FilterController',function(){
-        this.fieldsForFilter=[];
+        this.chosenFilters=[];
         filterCtrl=this;
+
+        this.cantSubmit= function(){
+            if(chosenFilters==[]){
+                return true;
+            }
+            for(var i= 0; i<this.chosenFilters.length; i++ ){
+                var chosenFilter= chosenFilters[i];
+                if(chosenFilter.sValue===""){
+                    return true;
+                }
+            }
+            return false;
+        };
+
 
         this.updateFilters= function(){
             dataCtrl.clearFilters();
-            for(var i =0; i<this.fieldsForFilter.length;i++){
-                var filterField=this.fieldsForFilter[i];
+            for(var i =0; i<this.chosenFilters.length;i++){
+                var filterField=this.chosenFilters[i];
                 if(filterField.applied){
                     dataCtrl.addFilter(filterField.id,filterField.sValue);
                 }
@@ -32,14 +46,14 @@
                 var id = field.identifier;
                 var name= field.displayName;
                 var applied = false;
-                this.fieldsForFilter.push({selector: selector,
+                this.chosenFilters.push({selector: selector,
                                             values : values,
                                             id     : id,
                                             applied: applied,
                                             name   : name,
                                             sValue : ""});
             }
-            return this.fieldsForFilter;
+            return this.chosenFilters;
         };
 
         this.selectorForField=function(field){
