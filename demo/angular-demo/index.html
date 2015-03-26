@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html ng-app="angularDemo">
+<html >
 <head lang="en">
     <meta charset="UTF-8">
 
@@ -9,7 +9,7 @@
 
     <title></title>
 </head>
-<body ng-controller = "DataController as data">
+<body ng-app="angularDemo" ng-controller = "DataController as data">
 
 <ul ng-repeat ="field in data.fields">
     <li>
@@ -24,8 +24,13 @@
     </li>
 </ul>
 
-    <form name="filterForm" ng-controller="FilterController as filter" ng-submit="data.applyFilter()">
-    <input type="submit"  value="Filter" />
+    <form name="filterForm" ng-controller="FilterController as filterCtrl" ng-submit="data.applyFilters()">
+        <ul ng-repeat="filter in filterCtrl.fieldsForFilter">
+            <li>
+                {{filter.id}}
+            </li>
+        </ul>
+        <input type="submit"  value="filter" />
     </form>
 
 <b>{{data.db.size}}</b>
