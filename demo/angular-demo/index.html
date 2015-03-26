@@ -25,9 +25,11 @@
 </ul>
 
     <form name="filterForm" ng-controller="FilterController as filterCtrl" ng-submit="data.applyFilters()">
-        <div ng-repeat="field in filterCtrl.proccessField(data.fields)" >
-            <!--<input type="checkbox" ng-model="field.applied" name="field.id">-->
-        </div>
+        <ul ng-repeat="filter in filterCtrl.fieldsForFilter">
+            <li>
+                {{filter.id}}
+            </li>
+        </ul>
         <input type="submit"  value="filter" />
     </form>
 
