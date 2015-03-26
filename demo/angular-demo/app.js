@@ -7,41 +7,85 @@
     var app = angular.module('angularDemo', []);
 
     app.controller('FilterController',function(){
-        this.currentFilters=[];
+        this.fieldsForFilter=[];
+
+        this.proccessFields=function(fields){
+            for(var i=0; i<fields.length;i++){
+                var field=fields[i];
+                var selector = selectorForField(field);
+                var values = field.valueList;
+                var id= field.identifier;
+                var applied= false;
+                this.fieldsForFilter.push({selector:selector,values:values,id:id, applied:applied});
+            }
+            return this.fieldsForFilter;
+        };
+
+        this.selectorForField=function(field){
+                var selector;
+                if (field.distinctValueEstimate() < 5) {
+                    selector = "checkbox";
+                }
+                else if (field.distinctValueEstimate() < 100 ) {
+                    selector = "drop-down menu";
+                }
+                else {
+                    selector = "search field";
+                }
+            return selector;
+        }
+
 
     });
 
     app.controller('DataController', [ '$http', function($http){
         var dataCtrl = this;
-        dataCtrl.db = {};
+        dataCtrl.nfdb = {}; // data that will not have filters applied
+        this.db={};
+
+        this.fields = [];
+        this.recivedData=false;
+        this.currentFilters= [];
 
         $http.get("../SummerOlympicMedals.json")
             .success(function(data){
-                dataCtrl.db = ozone.serialization.readStore(data);
-                dataCtrl.fields = dataCtrl.db.fields();
+                dataCtrl.nfdb = ozone.serialization.readStore(data);
+                dataCtrl.fields = dataCtrl.nfdb.fields();
+                dataCtrl.recivedData=true;
+                dataCtrl.db=dataCtrl.nfdb;
+
             });
 
         this.distinct = function(field){
             return field.distinctValueEstimate()+" distinct values.";
-        }
+        };
+
+        this.addFilter=function(identifier,value){
+            this.currentFilters.push({ id:identifier, value:value });
+        };
 
         this.occuranceValue = function(field,occurance) {
-            if(field.valueMap)
                 return field.valueMap[occurance]["indexes"].length;
-            else return "Data is not indexed";
-        }
+        };
 
-        this.fields = [];
+        /*this.occuranceDisplay= function(field,occurance){
+                return occurance + ",  "+ data.occuranceValue(field,occurance)
+        }*/
 
         this.displayField=function(field){
             return field.displayName + " has " + this.distinct(field);
-        }
+        };
 
-        this.applyFilter= function() {
-          if(this.db!=={}){
-              this.db= this.db.filter('Gender','M');
+        this.applyFilters= function() {
+          if(this.recivedData){
+              this.db=this.nfdb;
+              var cFilters= this.currentFilters;
+              for(var i=0;i<cFilters.length;i++) {
+                  var cFilter= cFilters[i];
+                  this.db = this.db.filter(cFilter.id, cFilter.value);
+              }
           }
-        }
+        };
 
     }]);
 
