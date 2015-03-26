@@ -1,0 +1,68 @@
+<!-- Copied from SpecRunner.html by David Leppik  (ozone/test/SpecRunner.html) -->
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Angular Jasmine Spec Runner</title>
+
+  <link rel="stylesheet" type="text/css" href="../../lib/jasmine-1.3.0/jasmine.css">
+  <script type="text/javascript" src="../../lib/jasmine-1.3.0/jasmine.js"></script>
+  <script type="text/javascript" src="../../lib/jasmine-1.3.0/jasmine-html.js"></script>
+  <script type="text/javascript" src="angular.min.js"></script>
+  <script type="text/javascript" src="angular-mocks.js"></script>
+  <script type="text/javascript" src="app.js"></script>
+
+  <!-- include source files here... -->
+    <script type="text/javascript" src="../../ozone.js"></script>
+
+  <!-- include spec files here... -->
+    <script type="text/javascript" src="angularSpec.js"></script>
+
+
+
+  <!-- The default colors are hard to distinguish for red/green colorblind users  -->
+  <style type="text/css">
+      #HTMLReporter .summary .specSummary.passed a {
+          color: #007069;
+      }
+
+      #HTMLReporter .summary .specSummary.failed a {
+          color: #ca3a11;
+          font-weight: bold;
+      }
+  </style>
+
+  <script type="text/javascript">
+    (function() {
+      var jasmineEnv = jasmine.getEnv();
+      jasmineEnv.updateInterval = 1000;
+
+      var htmlReporter = new jasmine.HtmlReporter();
+
+      jasmineEnv.addReporter(htmlReporter);
+
+      jasmineEnv.specFilter = function(spec) {
+        return htmlReporter.specFilter(spec);
+      };
+
+      var currentWindowOnload = window.onload;
+
+      window.onload = function() {
+        if (currentWindowOnload) {
+          currentWindowOnload();
+        }
+        execJasmine();
+      };
+
+      function execJasmine() {
+        jasmineEnv.execute();
+      }
+
+    })();
+  </script>
+
+</head>
+
+<body>
+</body>
+</html>
