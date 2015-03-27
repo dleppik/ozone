@@ -93,7 +93,19 @@
 
 
         this.distinct = function(field){
-            return field.distinctValueEstimate()+" distinct values.";
+           var p = $scope.db.partition(field);  // XXX
+
+            var counter = 0;
+            for (var name in p){
+               counter++
+            }
+
+            if(counter == 0)
+                return "no distinct values";
+            else if(counter == 1)
+                return "1 distinct value";
+            else
+                return counter + " distinct values";
         };
 
         this.addFilter=function(identifier,value){
@@ -127,11 +139,9 @@
               }
               $scope.fields= $scope.db.fields();
           }
+
         };
 
-
-
     }]);
-
 
 })();

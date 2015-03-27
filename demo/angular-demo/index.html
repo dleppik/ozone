@@ -6,40 +6,49 @@
     <script type="text/javascript" src="../../ozone.min.js"></script>
     <script type="text/javascript" src="angular.min.js"></script>
     <script type="text/javascript" src="app.js"></script>
+    <link rel="stylesheet" type="text/css" href="angular-demo-style.css">
 
     <title></title>
 </head>
 <body ng-app="angularDemo" ng-controller = "DataController as data">
 
-<form name="filterForm"  ng-submit="data.updateFilters()">
-    <div ng-repeat="filter in choiceFilters">
-        <fieldset style= "margin:-1px 0px; padding:3px; border:1px solid black; width:180px" >
-            <input type="checkbox"
-                   ng-model="filter.applied">
-            {{filter.name}}
-            <br>
-            <select ng-model="filter.sValue"
-                    ng-options="values for values in filter.values"
-                    ng-show="filter.applied">
-                <option ng-hide="filter.sValue!==''" value>Select a {{filter.name}}</option>
-            </select>
-        </fieldset>
+<h1>Ozone Filter, AngularJS Demo</h1>
+<h3>Created by Erin Gaschott and Reilly Grant as a 2015 Grinnell College Externship Project </h3>
+
+<div class="main-content">
+    <form name="filterForm"  ng-submit="data.updateFilters()">
+        <div ng-repeat="filter in choiceFilters">
+            <fieldset style= "margin:-1px 0px; padding:3px; border:1px solid black; width:180px" >
+                <input type="checkbox"
+                       ng-model="filter.applied">
+                {{filter.name}}
+                <br>
+                <div class="value-selector">
+                    <select ng-model="filter.sValue"
+                            ng-options="values for values in filter.values"
+                            ng-show="filter.applied">
+                        <option ng-hide="filter.sValue!==''" value>Select a {{filter.name}}</option>
+                    </select>
+                </div>
+            </fieldset>
+        </div>
+        <button ng-disabled="data.cantSubmit()"  ng-click="data.updateFilters()" >Filter</button>
+    </form>
+
+    <div class="table">
+        <div class="field-table" ng-repeat ="field in fields">
+            <div class="field">
+                {{data.displayField(field)}}
+            </div>
+            <div class="names-and-values" ng-repeat="occurance in field.valueList">
+                <div ng-show="data.occuranceValue(field,occurance)">
+                    <div class="name">{{occurance}}</div>
+                    <div class="value">{{data.occuranceValue(field,occurance)}}</div>
+                </div>
+            </div>
+        </div>
     </div>
-    <button ng-disabled="data.cantSubmit()"  ng-click="data.updateFilters()" >Filter</button>
-</form>
-
-<ul ng-repeat ="field in fields">
-    <li>
-        {{data.displayField(field)}}
-        <ul ng-repeat="occurance in field.valueList">
-            <li ng-show="data.occuranceValue(field,occurance)" >
-                {{occurance + ",  "}} {{data.occuranceValue(field,occurance)}}
-
-            </li>
-        </ul>
-
-    </li>
-</ul>
+</div>
 
 
 

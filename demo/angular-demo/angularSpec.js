@@ -6,7 +6,6 @@
 
 describe("testing of angular demo", function() {
 
-
     var data =
         "name,   color, animal, pin\n" +
         "Alice,    red,    cow, 101\n" +
