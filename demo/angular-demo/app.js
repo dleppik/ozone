@@ -6,18 +6,30 @@
 
     var app = angular.module('angularDemo', []);
 
-    var filterCtrl;
-    var dataCtrl;
 
-    app.controller('FilterController',function(){
-        this.chosenFilters=[];
-        filterCtrl=this;
+    app.controller('DataController', [ '$scope', '$http', function($scope, $http){
+
+        var dataCtrl=this;
+
+        $http.get("../SummerOlympicMedals.json")
+            .success(function(data){
+                $scope.nfdb = ozone.serialization.readStore(data);
+                $scope.fields = $scope.nfdb.fields();
+                $scope.recievedData = true;
+                $scope.db = $scope.nfdb;
+                dataCtrl.processFields($scope.fields);
+            });
+
+
+
+        $scope.chosenFilters=[];
+
 
         this.cantSubmit= function(){
             if(chosenFilters==[]){
                 return true;
             }
-            for(var i= 0; i<this.chosenFilters.length; i++ ){
+            for(var i= 0; i<$scope.chosenFilters.length; i++ ){
                 var chosenFilter= chosenFilters[i];
                 if(chosenFilter.sValue===""){
                     return true;
@@ -28,14 +40,14 @@
 
 
         this.updateFilters= function(){
-            dataCtrl.clearFilters();
-            for(var i =0; i<this.chosenFilters.length;i++){
-                var filterField=this.chosenFilters[i];
+            this.clearFilters();
+            for(var i =0; i<$scope.chosenFilters.length;i++){
+                var filterField=$scope.chosenFilters[i];
                 if(filterField.applied){
-                    dataCtrl.addFilter(filterField.id,filterField.sValue);
+                    this.addFilter(filterField.id,filterField.sValue);
                 }
             }
-            dataCtrl.applyFilters();
+            this.applyFilters();
         };
 
         this.processFields=function(fields){
@@ -46,14 +58,14 @@
                 var id = field.identifier;
                 var name= field.displayName;
                 var applied = false;
-                this.chosenFilters.push({selector: selector,
+                $scope.chosenFilters.push({selector: selector,
                                             values : values,
                                             id     : id,
                                             applied: applied,
                                             name   : name,
                                             sValue : ""});
             }
-            return this.chosenFilters;
+            return $scope.chosenFilters;
         };
 
         this.selectorForField=function(field){
@@ -71,45 +83,33 @@
 
                 }
             return selector;
-        }
+        };
 
 
-    });
 
-    app.controller('DataController', [ '$http', function($http){
-        dataCtrl = this;
-        dataCtrl.nfdb = {}; // data that will not have filters applied
-        this.db={};
-        this.counter=0;
+        $scope.nfdb = {}; // data that will not have filters applied
+        $scope.db={};
 
-        this.fields = [];
-        this.recivedData=false;
-        this.currentFilters= [];
+        $scope.fields = [];
+        $scope.recievedData=false;
+        $scope.currentFilters= [];
 
-        $http.get("../SummerOlympicMedals.json")
-            .success(function(data){
-                dataCtrl.nfdb = ozone.serialization.readStore(data);
-                dataCtrl.fields = dataCtrl.nfdb.fields();
-                dataCtrl.recivedData = true;
-                dataCtrl.db = dataCtrl.nfdb;
-                filterCtrl.processFields(dataCtrl.fields);
-            });
 
         this.distinct = function(field){
             return field.distinctValueEstimate()+" distinct values.";
         };
 
         this.addFilter=function(identifier,value){
-            this.currentFilters.push({ id:identifier, value:value });
+            $scope.currentFilters.push({ id:identifier, value:value });
         };
 
         this.clearFilters=function(){
-            this.db=this.nfdb;
-            this.currentFilters=[];
+            $scope.db=$scope.nfdb;
+            $scope.currentFilters=[];
         };
 
         this.occuranceValue = function(field,occurance) {
-                return this.db.filter(field,occurance).size;
+                return $scope.db.filter(field,occurance).size;
         };
 
         /*this.occuranceDisplay= function(field,occurance){
@@ -121,15 +121,15 @@
         };
 
         this.applyFilters= function() {
-          if(this.recivedData){
-              this.db=this.nfdb;
-              var cFilters= this.currentFilters;
+          if($scope.recievedData){
+              $scope.db=$scope.nfdb;
+              var cFilters= $scope.currentFilters;
               for(var i=0;i<cFilters.length;i++) {
                   var cFilter= cFilters[i];
-                  this.db = this.db.filter(cFilter.id, cFilter.value);
+                  $scope.db = $scope.db.filter(cFilter.id, cFilter.value);
               }
-              this.fields= this.db.fields();
-              this.counter++;
+              $scope.fields= $scope.db.fields();
+              $scope.counter++;
           }
         };
 

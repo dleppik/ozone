@@ -2,7 +2,7 @@
  * Created by Erin Gaschott on 3/25/15, data comes from ColumnStoreSpec.js by David Leppik
  */
 
-"use strict"
+"use strict";
 
 describe("testing of angular demo", function() {
 
@@ -39,56 +39,43 @@ describe("testing of angular demo", function() {
     var ValueFilter = ozone.ValueFilter;
 
 
-    it("test true", function(){
-        var a = 3;
+    describe('Angular Controllers:', function(){
 
-        expect(a).toEqual(3);
-    });
-
-
-
-    describe('Angular Controllers', function(){
-
-        describe('DataController', function() {
-            var $httpBackend, ctrl;
-
-           // beforeEach(function(){
-                //angular.module('angularDemo', ['ngMock']);
-                //angular.inject(fns);
-
-           // })
+        describe('the DataController:', function() {
+            var $httpBackend, ctrl, scope;
 
             beforeEach(module('angularDemo'));
 
-            beforeEach(inject(function(_$httpBackend_, $controller){
+           /* beforeEach(function(){
+                angular.module('angularDemo', ['ngMock']);
+                angular.inject('angularDemo');
+
+            });*/
+
+            beforeEach(inject(function(_$httpBackend_, $rootScope, $controller){
                 $httpBackend = _$httpBackend_;
                 $httpBackend.expectGET("../SummerOlympicMedals.json").
-                    respond(data);
+                    respond(JSON.stringify(ozone.serialization.writeStore(columnStore)));
 
+                scope = $rootScope.$new();
                 ctrl = $controller('DataController');
             }));
 
+            it("tests to see if data is loaded", function(){
+                expect(ctrl.db).toEqual({});
+                $httpBackend.flush();
 
-
-            it("returns the correct number of distinct values", function(){
-                expect(this.db.distinct(color)).toEqual(3);
-                expect(this.db.distinct(name)).toEqual(8);
+                expect(ctrl.db).toBeTruthy();
+                expect(ctrl.db.field("color")).toBeTruthy();
             });
 
-            it("returns correct number of occurances", function(){
-                expect(this.db.occuranceValue(animal, rat)).toEqual(2);
-                expect(this.db.occuranceValue(color, green)).toEqual(3);
-            });
+        });
 
-            it("gives the expected display of field name", function(){
-                expect(this.db.displayField(name)).toMatch("name has 9 distinct fields");
-                expect(this.db.displayField(animal)).toMatch("animal has 4 distinct fields");
-            });
+        describe ('the FilterController:', function(){
 
 
 
         });
-
     });
 
 });

@@ -11,8 +11,8 @@
 </head>
 <body ng-app="angularDemo" ng-controller = "DataController as data">
 
-<form name="filterForm" ng-controller="FilterController as filterCtrl" ng-submit="filterCtrl.updateFilters()">
-    <div ng-repeat="filter in filterCtrl.chosenFilters">
+<form name="filterForm"  ng-submit="data.updateFilters()">
+    <div ng-repeat="filter in chosenFilters">
         <fieldset style= "margin:-1px 0px; padding:3px; border:1px solid black; width:180px" >
             <input type="checkbox"
                    ng-model="filter.applied">
@@ -21,15 +21,14 @@
             <select ng-model="filter.sValue"
                     ng-options="values for values in filter.values"
                     ng-show="filter.applied">
-                <option ng-hide="filterCtrl.sValue!==''" value>Select a {{filter.name}}</option>
+                <option ng-hide="filter.sValue!==''" value>Select a {{filter.name}}</option>
             </select>
         </fieldset>
     </div>
     <input type="submit"  value="Filter" />
 </form>
 
-
-<ul ng-repeat ="field in data.fields">
+<ul ng-repeat ="field in fields">
     <li>
         {{data.displayField(field)}}
         <ul ng-repeat="occurance in field.valueList">
