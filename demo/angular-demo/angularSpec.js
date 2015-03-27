@@ -76,10 +76,10 @@ describe("testing of angular demo", function() {
                 expect(scope.db).toBeTruthy();
 
                 expect(scope.currentFilters).toEqual([]);
-                expect(scope.choiceFilters).toBeTruthy();
+                expect(scope.allPossibleFilters).toBeTruthy();
 
 
-                expect(scope.nfdb).toBeTruthy(); // data that will not have filters applied;
+                expect(scope.unfilteredDb).toBeTruthy(); // data that will not have filters applied;
                 expect(scope.db).toBeTruthy();
 
                 expect(scope.fields).toBeTruthy();
@@ -107,11 +107,13 @@ describe("testing of angular demo", function() {
                 ctrl.clearFilters();
                 this.checkFilterNotApplied();
                 expect(scope.currentFilters).toEqual([]);
+                scope.allPossibleFilters[0].applied=true;
 
                 expect(ctrl.cantSubmit()).toBe(true);
 
-                for(var i=0; i<scope.choiceFilters.length; i++){
-                    scope.choiceFilters[i].sValue="a";
+
+                for(var i=0; i<scope.allPossibleFilters.length; i++){
+                    scope.allPossibleFilters[i].sValue="a";
                 }
 
                 expect(ctrl.cantSubmit()).toBe(false);

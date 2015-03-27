@@ -16,12 +16,16 @@
 <h3>Created by Erin Gaschott and Reilly Grant as a 2015 Grinnell College Externship Project </h3>
 
 <div class="main-content">
+
     <form name="filterForm"  ng-submit="data.updateFilters()">
-        <div ng-repeat="filter in choiceFilters">
-            <fieldset style= "margin:-1px 0px; padding:3px; border:1px solid black; width:180px" >
+        <div class="table-header-form">
+            Filters
+        </div>
+        <div class="field-to-filter-name" ng-repeat="filter in allPossibleFilters">
+            <fieldset >
                 <input type="checkbox"
                        ng-model="filter.applied">
-                {{filter.name}}
+                    {{filter.name}}
                 <br>
                 <div class="value-selector">
                     <select ng-model="filter.sValue"
@@ -32,16 +36,21 @@
                 </div>
             </fieldset>
         </div>
-        <button ng-disabled="data.cantSubmit()"  ng-click="data.updateFilters()" >Filter</button>
+        <button class="filter-button" ng-disabled="data.cantSubmit()"  ng-click="data.updateFilters()" >Filter</button>
     </form>
 
     <div class="table">
+        <div class="table-header">
+            Summer Olympic Medals Won per Category
+        </div>
+
         <div class="field-table" ng-repeat ="field in fields">
             <div class="field">
                 {{data.displayField(field)}}
             </div>
-            <div class="names-and-values" ng-repeat="occurance in field.valueList">
-                <div ng-show="data.occuranceValue(field,occurance)">
+            <div class="names-and-values" ng-repeat="occurance in field.valueList"
+                 ng-if="data.occuranceValue(field,occurance)">
+                <div>
                     <div class="name">{{occurance}}</div>
                     <div class="value">{{data.occuranceValue(field,occurance)}}</div>
                 </div>
