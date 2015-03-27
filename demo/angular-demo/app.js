@@ -22,16 +22,13 @@
 
 
 
-        $scope.chosenFilters=[];
+        $scope.choiceFilters=[];
 
 
         this.cantSubmit= function(){
-            if(chosenFilters==[]){
-                return true;
-            }
-            for(var i= 0; i<$scope.chosenFilters.length; i++ ){
-                var chosenFilter= chosenFilters[i];
-                if(chosenFilter.sValue===""){
+            for(var i= 0; i<$scope.choiceFilters.length; i++ ){
+                var chosenFilter= $scope.choiceFilters[i];
+                if(chosenFilter.applied && chosenFilter.sValue===""){
                     return true;
                 }
             }
@@ -41,10 +38,10 @@
 
         this.updateFilters= function(){
             this.clearFilters();
-            for(var i =0; i<$scope.chosenFilters.length;i++){
-                var filterField=$scope.chosenFilters[i];
-                if(filterField.applied){
-                    this.addFilter(filterField.id,filterField.sValue);
+            for(var i =0; i<$scope.choiceFilters.length;i++){
+                var choiceFilter=$scope.choiceFilters[i];
+                if(choiceFilter.applied){
+                    this.addFilter(choiceFilter.id,choiceFilter.sValue);
                 }
             }
             this.applyFilters();
@@ -58,14 +55,14 @@
                 var id = field.identifier;
                 var name= field.displayName;
                 var applied = false;
-                $scope.chosenFilters.push({selector: selector,
+                $scope.choiceFilters.push({selector: selector,
                                             values : values,
                                             id     : id,
                                             applied: applied,
                                             name   : name,
                                             sValue : ""});
             }
-            return $scope.chosenFilters;
+            return $scope.choiceFilters;
         };
 
         this.selectorForField=function(field){
@@ -129,7 +126,6 @@
                   $scope.db = $scope.db.filter(cFilter.id, cFilter.value);
               }
               $scope.fields= $scope.db.fields();
-              $scope.counter++;
           }
         };
 

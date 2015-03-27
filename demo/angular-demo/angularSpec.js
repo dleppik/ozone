@@ -52,27 +52,71 @@ describe("testing of angular demo", function() {
 
             });*/
 
-            beforeEach(inject(function(_$httpBackend_, $rootScope, $controller){
+            var $controller;
+
+            beforeEach(inject(function(_$controller_){
+                // The injector unwraps the underscores (_) from around the parameter names when matching
+                $controller = _$controller_;
+            }));
+
+
+            beforeEach(inject(function(_$httpBackend_, $rootScope){
                 $httpBackend = _$httpBackend_;
                 $httpBackend.expectGET("../SummerOlympicMedals.json").
                     respond(JSON.stringify(ozone.serialization.writeStore(columnStore)));
 
                 scope = $rootScope.$new();
-                ctrl = $controller('DataController');
+                ctrl = $controller('DataController', { $scope: scope });
             }));
 
-            it("tests to see if data is loaded", function(){
-                expect(ctrl.db).toEqual({});
+
+            it("loaded data correctly and initilizes properly", function(){
+                expect(scope.db).toEqual({});
                 $httpBackend.flush();
 
-                expect(ctrl.db).toBeTruthy();
-                expect(ctrl.db.field("color")).toBeTruthy();
+                expect(scope.db).toBeTruthy();
+
+                expect(scope.currentFilters).toEqual([]);
+                expect(scope.choiceFilters).toBeTruthy();
+
+
+                expect(scope.nfdb).toBeTruthy(); // data that will not have filters applied;
+                expect(scope.db).toBeTruthy();
+
+                expect(scope.fields).toBeTruthy();
+                expect(scope.recievedData).toEqual(true);
             });
 
-        });
+            it("updates and changes filters correctly",function(){
+                $httpBackend.flush();
 
-        describe ('the FilterController:', function(){
+                var initialdb= scope.db;
+                ctrl.addFilter('color','red');
+                expect(scope.currentFilters).not.toEqual([]);
+                expect(initialdb).toEqual(scope.db);
 
+                var field=scope.fields[1];
+                this.checkFilterNotApplied=function() {
+                    expect(ctrl.occuranceValue(field, "red")).not.toEqual(0);
+                    expect(ctrl.occuranceValue(field, "green")).not.toEqual(0);
+                    expect(ctrl.occuranceValue(field, "blue")).not.toEqual(0);
+                };
+                ctrl.applyFilters();
+                expect(ctrl.occuranceValue(field,"red")).not.toEqual(0);
+                expect(ctrl.occuranceValue(field, "green")).toEqual(0);
+                expect(ctrl.occuranceValue(field,"blue")).toEqual(0);
+                ctrl.clearFilters();
+                this.checkFilterNotApplied();
+                expect(scope.currentFilters).toEqual([]);
+
+                expect(ctrl.cantSubmit()).toBe(true);
+
+                for(var i=0; i<scope.choiceFilters.length; i++){
+                    scope.choiceFilters[i].sValue="a";
+                }
+
+                expect(ctrl.cantSubmit()).toBe(false);
+            });
 
 
         });

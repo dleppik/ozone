@@ -12,7 +12,7 @@
 <body ng-app="angularDemo" ng-controller = "DataController as data">
 
 <form name="filterForm"  ng-submit="data.updateFilters()">
-    <div ng-repeat="filter in chosenFilters">
+    <div ng-repeat="filter in choiceFilters">
         <fieldset style= "margin:-1px 0px; padding:3px; border:1px solid black; width:180px" >
             <input type="checkbox"
                    ng-model="filter.applied">
@@ -25,7 +25,7 @@
             </select>
         </fieldset>
     </div>
-    <input type="submit"  value="Filter" />
+    <button ng-disabled="data.cantSubmit()"  ng-click="data.updateFilters()" >Filter</button>
 </form>
 
 <ul ng-repeat ="field in fields">
