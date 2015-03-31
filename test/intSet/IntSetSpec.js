@@ -169,8 +169,14 @@ describe("RangeIntSet", function() {
     });
 
     describe("intersectionOfUnions()", function() {
-        it("has tests", function() {
-            expect(false).toBeTruthy();  // TODO
+        it("Intersects (clips) non-intersecting RangeIntSets", function() {
+            var toIntersect = RangeIntSet.fromTo(15, 25);
+            var           a = RangeIntSet.fromTo(10, 20);
+            var           b = RangeIntSet.fromTo(22, 30);
+            var         iou = toIntersect.intersectionOfUnion([a, b]);
+            var    expected = RangeIntSet.fromTo(15, 20).union(RangeIntSet.fromTo(22, 25));
+
+            expect( iou.equals(expected) ).toBe( true );
         });
     });
 });
@@ -599,7 +605,7 @@ describe("IntSets", function() {
                 var set1 = intSetFromArray(intSetClass, a1);
                 var set2 = intSetFromArray(intSetClass, a2);
 
-                expect(set1.union( set2 ).size()  ).toEqual( 5 );  // Hard coded, to keep other bugs from hiding failure
+                expect(set1.union( set2 ).size()).toEqual( 5 );  // Hard coded, to keep other bugs from hiding failure
                 expect(set1.union( set2 ).min() ).toEqual( 2 );
                 expect(set1.union( set2 ).max() ).toEqual( 9 );
                 expect(set1.union( set2 ).equals( intSetFromArray(intSetClass, au) )).toEqual(true);
@@ -616,9 +622,9 @@ describe("IntSets", function() {
                 var set1 = intSetFromArray(intSetClass, a1);
                 var set2 = intSetFromArray(intSetClass, a2);
 
-                expect(set1.intersection(set2) .size()).toEqual(2);  // Hard coded, to keep other bugs from hiding failure
-                expect(set1.intersection(set2).min()).toEqual(5);
-                expect(set1.intersection(set2).max()).toEqual(8);
+                expect(set1.intersection(set2).size()).toEqual(2);  // Hard coded, to keep other bugs from hiding failure
+                expect(set1.intersection(set2).min() ).toEqual(5);
+                expect(set1.intersection(set2).max() ).toEqual(8);
                 expect(set1.intersection(set2).equals( intSetFromArray(intSetClass, ai) )).toEqual(true);
                 expect(set2.intersection(set1).equals( intSetFromArray(intSetClass, ai) )).toEqual(true);
             });
@@ -671,5 +677,10 @@ describe("IntSets", function() {
         behaviorAcrossIntSetClasses(
             ozone.intSet.ArrayIndexIntSet, "ArrayIndexIntSet",
             ozone.intSet.BitmapArrayIntSet, "BitmapArrayIntSet");
+
+        behaviorAcrossIntSetClasses(
+            ozone.intSet.BitmapArrayIntSet, "BitmapArrayIntSet",
+            ozone.intSet.ArrayIndexIntSet, "ArrayIndexIntSet");
+
     });
 });
