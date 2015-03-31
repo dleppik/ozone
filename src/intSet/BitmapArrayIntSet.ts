@@ -188,19 +188,20 @@ module ozone.intSet {
             return ozone.intSet.intersectionOfOrderedIterators(this.iterator(), set.iterator());
         }
 
-        /** Returns true if the iterators produce identical results. */
-        equals(set : IntSet) : boolean {
-            return equalIntSets(this, set);
+        intersectionOfUnion(toUnion : IntSet[]):ozone.IntSet {
+            if (toUnion.every(set => { return set['isPacked'] })) {
+                return ozone.intSet.intersectionOfUnionBySetOperations(this, toUnion);
+            }
+            return ozone.intSet.intersectionOfUnionByIteration(this, toUnion);
         }
 
-        minWord() : number {
-            return this.wordOffset;
-        }
+        /** Returns true if the iterators produce identical results. */
+        equals(set : IntSet) : boolean { return equalIntSets(this, set); }
+
+        minWord() : number { return this.wordOffset; }
 
         /** Equals Math.floor(min()/32). */
-        maxWord() : number {
-            return bits.inWord(this.maxValue);
-        }
+        maxWord() : number { return bits.inWord(this.maxValue); }
 
     }
 
@@ -211,7 +212,7 @@ module ozone.intSet {
         constructor( private words : number[], private maxBit : number ) {
         }
 
-        private nextBit = 0;
+        private nextBit = 0;  // The next bit to check (treating the data as one long array of 0's and 1's).
 
         hasNext() : boolean {
             return this.nextBit <= this.maxBit;
@@ -241,7 +242,10 @@ module ozone.intSet {
         }
 
         skipTo(item : number) {
-            this.nextBit = item;
+            item = Math.ceil(item);
+            if (this.nextBit < item) {
+                this.nextBit = item;
+            }
         }
     }
 

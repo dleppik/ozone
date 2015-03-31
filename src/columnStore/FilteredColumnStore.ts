@@ -6,20 +6,28 @@
 module ozone.columnStore {
 
     export function createFilter(store : ColumnStoreInterface, fieldNameOrFilter : any, value? : any) : Filter {
-    if (typeof fieldNameOrFilter === "string") {
-        return new ozone.ValueFilter(store.field(fieldNameOrFilter), value);
-    }
-    else if (typeof fieldNameOrFilter === "object") {
-        if (typeof fieldNameOrFilter.distinctValueEstimate === "function" && typeof fieldNameOrFilter.identifier === "string") {
-            return new ozone.ValueFilter(fieldNameOrFilter, value);
+        if (typeof fieldNameOrFilter === "string") {
+            return new ozone.ValueFilter(store.field(fieldNameOrFilter), value);
         }
-        if (typeof fieldNameOrFilter.matches === "function") {
-            return <Filter> fieldNameOrFilter;
+        else if (typeof fieldNameOrFilter === "object") {
+            if (typeof fieldNameOrFilter.distinctValueEstimate === "function" && typeof fieldNameOrFilter.identifier === "string") {
+                return new ozone.ValueFilter(fieldNameOrFilter, value);
+            }
+            if (typeof fieldNameOrFilter.matches === "function") {
+                return <Filter> fieldNameOrFilter;
+            }
         }
+        throw "Not a filter: "+fieldNameOrFilter;
     }
-    throw "Not a filter: "+fieldNameOrFilter;
-}
 
+    /**
+     * Used by ColumnStores to implement filtering
+     *
+     * @param source          the top-level ColumnStore
+     * @param oldStore        the ColumnStore being filtered, which is source or a subset of source
+     * @param filtersToAdd    the new filters
+     * @returns a ColumnStore with all of oldStore's filters and filtersToAdd applied
+     */
     export function filterColumnStore(source : ColumnStore, oldStore : ColumnStoreInterface, ...filtersToAdd : Filter[]) : ColumnStoreInterface {
         if (filtersToAdd.length === 0) {
             return oldStore;
@@ -27,7 +35,9 @@ module ozone.columnStore {
 
         var oldFilters = oldStore.filters();
         var filtersForIteration : Filter[] = [];
-        var intSetFilters : Filter[] = [];
+        var indexedValueFilters : Filter[] = [];
+        var unionFilters        : Filter[] = [];
+        var numNewFilters = 0;  // the total size of the buckets above, tracked separately to avoid bugs
         deduplicate: for (var i=0; i<filtersToAdd.length; i++) {
             var newFilter = filtersToAdd[i];
             for (var j=0; j<oldFilters.length; j++) {
@@ -36,27 +46,32 @@ module ozone.columnStore {
                     continue deduplicate;
                 }
             }
-            var filterTarget = filtersForIteration;
-            if (newFilter instanceof ValueFilter) {
+
+            var filterTarget = filtersForIteration;  // Determines which bucket this filter belongs in
+            if (newFilter instanceof UnionFilter) {
+                filterTarget = unionFilters;
+            }
+            else if (newFilter instanceof ValueFilter) {
                 var fieldId = (<ValueFilter> newFilter).fieldDescriptor.identifier;
                 if (source.field(fieldId) instanceof IndexedField) {
-                    filterTarget = intSetFilters;
+                    filterTarget = indexedValueFilters;
                 }
             }
             filterTarget.push(newFilter);
+            numNewFilters++;
         }
-        if (filtersForIteration.length + intSetFilters.length === 0) {
+        if (numNewFilters === 0) {
             return oldStore;
         }
 
 
-        // IntSet filtering
+        // IntSet intersection filtering
 
         var set = oldStore.intSet();
 
-        if (intSetFilters.length > 0) {
-            for (var i=0; i<intSetFilters.length; i++) {
-                var intSetFilter = <ValueFilter> intSetFilters[i];
+        if (indexedValueFilters.length > 0) {
+            for (var i=0; i<indexedValueFilters.length; i++) {
+                var intSetFilter = <ValueFilter> indexedValueFilters[i];
                 var fieldId = intSetFilter.fieldDescriptor.identifier;
                 var field = <IndexedField<any>> source.field(fieldId);
                 var fieldIntSet = field.intSetForValue(intSetFilter.value);
@@ -81,9 +96,51 @@ module ozone.columnStore {
             set = setBuilder.onEnd();
         }
 
-        var newFilters : Filter[] = oldStore.filters().concat(filtersForIteration, intSetFilters);
+        //  Unions, done last because they are slowest
+
+        if (unionFilters.length > 0) {
+            unionFilters.forEach(function(f : Filter) {
+                set = unionColumnStore(source, set, (<UnionFilter>f).filters);
+            });
+        }
+
+        var newFilters : Filter[] = oldStore.filters().concat(filtersForIteration, indexedValueFilters);
         newFilters.sort(compareFilterByName);
         return new FilteredColumnStore(source, newFilters, set);
+    }
+
+    function applyFilter(source : ColumnStore, initialSet : IntSet, filter : Filter) : IntSet {
+        if (filter instanceof UnionFilter) {
+            return unionColumnStore(source, initialSet, (<UnionFilter>filter).filters);
+        }
+        if (filter instanceof ValueFilter) {
+            var intSetFilter = <ValueFilter> filter;
+            var fieldId = intSetFilter.fieldDescriptor.identifier;
+            var field = source.field(fieldId);
+            if (source.field(fieldId) instanceof IndexedField) {
+                var fieldIntSet = (<IndexedField<any>>field).intSetForValue(intSetFilter.value);
+                return ozone.intSet.intersectionOfIntSets(initialSet, fieldIntSet);
+            }
+        }
+        var setBuilder = ozone.intSet.builder(initialSet.min(), initialSet.max());
+        initialSet.each(function(rowToken) {
+           if (filter.matches(source, rowToken)) {
+               setBuilder.onItem(rowToken);
+           }
+        });
+        return setBuilder.onEnd();
+    }
+
+
+    function unionColumnStore(source : ColumnStore, initialSet : IntSet, filters : Filter[]) : IntSet {
+        if (filters.length === 0) {
+            return initialSet;
+        }
+        var toUnion : IntSet[] = [];
+        for (var i=0; i<filters.length; i++) {
+            toUnion.push(applyFilter(source, initialSet, filters[i]));
+        }
+        return initialSet.intersectionOfUnion(toUnion);
     }
 
     function compareFilterByName(a : Filter, b: Filter) : number {
@@ -132,25 +189,17 @@ module ozone.columnStore {
             this.size = filterBits.size();
         }
 
-        intSet() : IntSet {
-            return this.filterBits;
-        }
+        intSet() : IntSet { return this.filterBits; }
 
-        eachRow(rowAction : (rowToken : any) => void) {
-            this.filterBits.each(rowAction);
-        }
+        eachRow(rowAction : (rowToken : any) => void) { this.filterBits.each(rowAction); }
 
         filter(fieldNameOrFilter : any, value? : any) : RandomAccessStore {
             return filterColumnStore(this.source, this, createFilter(this, fieldNameOrFilter, value));
         }
 
-        filters() : Filter[] {
-            return this.filterArray;
-        }
+        filters() : Filter[] { return this.filterArray; }
 
-        simplifiedFilters() : Filter[] {
-            return this.filterArray;
-        }
+        simplifiedFilters() : Filter[] { return this.filterArray; }
 
         removeFilter(filter : Filter) : RandomAccessStore {
             var newFilters : Filter[] = [];

@@ -110,7 +110,9 @@ module ozone {
     }
 
     /**
-     * Follows the MapReduce pattern, although as written this is not intended to be thread safe.
+     * Primarily useful for builders, in which you collect data (onItem) into an intermediate data type, and then
+     * convert it into the output (onEnd).  This is similar to the Map/Reduce pattern, and it's intended to be used
+     * with an Iterator.
      */
     export interface Reducer<I,R> {
         /** Calls to onItem should generally be done inside an iterator, and done in order. */
@@ -121,7 +123,7 @@ module ozone {
     }
 
     export interface Iterator<I> {
-        /** Returns true if the iterator has more items. */
+        /** Returns true if the iterator has more items. This can be called safely at any time. */
         hasNext() : boolean;
 
         /** Returns the next item; subsequent calls return subsequent items.  Returns undefined if hasNext() is false. */
@@ -132,10 +134,12 @@ module ozone {
     export interface OrderedIterator<I> extends Iterator<I> {
         /**
          * Skip all items before "item."  The next call to next() will return the next element greater than or equal to
-         * "item."
+         * "item" or whatever would have been the value of next(), whichever is greater.
          *
          * Thus, for an iterator returning all integers from 1 to 10 where next() has never been
          * called, skipTo(0) and skipTo(1) do nothing, whereas skipTo(11) causes hasNext() to return false.
+         *
+         * This can be called safely at any time, even if hasNext() is false.
          */
         skipTo(item : I);
     }
@@ -150,18 +154,18 @@ module ozone {
         has(index : number) : boolean;
 
         /**
-         * The lowest value for which has() returns true, or -1 if size === 0.  This should be extremely fast.
+         * The lowest value for which has() returns true, or -1 if size() returns 0.  This should be extremely fast.
          * The behavior when size === 0 may change in future versions.
          */
         min() : number;
 
         /**
-         * The highest value for which has() returns true, or -1 if size === 0. This should be extremely fast.
+         * The highest value for which has() returns true, or -1 if size() returns 0. This should be extremely fast.
          * The behavior when size === 0 may change in future versions.
          */
         max() : number;
 
-        /** The number of values for which has() returns true. */
+        /** The number of values for which has() returns true.  This should be extremely fast. */
         size() : number;
 
         /** Iterate over all "true" elements in order. */
@@ -170,11 +174,20 @@ module ozone {
         /** Iterate over all "true" elements in order. */
         iterator() : OrderedIterator<number>;
 
-        /** Returns an IntSet containing only the elements that are found in both IntSets. */
+        /** Returns an IntSet containing all the elements in either IntSet. */
         union(bm : IntSet) : IntSet;
 
-        /** Returns an IntSet containing all the elements in either IntSet. */
+        /** Returns an IntSet containing only the elements that are found in both IntSets. */
         intersection(bm : IntSet) : IntSet;
+
+        /**
+         * Take the union of several IntSets, and return the intersection of this set with that union.
+         * For example, a.intersectionOfUnion(b, c) returns Intersection{ a, Union{ b, c }}.  Thus, any
+         * item in the result would be in a and also in either b or c.
+         *
+         * If toUnion is empty, returns itself.
+         */
+        intersectionOfUnion(toUnion : IntSet[]) : IntSet;
 
         /** Returns true if the iterators produce identical results. */
         equals(bm : IntSet) : boolean;

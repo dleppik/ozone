@@ -88,7 +88,9 @@ declare module ozone {
         distinctValueEstimate(): number;
     }
     /**
-     * Follows the MapReduce pattern, although as written this is not intended to be thread safe.
+     * Primarily useful for builders, in which you collect data (onItem) into an intermediate data type, and then
+     * convert it into the output (onEnd).  This is similar to the Map/Reduce pattern, and it's intended to be used
+     * with an Iterator.
      */
     interface Reducer<I, R> {
         /** Calls to onItem should generally be done inside an iterator, and done in order. */
@@ -97,7 +99,7 @@ declare module ozone {
         onEnd(): R;
     }
     interface Iterator<I> {
-        /** Returns true if the iterator has more items. */
+        /** Returns true if the iterator has more items. This can be called safely at any time. */
         hasNext(): boolean;
         /** Returns the next item; subsequent calls return subsequent items.  Returns undefined if hasNext() is false. */
         next(): I;
@@ -106,10 +108,12 @@ declare module ozone {
     interface OrderedIterator<I> extends Iterator<I> {
         /**
          * Skip all items before "item."  The next call to next() will return the next element greater than or equal to
-         * "item."
+         * "item" or whatever would have been the value of next(), whichever is greater.
          *
          * Thus, for an iterator returning all integers from 1 to 10 where next() has never been
          * called, skipTo(0) and skipTo(1) do nothing, whereas skipTo(11) causes hasNext() to return false.
+         *
+         * This can be called safely at any time, even if hasNext() is false.
          */
         skipTo(item: I): any;
     }
@@ -121,25 +125,33 @@ declare module ozone {
     interface IntSet {
         has(index: number): boolean;
         /**
-         * The lowest value for which has() returns true, or -1 if size === 0.  This should be extremely fast.
+         * The lowest value for which has() returns true, or -1 if size() returns 0.  This should be extremely fast.
          * The behavior when size === 0 may change in future versions.
          */
         min(): number;
         /**
-         * The highest value for which has() returns true, or -1 if size === 0. This should be extremely fast.
+         * The highest value for which has() returns true, or -1 if size() returns 0. This should be extremely fast.
          * The behavior when size === 0 may change in future versions.
          */
         max(): number;
-        /** The number of values for which has() returns true. */
+        /** The number of values for which has() returns true.  This should be extremely fast. */
         size(): number;
         /** Iterate over all "true" elements in order. */
         each(action: (index: number) => void): any;
         /** Iterate over all "true" elements in order. */
         iterator(): OrderedIterator<number>;
-        /** Returns an IntSet containing only the elements that are found in both IntSets. */
-        union(bm: IntSet): IntSet;
         /** Returns an IntSet containing all the elements in either IntSet. */
+        union(bm: IntSet): IntSet;
+        /** Returns an IntSet containing only the elements that are found in both IntSets. */
         intersection(bm: IntSet): IntSet;
+        /**
+         * Take the union of several IntSets, and return the intersection of this set with that union.
+         * For example, a.intersectionOfUnion(b, c) returns Intersection{ a, Union{ b, c }}.  Thus, any
+         * item in the result would be in a and also in either b or c.
+         *
+         * If toUnion is empty, returns itself.
+         */
+        intersectionOfUnion(toUnion: IntSet[]): IntSet;
         /** Returns true if the iterators produce identical results. */
         equals(bm: IntSet): boolean;
     }
@@ -225,7 +237,7 @@ declare module ozone {
         equals(filter: Filter): boolean;
     }
     /**
-     * Selects rows where a specific field has a specific value.  Note:  RowStore typically uses indexes to filter by
+     * Selects rows where a specific field has a specific value.  Note:  ColumnStore typically uses indexes to filter by
      * value, so this class is generally used only to trigger that code.
      */
     class ValueFilter implements Filter {
@@ -234,11 +246,34 @@ declare module ozone {
         displayName: string;
         constructor(fieldDescriptor: FieldDescribing, value: any, displayName?: string);
         /**
-         * Returns true if the row has the given value.  Note:  RowStore typically uses indexes to filter by
+         * Returns true if the row has the given value.  Note:  ColumnStore typically uses indexes to filter by
          * value, bypassing this method.
          */
         matches(store: RandomAccessStore, rowToken: any): boolean;
         equals(f: Filter): boolean;
+    }
+    /**
+     * Selects rows which match all of several values.  Note:  because this is a fundamental set operation, ColumnStore
+     * generally uses its internal union operation when given a UnionFilter.
+     *
+     * As currently implemented, this works with an array of Filters, and makes no attempt to remove redundant filters.
+     * In the future, the constructor might remove redundant filters, and the other methods might make assumptions
+     * based on that.
+     */
+    class UnionFilter implements Filter {
+        filters: Filter[];
+        displayName: string;
+        constructor(...of: Filter[]);
+        /**
+         * True if f is a UnionFilter, each of f's filters is equal to one of this's filters, and each of this's
+         * filters is equal to one of f's filters.
+         */
+        equals(f: Filter): boolean;
+        /**
+         * Returns false if (and only if) any of the filters don't match.  NOTE:  ColumnStore will typically bypass
+         * this method and use column indexes to compute a union.
+         */
+        matches(store: RandomAccessStore, rowToken: any): boolean;
     }
 }
 /**
@@ -361,6 +396,14 @@ declare module ozone.columnStore {
  */
 declare module ozone.columnStore {
     function createFilter(store: ColumnStoreInterface, fieldNameOrFilter: any, value?: any): Filter;
+    /**
+     * Used by ColumnStores to implement filtering
+     *
+     * @param source          the top-level ColumnStore
+     * @param oldStore        the ColumnStore being filtered, which is source or a subset of source
+     * @param filtersToAdd    the new filters
+     * @returns a ColumnStore with all of oldStore's filters and filtersToAdd applied
+     */
     function filterColumnStore(source: ColumnStore, oldStore: ColumnStoreInterface, ...filtersToAdd: Filter[]): ColumnStoreInterface;
     function partitionColumnStore(store: ColumnStoreInterface, field: RandomAccessField<any>): {
         [value: string]: RandomAccessStore;
@@ -494,6 +537,10 @@ declare module ozone.intSet {
     function intersectionOfOrderedIterators(...iterators: OrderedIterator<number>[]): IntSet;
     function intersectionOfOrderedIteratorsWithBuilder(builder: Reducer<number, IntSet>, iterators: OrderedIterator<number>[]): IntSet;
     function intersectionOfIntSets(...intSets: IntSet[]): IntSet;
+    /** Implementation of intersectionOfUnion that intersects each set in toUnion with container, then unions them. */
+    function intersectionOfUnionBySetOperations(container: IntSet, toUnion: IntSet[]): IntSet;
+    /** Implementation of intersectionOfUnion that builds from iterators. */
+    function intersectionOfUnionByIteration(container: IntSet, toUnion: IntSet[]): IntSet;
     function equalIntSets(set1: IntSet, set2: IntSet): boolean;
     function packedBitwiseCompare(set1: PackedIntSet, set2: PackedIntSet, bitwiseCompare: (word1: number, word2: number) => number, hasNextCompare: (next1: boolean, next2: boolean) => boolean, minPicker: (min1: number, min2: number) => number): IntSet;
 }
@@ -524,6 +571,7 @@ declare module ozone.intSet {
         equals(set: IntSet): boolean;
         union(set: IntSet): IntSet;
         intersection(set: IntSet): IntSet;
+        intersectionOfUnion(toUnion: IntSet[]): ozone.IntSet;
     }
     /** Iterator over dense arrays;  does not work with sparse arrays. */
     class OrderedArrayIterator<T> implements OrderedIterator<T> {
@@ -582,6 +630,7 @@ declare module ozone.intSet {
         union(set: IntSet): IntSet;
         /** Returns an IntSet containing only the elements that are found in both IntSets. */
         intersection(set: IntSet): IntSet;
+        intersectionOfUnion(toUnion: IntSet[]): ozone.IntSet;
         /** Returns true if the iterators produce identical results. */
         equals(set: IntSet): boolean;
         minWord(): number;
@@ -646,6 +695,7 @@ declare module ozone.intSet {
         equals(bm: IntSet): boolean;
         union(bm: IntSet): IntSet;
         intersection(bm: IntSet): IntSet;
+        intersectionOfUnion(toUnion: IntSet[]): ozone.IntSet;
         toString(): string;
     }
 }

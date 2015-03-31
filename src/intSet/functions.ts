@@ -224,12 +224,50 @@ module ozone.intSet {
         return result;
     }
 
+    /** Implementation of intersectionOfUnion that intersects each set in toUnion with container, then unions them. */
+    export function intersectionOfUnionBySetOperations(container : IntSet, toUnion : IntSet[]) : IntSet {
+        if (toUnion.length === 0) {
+            return container;
+        }
+        var intersected : IntSet[] = [];
+        for (var i=0; i<toUnion.length; i++) {
+            intersected.push( container.intersection(toUnion[i]) );
+        }
+        var result = intersected[0];
+        for (var i=1; i<intersected.length; i++) {
+            result = result.union(intersected[i]);
+        }
+        return result;
+    }
+
+    /** Implementation of intersectionOfUnion that builds from iterators. */
+    export function intersectionOfUnionByIteration(container : IntSet, toUnion : IntSet[]) : IntSet {
+        if (toUnion.length === 0) {
+            return container;
+        }
+        var containerIt = container.iterator();
+        var toUnionIts : OrderedIterator<number>[] = [];
+        for (var i=0; i<toUnion.length; i++) {
+            toUnionIts.push(toUnion[i].iterator());
+        }
+
+        var builder = ozone.intSet.builder();
+        while (containerIt.hasNext()) {
+            var index : number = containerIt.next();
+            var shouldInclude : boolean = toUnionIts.some(function(it) {
+                it.skipTo(index);
+                return it.hasNext() && it.next() === index;
+            });
+        }
+        return builder.onEnd();
+    }
+
     export function equalIntSets(set1 : IntSet, set2 : IntSet) : boolean {
         if (set1===set2) {
             return true;
         }
         if (set1 instanceof RangeIntSet) {
-            return set1.equals(set2);
+            return set1.equals(set2);  // RangeIntSet has a nice quick implementation-independent equality check.
         }
         if (set2 instanceof RangeIntSet) {
             return set2.equals(set1);

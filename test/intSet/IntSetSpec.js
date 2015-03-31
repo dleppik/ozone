@@ -373,6 +373,12 @@ describe("RangeIntSet", function() {
         expect(a.intersection(c).equals(expectedAAndC)).toBe(true);
         expect(c.intersection(a).equals(expectedAAndC)).toBe(true);
     });
+
+    describe("intersectionOfUnions()", function() {
+        it("has tests", function() {
+            expect(false).toBeTruthy();  // TODO
+        });
+    });
 });
 
 describe("BitmapArrayIntSet tests", function() {
@@ -602,10 +608,11 @@ describe("IntSets", function() {
                         var it = intSet.iterator();
                         while (it.hasNext()) {
                             var element = it.next();
-                            if (!intSet.has(element)) {
-                                console.log("element " + element + " has = " + intSet.has(element)); // XXX
+                            var result = intSet.has(element);
+                            if ( ! result) {
+                                console.log("element " + element + " has = " + result);
                             }
-                            expect(intSet.has(element)).toBe(true);
+                            expect(result).toBe(true);
                         }
                     });
                 });
@@ -620,35 +627,85 @@ describe("IntSets", function() {
                         expect(count).toBe(intSet.size());
                     });
                 });
-                it("Skips properly", function () {
-                    intSetForEachArray(intSetClass, function (array, intSet) {
-                        if (array.length > 0) {
+
+                describe("skip()", function() {
+                    it("does nothing when less than or equal to min", function() {
+                        intSetForEachArray(intSetClass, function (array, intSet) {
                             var it = intSet.iterator();
                             it.skipTo(intSet.min() - 1);
-                            expect(it.next()).toBe(intSet.min());
-
-                            it = intSet.iterator();
-                            it.skipTo(intSet.min());
-                            it.skipTo(intSet.min());
-                            it.skipTo(intSet.min());
-                            expect(it.next()).toBe(intSet.min());
-                            if (array.length > 1) {
-                                it.skipTo(intSet.max());
-                                expect(it.next()).toBe(intSet.max());
+                            it.skipTo(intSet.min() - 2);
+                            it.skipTo(intSet.min() - 3);
+                            if (intSet.size() > 0) {
+                                expect(it.hasNext()).toBe(true);
+                                expect(it.next()).toBe(intSet.min());
+                            }
+                            else {
+                                expect(it.hasNext()).toBe(false);
                             }
 
+                            var min = (intSet.size() === 0) ?  0  : intSet.min();
                             it = intSet.iterator();
-                            it.skipTo(intSet.max() + 1);
-                            expect(it.hasNext()).toBe(false);
-
+                            it.skipTo(min);
+                            it.skipTo(min);
+                            it.skipTo(min);
+                            if (intSet.size() > 0) {
+                                expect(it.hasNext()).toBe(true);
+                                expect(it.next()).toBe(intSet.min());
+                            }
+                            else {
+                                expect(it.hasNext()).toBe(false);
+                            }
+                        });
+                    });
+                    it("skips ahead, but skipping back does nothing", function() {
+                        intSetForEachArray(intSetClass, function (array, intSet) {
                             if (array.length > 1) {
-                                it = intSet.iterator();
+                                var it = intSet.iterator();
                                 var skipTo = intSet.max() - 1;
                                 it.skipTo(skipTo);
                                 var expectedNext = (intSet.has(skipTo)) ? skipTo : intSet.max();
                                 expect(it.next()).toBe(expectedNext);
                             }
-                        }
+                            if (array.length > 2) {
+
+                                // Try skipping to existing entries
+
+                                for (var i=1; i<array.length; i++) {
+                                    var previous = array[i-1];
+                                    var current = array[i];
+
+                                    it = intSet.iterator();
+                                    it.skipTo(current);   // Skip ahead
+                                    it.skipTo(previous);  // Do nothing
+                                    expect(it.hasNext()).toBe(true);
+                                    expect(it.next()).toBe(current);
+                                }
+
+                                // Try skipping to non-entries
+
+                                for (i=1; i<array.length; i++) {
+                                    previous = array[i-1];
+                                    current = array[i];
+
+                                    it = intSet.iterator();
+                                    it.skipTo( (current+previous)/2 );   // Skip ahead to something between entries
+                                    it.skipTo(previous);  // Do nothing
+                                    expect(it.hasNext()).toBe(true);
+                                    expect(it.next()).toBe(current);
+                                }
+                            }
+                        });
+                    });
+                    it("can skip beyond end, and subsequent calls to skipTo() and hasNext() do nothing", function() {
+                        intSetForEachArray(intSetClass, function (array, intSet) {
+                            if (array.length > 0) {  // so min and max are well-behaved
+                                it = intSet.iterator();
+                                for (var i=0; i<3; i++) {
+                                    it.skipTo(intSet.max() + 1);
+                                    expect(it.hasNext()).toBe(false);
+                                }
+                            }
+                        });
                     });
                 });
             });
@@ -658,7 +715,6 @@ describe("IntSets", function() {
                     var it = intSet.iterator();
                     intSet.each(function (element) {
                         var itElement = it.next();
-                        console.log("each found: " + element + " iterator found: " + itElement); //XXX
                         expect(element).toBe(itElement);
                     });
                     expect(it.hasNext()).toBe(false);
@@ -798,9 +854,14 @@ describe("IntSets", function() {
 
                         var expected = unionOfIterators(intSet0.iterator(), intSet1.iterator());
                         var actual = intSet0.union(intSet1);
-                        console.log(actual.equals(expected));
                         expect(actual.equals(expected)).toBe(true);
                     }
+                });
+            });
+
+            describe("intersectionOfUnions()", function() {
+                it("has tests", function() {
+                    expect(false).toBeTruthy(); // TODO
                 });
             });
         });

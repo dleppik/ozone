@@ -74,6 +74,8 @@ module ozone.intSet {
         equals(bm : IntSet) : boolean {
             // In the case of RangeIntSets, we need only check min, max, and size
             // because size is a function of min and max.
+            //
+            // Note that equalIntSets relies on this implementation.
             return this.size() === bm.size()  && this.min() === bm.min()  && this.max() === bm.max();
         }
 
@@ -125,6 +127,8 @@ module ozone.intSet {
             }
             return ozone.intSet.intersectionOfOrderedIterators(this.iterator(), bm.iterator());
         }
+
+        intersectionOfUnion(toUnion : IntSet[]):ozone.IntSet { return ozone.intSet.intersectionOfUnionBySetOperations(this, toUnion); }
 
         toString() {
             if (this.size() === 0) {

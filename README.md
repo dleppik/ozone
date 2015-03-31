@@ -170,6 +170,11 @@ stored in rows), and uses that to produce its native ColumnStore.  If your data 
 To minimize file size and memory usage, sort the rows on at least one column before converting to Ozone format.
 
 
+Compatibility
+-------------
+
+Ozone currently targets ECMAScript 5, so if you need to support IE 8 or lower, you will need to use es5-shim.js.
+
 Performance
 -----------
 

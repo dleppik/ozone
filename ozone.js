@@ -139,7 +139,7 @@ var ozone;
 var ozone;
 (function (ozone) {
     /**
-     * Selects rows where a specific field has a specific value.  Note:  RowStore typically uses indexes to filter by
+     * Selects rows where a specific field has a specific value.  Note:  ColumnStore typically uses indexes to filter by
      * value, so this class is generally used only to trigger that code.
      */
     var ValueFilter = (function () {
@@ -153,7 +153,7 @@ var ozone;
             }
         }
         /**
-         * Returns true if the row has the given value.  Note:  RowStore typically uses indexes to filter by
+         * Returns true if the row has the given value.  Note:  ColumnStore typically uses indexes to filter by
          * value, bypassing this method.
          */
         ValueFilter.prototype.matches = function (store, rowToken) {
@@ -179,6 +179,77 @@ var ozone;
         return ValueFilter;
     })();
     ozone.ValueFilter = ValueFilter;
+    /**
+     * Selects rows which match all of several values.  Note:  because this is a fundamental set operation, ColumnStore
+     * generally uses its internal union operation when given a UnionFilter.
+     *
+     * As currently implemented, this works with an array of Filters, and makes no attempt to remove redundant filters.
+     * In the future, the constructor might remove redundant filters, and the other methods might make assumptions
+     * based on that.
+     */
+    var UnionFilter = (function () {
+        function UnionFilter() {
+            var of = [];
+            for (var _i = 0; _i < arguments.length; _i++) {
+                of[_i - 0] = arguments[_i];
+            }
+            this.filters = of;
+            this.displayName = "All of { ";
+            for (var i = 0; i < this.filters.length; i++) {
+                if (i > 0) {
+                    this.displayName += ", ";
+                }
+                this.displayName += this.filters[i].displayName;
+            }
+            this.displayName += " }";
+        }
+        /**
+         * True if f is a UnionFilter, each of f's filters is equal to one of this's filters, and each of this's
+         * filters is equal to one of f's filters.
+         */
+        UnionFilter.prototype.equals = function (f) {
+            if (f === this) {
+                return true;
+            }
+            if (Object.getPrototypeOf(f) !== Object.getPrototypeOf(this)) {
+                return false;
+            }
+            var that = f;
+            var matched = [];
+            var unmatched = that.filters.concat();
+            function checkForMatch(thisItem) {
+                for (var unmatchedIndex = unmatched.length; unmatchedIndex >= 0; unmatchedIndex--) {
+                    var thatItem = unmatched[unmatchedIndex];
+                    if (thisItem.equals(thatItem)) {
+                        unmatched.splice(unmatchedIndex, 1);
+                        matched.push(thatItem);
+                        return true;
+                    }
+                }
+                return matched.some(function (thatItem) {
+                    return thisItem.equals(thatItem);
+                });
+            }
+            for (var thisIndex = this.filters.length - 1; thisIndex >= 0; thisIndex--) {
+                var thisItem = this.filters[thisIndex];
+                if (!checkForMatch(thisItem)) {
+                    return false;
+                }
+            }
+            return unmatched.length === 0;
+        };
+        /**
+         * Returns false if (and only if) any of the filters don't match.  NOTE:  ColumnStore will typically bypass
+         * this method and use column indexes to compute a union.
+         */
+        UnionFilter.prototype.matches = function (store, rowToken) {
+            return this.filters.every(function (f) {
+                return f.matches(store, rowToken);
+            });
+        };
+        return UnionFilter;
+    })();
+    ozone.UnionFilter = UnionFilter;
 })(ozone || (ozone = {}));
 /**
  * Copyright 2013 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
@@ -491,6 +562,14 @@ var ozone;
             throw "Not a filter: " + fieldNameOrFilter;
         }
         columnStore.createFilter = createFilter;
+        /**
+         * Used by ColumnStores to implement filtering
+         *
+         * @param source          the top-level ColumnStore
+         * @param oldStore        the ColumnStore being filtered, which is source or a subset of source
+         * @param filtersToAdd    the new filters
+         * @returns a ColumnStore with all of oldStore's filters and filtersToAdd applied
+         */
         function filterColumnStore(source, oldStore) {
             var filtersToAdd = [];
             for (var _i = 2; _i < arguments.length; _i++) {
@@ -501,7 +580,9 @@ var ozone;
             }
             var oldFilters = oldStore.filters();
             var filtersForIteration = [];
-            var intSetFilters = [];
+            var indexedValueFilters = [];
+            var unionFilters = [];
+            var numNewFilters = 0; // the total size of the buckets above, tracked separately to avoid bugs
             deduplicate: for (var i = 0; i < filtersToAdd.length; i++) {
                 var newFilter = filtersToAdd[i];
                 for (var j = 0; j < oldFilters.length; j++) {
@@ -510,23 +591,27 @@ var ozone;
                         continue deduplicate;
                     }
                 }
-                var filterTarget = filtersForIteration;
-                if (newFilter instanceof ozone.ValueFilter) {
+                var filterTarget = filtersForIteration; // Determines which bucket this filter belongs in
+                if (newFilter instanceof ozone.UnionFilter) {
+                    filterTarget = unionFilters;
+                }
+                else if (newFilter instanceof ozone.ValueFilter) {
                     var fieldId = newFilter.fieldDescriptor.identifier;
                     if (source.field(fieldId) instanceof columnStore.IndexedField) {
-                        filterTarget = intSetFilters;
+                        filterTarget = indexedValueFilters;
                     }
                 }
                 filterTarget.push(newFilter);
+                numNewFilters++;
             }
-            if (filtersForIteration.length + intSetFilters.length === 0) {
+            if (numNewFilters === 0) {
                 return oldStore;
             }
-            // IntSet filtering
+            // IntSet intersection filtering
             var set = oldStore.intSet();
-            if (intSetFilters.length > 0) {
-                for (var i = 0; i < intSetFilters.length; i++) {
-                    var intSetFilter = intSetFilters[i];
+            if (indexedValueFilters.length > 0) {
+                for (var i = 0; i < indexedValueFilters.length; i++) {
+                    var intSetFilter = indexedValueFilters[i];
                     var fieldId = intSetFilter.fieldDescriptor.identifier;
                     var field = source.field(fieldId);
                     var fieldIntSet = field.intSetForValue(intSetFilter.value);
@@ -547,11 +632,48 @@ var ozone;
                 });
                 set = setBuilder.onEnd();
             }
-            var newFilters = oldStore.filters().concat(filtersForIteration, intSetFilters);
+            //  Unions, done last because they are slowest
+            if (unionFilters.length > 0) {
+                unionFilters.forEach(function (f) {
+                    set = unionColumnStore(source, set, f.filters);
+                });
+            }
+            var newFilters = oldStore.filters().concat(filtersForIteration, indexedValueFilters);
             newFilters.sort(compareFilterByName);
             return new FilteredColumnStore(source, newFilters, set);
         }
         columnStore.filterColumnStore = filterColumnStore;
+        function applyFilter(source, initialSet, filter) {
+            if (filter instanceof ozone.UnionFilter) {
+                return unionColumnStore(source, initialSet, filter.filters);
+            }
+            if (filter instanceof ozone.ValueFilter) {
+                var intSetFilter = filter;
+                var fieldId = intSetFilter.fieldDescriptor.identifier;
+                var field = source.field(fieldId);
+                if (source.field(fieldId) instanceof columnStore.IndexedField) {
+                    var fieldIntSet = field.intSetForValue(intSetFilter.value);
+                    return ozone.intSet.intersectionOfIntSets(initialSet, fieldIntSet);
+                }
+            }
+            var setBuilder = ozone.intSet.builder(initialSet.min(), initialSet.max());
+            initialSet.each(function (rowToken) {
+                if (filter.matches(source, rowToken)) {
+                    setBuilder.onItem(rowToken);
+                }
+            });
+            return setBuilder.onEnd();
+        }
+        function unionColumnStore(source, initialSet, filters) {
+            if (filters.length === 0) {
+                return initialSet;
+            }
+            var toUnion = [];
+            for (var i = 0; i < filters.length; i++) {
+                toUnion.push(applyFilter(source, initialSet, filters[i]));
+            }
+            return initialSet.intersectionOfUnion(toUnion);
+        }
         function compareFilterByName(a, b) {
             if (a.displayName < b.displayName)
                 return -1;
@@ -1113,12 +1235,49 @@ var ozone;
             return result;
         }
         intSet.intersectionOfIntSets = intersectionOfIntSets;
+        /** Implementation of intersectionOfUnion that intersects each set in toUnion with container, then unions them. */
+        function intersectionOfUnionBySetOperations(container, toUnion) {
+            if (toUnion.length === 0) {
+                return container;
+            }
+            var intersected = [];
+            for (var i = 0; i < toUnion.length; i++) {
+                intersected.push(container.intersection(toUnion[i]));
+            }
+            var result = intersected[0];
+            for (var i = 1; i < intersected.length; i++) {
+                result = result.union(intersected[i]);
+            }
+            return result;
+        }
+        intSet.intersectionOfUnionBySetOperations = intersectionOfUnionBySetOperations;
+        /** Implementation of intersectionOfUnion that builds from iterators. */
+        function intersectionOfUnionByIteration(container, toUnion) {
+            if (toUnion.length === 0) {
+                return container;
+            }
+            var containerIt = container.iterator();
+            var toUnionIts = [];
+            for (var i = 0; i < toUnion.length; i++) {
+                toUnionIts.push(toUnion[i].iterator());
+            }
+            var builder = ozone.intSet.builder();
+            while (containerIt.hasNext()) {
+                var index = containerIt.next();
+                var shouldInclude = toUnionIts.some(function (it) {
+                    it.skipTo(index);
+                    return it.hasNext() && it.next() === index;
+                });
+            }
+            return builder.onEnd();
+        }
+        intSet.intersectionOfUnionByIteration = intersectionOfUnionByIteration;
         function equalIntSets(set1, set2) {
             if (set1 === set2) {
                 return true;
             }
             if (set1 instanceof intSet.RangeIntSet) {
-                return set1.equals(set2);
+                return set1.equals(set2); // RangeIntSet has a nice quick implementation-independent equality check.
             }
             if (set2 instanceof intSet.RangeIntSet) {
                 return set2.equals(set1);
@@ -1243,6 +1402,9 @@ var ozone;
             };
             ArrayIndexIntSet.prototype.intersection = function (set) {
                 return intSet.intersectionOfOrderedIterators(this.iterator(), set.iterator());
+            };
+            ArrayIndexIntSet.prototype.intersectionOfUnion = function (toUnion) {
+                return ozone.intSet.intersectionOfUnionByIteration(this, toUnion);
             };
             return ArrayIndexIntSet;
         })();
@@ -1449,6 +1611,14 @@ var ozone;
                 }
                 return ozone.intSet.intersectionOfOrderedIterators(this.iterator(), set.iterator());
             };
+            BitmapArrayIntSet.prototype.intersectionOfUnion = function (toUnion) {
+                if (toUnion.every(function (set) {
+                    return set['isPacked'];
+                })) {
+                    return ozone.intSet.intersectionOfUnionBySetOperations(this, toUnion);
+                }
+                return ozone.intSet.intersectionOfUnionByIteration(this, toUnion);
+            };
             /** Returns true if the iterators produce identical results. */
             BitmapArrayIntSet.prototype.equals = function (set) {
                 return intSet.equalIntSets(this, set);
@@ -1470,7 +1640,7 @@ var ozone;
             function OrderedBitmapArrayIterator(words, maxBit) {
                 this.words = words;
                 this.maxBit = maxBit;
-                this.nextBit = 0;
+                this.nextBit = 0; // The next bit to check (treating the data as one long array of 0's and 1's).
             }
             OrderedBitmapArrayIterator.prototype.hasNext = function () {
                 return this.nextBit <= this.maxBit;
@@ -1497,7 +1667,10 @@ var ozone;
                 return result;
             };
             OrderedBitmapArrayIterator.prototype.skipTo = function (item) {
-                this.nextBit = item;
+                item = Math.ceil(item);
+                if (this.nextBit < item) {
+                    this.nextBit = item;
+                }
             };
             return OrderedBitmapArrayIterator;
         })();
@@ -1629,6 +1802,8 @@ var ozone;
             RangeIntSet.prototype.equals = function (bm) {
                 // In the case of RangeIntSets, we need only check min, max, and size
                 // because size is a function of min and max.
+                //
+                // Note that equalIntSets relies on this implementation.
                 return this.size() === bm.size() && this.min() === bm.min() && this.max() === bm.max();
             };
             RangeIntSet.prototype.union = function (bm) {
@@ -1674,6 +1849,9 @@ var ozone;
                     return RangeIntSet.fromTo(min, max);
                 }
                 return ozone.intSet.intersectionOfOrderedIterators(this.iterator(), bm.iterator());
+            };
+            RangeIntSet.prototype.intersectionOfUnion = function (toUnion) {
+                return ozone.intSet.intersectionOfUnionBySetOperations(this, toUnion);
             };
             RangeIntSet.prototype.toString = function () {
                 if (this.size() === 0) {
