@@ -300,7 +300,9 @@ describe("IntSets", function() {
         for (var i=0; i< arrayOfIndexes.length; i++) {
             builder.onItem(arrayOfIndexes[i]);
         }
-        return builder.onEnd();
+        var result = builder.onEnd();
+        expect(result.constructor).toBe(intSetClass);  // Precondition for all tests which use this
+        return result;
     };
 
     var forEachArray = function(beforeElements, onEachElement, afterElements) {
@@ -598,35 +600,60 @@ describe("IntSets", function() {
             });
 
             it("Does a trivial union properly", function () {  // Less trivial cases are handled below
-                var a1 = [    3, 5, 9 ];
-                var a2 = [ 2, 5, 8    ];
-                var au = [ 2, 3, 5, 8, 9 ];
+                var a1 = [    30,  50,     90 ];
+                var a2 = [ 20,     50, 80     ];
+                var au = [ 20, 30, 50, 80, 90 ];
 
                 var set1 = intSetFromArray(intSetClass, a1);
                 var set2 = intSetFromArray(intSetClass, a2);
 
-                expect(set1.union( set2 ).size()).toEqual( 5 );  // Hard coded, to keep other bugs from hiding failure
-                expect(set1.union( set2 ).min() ).toEqual( 2 );
-                expect(set1.union( set2 ).max() ).toEqual( 9 );
-                expect(set1.union( set2 ).equals( intSetFromArray(intSetClass, au) )).toEqual(true);
-                expect(set2.union( set1 ).equals( intSetFromArray(intSetClass, au) )).toEqual(true);
+                expect(set1.union( set2 ).size()).toEqual(  5 );  // Hard coded, to keep other bugs from hiding failure
+                expect(set1.union( set2 ).min() ).toEqual( 20 );
+                expect(set1.union( set2 ).max() ).toEqual( 90 );
+                expect(set1.union( set2 ).equals( intSetFromArray(intSetClass, au) )).toBe(true);
+                expect(set2.union( set1 ).equals( intSetFromArray(intSetClass, au) )).toBe(true);
 
             });
 
 
             it("Does a trivial intersection properly", function () {  // Less trivial cases are handled below
-                var a1 = [    3, 5, 8, 9 ];
-                var a2 = [ 2,    5, 8    ];
-                var ai = [       5, 8    ];
+                var a1 = [     30, 50, 80, 90 ];
+                var a2 = [ 20,     50, 80     ];
+                var ai = [         50, 80     ];
 
                 var set1 = intSetFromArray(intSetClass, a1);
                 var set2 = intSetFromArray(intSetClass, a2);
 
-                expect(set1.intersection(set2).size()).toEqual(2);  // Hard coded, to keep other bugs from hiding failure
-                expect(set1.intersection(set2).min() ).toEqual(5);
-                expect(set1.intersection(set2).max() ).toEqual(8);
-                expect(set1.intersection(set2).equals( intSetFromArray(intSetClass, ai) )).toEqual(true);
-                expect(set2.intersection(set1).equals( intSetFromArray(intSetClass, ai) )).toEqual(true);
+                expect(set1.intersection(set2).size()).toEqual(  2 );  // Hard coded, to keep other bugs from hiding failure
+                expect(set1.intersection(set2).min() ).toEqual( 50 );
+                expect(set1.intersection(set2).max() ).toEqual( 80 );
+                expect(set1.intersection(set2).equals( intSetFromArray(intSetClass, ai) )).toBe(true);
+                expect(set2.intersection(set1).equals( intSetFromArray(intSetClass, ai) )).toBe(true);
+            });
+
+            it("returns itself on a blank intersectionOfUnion", function() {
+                intSetForEachArray(intSetClass, function (array, intSet) {
+                    expect( intSet.intersectionOfUnion([]).equals(intSet) ).toBe(true);
+                });
+            });
+
+            it("does a simple intersectionOfUnion properly", function() {
+                var a1 = [     30,     50,         90 ];
+                var a2 = [ 20,         50,     80     ];
+                var  b = [     30, 40, 50, 70, 80     ];
+                var ba = [     30,     50,     80     ];
+
+                var setA1 = intSetFromArray(intSetClass, a1);
+                var setA2 = intSetFromArray(intSetClass, a2);
+                var  setB = intSetFromArray(intSetClass,  b);
+                var setBa = intSetFromArray(intSetClass, ba);
+
+                var         result = setB.intersectionOfUnion([setA1, setA2]);
+                var expectedString = ozone.intSet.asString(setBa);
+                var   resultString = ozone.intSet.asString(result);
+
+                expect( resultString ).toEqual( expectedString );  // Easier to debug, otherwise same as the line below
+                expect( result.equals(setBa) ).toBe( true );       // What we're actually verifying
             });
         });
     };
@@ -660,9 +687,51 @@ describe("IntSets", function() {
             });
 
             describe("intersectionOfUnions()", function() {
-                it("has tests", function() {
-                    expect(false).toBeTruthy(); // TODO
+                it("treats a union of "+intSetClassName1+" the same as a union of "+intSetClassName0, function() {
+                    intSetForEachArray(intSetClass0, function(array0, intSet0) {
+                        for (var startIndex=0; startIndex < arrays.length; startIndex++) {
+                            var toUnion0 = [];
+                            var toUnion1 = [];
+                            for (var i=startIndex; i < arrays.length  && i < startIndex+5; i++) {
+                                var arrayToUnion = arrays[i];
+                                toUnion0.push(intSetFromArray(intSetClass0, arrayToUnion));
+                                toUnion1.push(intSetFromArray(intSetClass1, arrayToUnion));
+                            }
+                            var result0 = intSet0.intersectionOfUnion(toUnion0);
+                            var result1 = intSet0.intersectionOfUnion(toUnion1);
+
+                            var resultString0 = ozone.intSet.asString(result0);
+                            var resultString1 = ozone.intSet.asString(result1);
+
+                            expect(resultString0).toEqual(resultString1); // Easier to debug, otherwise same as the line below
+                            expect(result0.equals(result1)).toBe(true);   // What we're actually verifying
+                        }
+                    });
                 });
+
+                it("treats a union mixing "+intSetClassName0+" and "+intSetClassName1+" the same as a union of "+intSetClassName0, function() {
+                    intSetForEachArray(intSetClass0, function(array0, intSet0) {
+                        for (var startIndex=0; startIndex < arrays.length; startIndex++) {
+                            var     toUnion0 = [];
+                            var toUnionMixed = [];
+                            for (var i=startIndex; i < arrays.length  && i < startIndex+5; i++) {
+                                var arrayToUnion = arrays[i];
+                                toUnion0.push(intSetFromArray(intSetClass0, arrayToUnion));
+                                var classToUse = (i%2) ? intSetClass0 : intSetClass1;
+                                toUnionMixed.push(intSetFromArray(classToUse, arrayToUnion));
+                            }
+                            var result0 = intSet0.intersectionOfUnion(toUnion0);
+                            var result1 = intSet0.intersectionOfUnion(toUnionMixed);
+
+                            var resultString0 = ozone.intSet.asString(result0);
+                            var resultString1 = ozone.intSet.asString(result1);
+
+                            expect(resultString0).toEqual(resultString1); // Easier to debug, otherwise same as the line below
+                            expect(result0.equals(result1)).toBe(true);   // What we're actually verifying
+                        }
+                    });
+                });
+
             });
         });
     };

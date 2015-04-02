@@ -62,6 +62,35 @@ var ozone;
         return AbstractReducer;
     })();
     ozone.AbstractReducer = AbstractReducer;
+    /** Wraps an OrderedIterator so you can peek at the next item without modifying it. */
+    var BufferedOrderedIterator = (function () {
+        function BufferedOrderedIterator(inner) {
+            this.inner = inner;
+            if (inner.hasNext()) {
+                this.current = inner.next();
+            }
+        }
+        /** Returns the next value to be returned by next(), or undefined if hasNext() returns false. */
+        BufferedOrderedIterator.prototype.peek = function () {
+            return this.current;
+        };
+        BufferedOrderedIterator.prototype.skipTo = function (item) {
+            if (this.current < item) {
+                this.inner.skipTo(item);
+                this.current = this.inner.hasNext() ? this.inner.next() : undefined;
+            }
+        };
+        BufferedOrderedIterator.prototype.next = function () {
+            var result = this.current;
+            this.current = this.inner.hasNext() ? this.inner.next() : undefined;
+            return result;
+        };
+        BufferedOrderedIterator.prototype.hasNext = function () {
+            return typeof (this.current) !== 'undefined';
+        };
+        return BufferedOrderedIterator;
+    })();
+    ozone.BufferedOrderedIterator = BufferedOrderedIterator;
     /**
      * Combine all descriptors, with later ones overwriting values provided by earlier ones.  All non-inherited
      * properties are copied over, plus all FieldDescribing (inherited or otherwise).
@@ -1015,6 +1044,18 @@ var ozone;
     var intSet;
     (function (intSet) {
         intSet.empty; // Initialized in RangeIntSet.ts
+        function asString(input) {
+            return JSON.stringify(toArray(input));
+        }
+        intSet.asString = asString;
+        function toArray(input) {
+            var result = [];
+            input.each(function (item) {
+                result.push(item);
+            });
+            return result;
+        }
+        intSet.toArray = toArray;
         /**
          * A textbook binary search which returns the index where the item is found,
          * or two's complement of its insert location if it is not found.
@@ -1259,15 +1300,18 @@ var ozone;
             var containerIt = container.iterator();
             var toUnionIts = [];
             for (var i = 0; i < toUnion.length; i++) {
-                toUnionIts.push(toUnion[i].iterator());
+                toUnionIts.push(new ozone.BufferedOrderedIterator(toUnion[i].iterator()));
             }
             var builder = ozone.intSet.builder();
             while (containerIt.hasNext()) {
                 var index = containerIt.next();
                 var shouldInclude = toUnionIts.some(function (it) {
                     it.skipTo(index);
-                    return it.hasNext() && it.next() === index;
+                    return it.hasNext() && it.peek() === index;
                 });
+                if (shouldInclude) {
+                    builder.onItem(index);
+                }
             }
             return builder.onEnd();
         }
@@ -1405,6 +1449,9 @@ var ozone;
             };
             ArrayIndexIntSet.prototype.intersectionOfUnion = function (toUnion) {
                 return ozone.intSet.intersectionOfUnionByIteration(this, toUnion);
+            };
+            ArrayIndexIntSet.prototype.toString = function () {
+                return ozone.intSet.asString(this);
             };
             return ArrayIndexIntSet;
         })();
@@ -1630,6 +1677,9 @@ var ozone;
             BitmapArrayIntSet.prototype.maxWord = function () {
                 return intSet.bits.inWord(this.maxValue);
             };
+            BitmapArrayIntSet.prototype.toString = function () {
+                return ozone.intSet.asString(this);
+            };
             return BitmapArrayIntSet;
         })();
         intSet.BitmapArrayIntSet = BitmapArrayIntSet;
@@ -1808,12 +1858,7 @@ var ozone;
             };
             RangeIntSet.prototype.union = function (bm) {
                 if (this.size() === 0) {
-                    if (bm.size() === 0) {
-                        return this;
-                    }
-                    else {
-                        return bm;
-                    }
+                    return (bm.size() === 0) ? intSet.empty : bm;
                 }
                 if (bm.size() === 0) {
                     return this;
@@ -1822,11 +1867,11 @@ var ozone;
                     return bm["unionWithRangeIntSet"](this);
                 }
                 var lowBm = (this.min() < bm.min()) ? this : bm;
+                var highBm = (lowBm === this) ? bm : this;
                 if (bm instanceof RangeIntSet) {
                     if (bm.min() === this.min() && bm.size() === this.size()) {
                         return this;
                     }
-                    var highBm = (lowBm === this) ? bm : this;
                     if (lowBm.max() >= highBm.min()) {
                         return RangeIntSet.fromTo(lowBm.min(), Math.max(lowBm.max(), highBm.max()));
                     }

@@ -63,6 +63,36 @@ module ozone {
         }
     }
 
+    /** Wraps an OrderedIterator so you can peek at the next item without modifying it. */
+    export class BufferedOrderedIterator<E> implements OrderedIterator<E> {
+        private current : E;
+        constructor( public inner : OrderedIterator<E>) {
+            if (inner.hasNext()) {
+                this.current = inner.next();
+            }
+        }
+
+        /** Returns the next value to be returned by next(), or undefined if hasNext() returns false. */
+        peek() : E { return this.current; }
+
+        skipTo(item : E) {
+            if (this.current < item) {
+                this.inner.skipTo(item);
+                this.current = this.inner.hasNext() ? this.inner.next() : undefined;
+            }
+        }
+
+        next() : E {
+            var result = this.current;
+            this.current = this.inner.hasNext() ? this.inner.next() : undefined;
+            return result;
+        }
+
+        hasNext() : boolean {
+            return typeof(this.current) !== 'undefined';
+        }
+    }
+
 
     /**
      * Combine all descriptors, with later ones overwriting values provided by earlier ones.  All non-inherited

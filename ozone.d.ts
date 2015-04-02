@@ -212,6 +212,17 @@ declare module ozone {
         yieldResult(): R;
         onEnd(): R;
     }
+    /** Wraps an OrderedIterator so you can peek at the next item without modifying it. */
+    class BufferedOrderedIterator<E> implements OrderedIterator<E> {
+        inner: OrderedIterator<E>;
+        private current;
+        constructor(inner: OrderedIterator<E>);
+        /** Returns the next value to be returned by next(), or undefined if hasNext() returns false. */
+        peek(): E;
+        skipTo(item: E): void;
+        next(): E;
+        hasNext(): boolean;
+    }
     /**
      * Combine all descriptors, with later ones overwriting values provided by earlier ones.  All non-inherited
      * properties are copied over, plus all FieldDescribing (inherited or otherwise).
@@ -512,6 +523,8 @@ declare module ozone.intSet.bits {
  */
 declare module ozone.intSet {
     var empty: RangeIntSet;
+    function asString(input: IntSet): string;
+    function toArray(input: IntSet): number[];
     /**
      * A textbook binary search which returns the index where the item is found,
      * or two's complement of its insert location if it is not found.
@@ -572,6 +585,7 @@ declare module ozone.intSet {
         union(set: IntSet): IntSet;
         intersection(set: IntSet): IntSet;
         intersectionOfUnion(toUnion: IntSet[]): ozone.IntSet;
+        toString(): string;
     }
     /** Iterator over dense arrays;  does not work with sparse arrays. */
     class OrderedArrayIterator<T> implements OrderedIterator<T> {
@@ -636,6 +650,7 @@ declare module ozone.intSet {
         minWord(): number;
         /** Equals Math.floor(min()/32). */
         maxWord(): number;
+        toString(): string;
     }
     /**
      * Iterates over all the set bits in order.  This class does not support an index offset.

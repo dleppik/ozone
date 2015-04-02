@@ -8,6 +8,14 @@ module ozone.intSet {
 
     export var empty : RangeIntSet;  // Initialized in RangeIntSet.ts
 
+    export function asString(input : IntSet) { return JSON.stringify(toArray(input)); }
+
+    export function toArray(input : IntSet) : number[] {
+        var result = [];
+        input.each(function(item ) { result.push(item) });
+        return result;
+    }
+
     /**
      * A textbook binary search which returns the index where the item is found,
      * or two's complement of its insert location if it is not found.
@@ -246,9 +254,9 @@ module ozone.intSet {
             return container;
         }
         var containerIt = container.iterator();
-        var toUnionIts : OrderedIterator<number>[] = [];
+        var toUnionIts : BufferedOrderedIterator<number>[] = [];
         for (var i=0; i<toUnion.length; i++) {
-            toUnionIts.push(toUnion[i].iterator());
+            toUnionIts.push(new BufferedOrderedIterator(toUnion[i].iterator()));
         }
 
         var builder = ozone.intSet.builder();
@@ -256,8 +264,11 @@ module ozone.intSet {
             var index : number = containerIt.next();
             var shouldInclude : boolean = toUnionIts.some(function(it) {
                 it.skipTo(index);
-                return it.hasNext() && it.next() === index;
+                return it.hasNext() && it.peek() === index;
             });
+            if (shouldInclude) {
+                builder.onItem(index);
+            }
         }
         return builder.onEnd();
     }

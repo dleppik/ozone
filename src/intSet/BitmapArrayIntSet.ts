@@ -203,6 +203,7 @@ module ozone.intSet {
         /** Equals Math.floor(min()/32). */
         maxWord() : number { return bits.inWord(this.maxValue); }
 
+        toString() { return ozone.intSet.asString(this); }
     }
 
     /**

@@ -85,6 +85,8 @@ module ozone.intSet {
         intersection(set : IntSet) : IntSet { return intersectionOfOrderedIterators(this.iterator(), set.iterator()); }
 
         intersectionOfUnion(toUnion : IntSet[]):ozone.IntSet { return ozone.intSet.intersectionOfUnionByIteration(this, toUnion); }
+
+        toString() { return ozone.intSet.asString(this); }
     }
 
     /** Iterator over dense arrays;  does not work with sparse arrays. */

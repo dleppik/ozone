@@ -80,28 +80,23 @@ module ozone.intSet {
         }
 
         union(bm : IntSet) : IntSet {
-            if (this.size()===0) {
-                if (bm.size() === 0) {
-                    return this;
-                }
-                else {
-                    return bm;
-                }
+            if (this.size() === 0) {
+                return (bm.size() === 0)  ?  intSet.empty  :  bm;
             }
-            if (bm.size()===0) {
+            if (bm.size() === 0) {
                 return this;
             }
             if (typeof(bm["unionWithRangeIntSet"]) === "function") {
                 return bm["unionWithRangeIntSet"](this);
             }
 
-            var lowBm = (this.min() < bm.min()) ? this : bm;
+            var lowBm  = (this.min() < bm.min()) ? this : bm;
+            var highBm = (lowBm === this)        ? bm   : this;
 
             if (bm instanceof RangeIntSet) {
                 if (bm.min()===this.min() && bm.size()===this.size()) {
                     return this;
                 }
-                var highBm = (lowBm===this) ? bm : this;
                 if (lowBm.max() >= highBm.min()) {
                     return RangeIntSet.fromTo(lowBm.min(), Math.max(lowBm.max(), highBm.max()));
                 }
