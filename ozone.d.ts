@@ -60,7 +60,7 @@ declare module ozone {
             [value: string]: RandomAccessStore;
         };
         /** The number of elements in the DataStore. */
-        size: number;
+        size(): number;
     }
     /** Shared properties of Field and FieldDescriptor. */
     interface FieldDescribing {
@@ -383,14 +383,15 @@ declare module ozone.columnStore {
      * </p>
      */
     class ColumnStore implements ColumnStoreInterface {
-        size: number;
+        private theSize;
         private fieldArray;
         /**
          * ECMAScript doesn't require associative arrays to retain the order of their keys, although most
          * implementations do.  (Rhino doesn't.)  So a separate fieldArray isn't completely redundant.
          */
         private fieldMap;
-        constructor(size: number, fieldArray: RandomAccessField<any>[]);
+        constructor(theSize: number, fieldArray: RandomAccessField<any>[]);
+        size(): number;
         intSet(): IntSet;
         fields(): RandomAccessField<any>[];
         field(key: string): RandomAccessField<any>;
@@ -423,8 +424,8 @@ declare module ozone.columnStore {
         source: ColumnStore;
         private filterArray;
         private filterBits;
-        size: number;
         constructor(source: ColumnStore, filterArray: Filter[], filterBits: IntSet);
+        size(): number;
         intSet(): IntSet;
         eachRow(rowAction: (rowToken: any) => void): void;
         filter(fieldNameOrFilter: any, value?: any): RandomAccessStore;
@@ -534,16 +535,22 @@ declare module ozone.intSet {
      * but note that that implementation is buggy.
      */
     function search(searchElement: any, array: any[], minIndex: number, maxIndex: number): number;
+    /** Convert from one IntSet type to another, using the provided builder. */
+    function build(input: IntSet, builderSource: IntSetBuilding): IntSet;
     /**
      * Return the default IntSet builder.  If min and max are provided, a builder optimized for that size may be returned.
      */
     function builder(min?: number, max?: number): Reducer<number, IntSet>;
+    /** Convert to a more efficient IntSet implementation if necessary. */
     function mostEfficientIntSet(input: IntSet): IntSet;
+    /** If the any set is sparse, use an ArrayIndexIntSet, if it is dense, use BitmapArrayIntSet */
+    function bestBuilderForIntersection(...toIntersect: IntSet[]): IntSetBuilding;
     /** Return a IntSet containing all the numbers provided by the iterators. */
     function unionOfIterators(...iterators: Iterator<number>[]): IntSet;
-    /** Return a IntSet containing all the numbers provided by the ordered iterators. This is more efficient
+    /**
+     * Return a IntSet containing all the numbers provided by the ordered iterators. This is more efficient
      * than unionOfIterators.  Returns the type of IntSet most appropriate for the size of the data.
-     * */
+     */
     function unionOfOrderedIterators(...iterators: OrderedIterator<number>[]): IntSet;
     function unionOfIntSets(...intSets: IntSet[]): IntSet;
     /** Return a IntSet containing only the numbers provided by all of the iterators. */
@@ -558,22 +565,23 @@ declare module ozone.intSet {
     function packedBitwiseCompare(set1: PackedIntSet, set2: PackedIntSet, bitwiseCompare: (word1: number, word2: number) => number, hasNextCompare: (next1: boolean, next2: boolean) => boolean, minPicker: (min1: number, min2: number) => number): IntSet;
 }
 /**
- * Copyright 2013 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
+ * Copyright 2013-2015 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
  */
 declare module ozone.intSet {
+    var numberOfArrayIndexIntSetsConstructed: number;
     /**
      * The most trivial of general-purpose IntSet implementations;  a sorted array of indexes.  This can work well for
      * sparse data.
-     * We don't use a boolean[], because while in practice it should iterate in construction order or index
-     * order, we don't want to rely on JS runtime implementation details.
+     * We use this implementation and not a boolean[], because ECMA doesn't specify iteration order.
      */
     class ArrayIndexIntSet implements IntSet {
         private indexes;
         /** Matches the API of other IntSet builders. */
         static builder(min?: number, max?: number): Reducer<number, IntSet>;
+        /** Creates a set backed by a copy of this array. The array must be sorted from lowest to highest. */
         static fromArray(elements: number[]): ArrayIndexIntSet;
         size(): number;
-        /** Always use builder() to construct. */
+        /** Use builder() or fromArray() to construct. */
         constructor(indexes: number[]);
         toArray(): number[];
         has(index: number): boolean;
@@ -601,26 +609,27 @@ declare module ozone.intSet {
  * Copyright 2014 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
  */
 declare module ozone.intSet {
+    var numberOfBitmapIntSetsConstructed: number;
     /**
      * Stores indexes in an Array of numbers, treating them as 32-bit unsigned integers.
      */
     class BitmapArrayIntSet implements PackedIntSet {
         private words;
         private wordOffset;
-        private theSize;
-        /***** Note: should we be ignoring min and max like this?  ******/
+        /** Function matches other IntSets, but in this case we don't care about min and max. */
         static builder(min?: number, max?: number): Reducer<number, IntSet>;
         isPacked: boolean;
         private minValue;
         private maxValue;
+        private cachedSize;
         /**
          * Constructs a BitmapArrayIntSet.
          * @param words         The bitmap (not including the offset bits) as a number array
          * @param wordOffset    The number of 32-bit words which are all zeroes which proceed the given array.
-         * @param theSize       The number of ones in the array (0 if 'words' is empty)
          */
-        constructor(words: number[], wordOffset: number, theSize: number);
+        constructor(words: number[], wordOffset: number);
         size(): number;
+        private countSize();
         has(theBit: number): boolean;
         /**
          * The lowest value for which has() returns true, or -1 if size === 0.  This should be

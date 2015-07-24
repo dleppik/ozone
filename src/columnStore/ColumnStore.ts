@@ -35,7 +35,7 @@ module ozone.columnStore {
         private fieldMap : { [key: string]: RandomAccessField<any>; } ;
 
 
-        constructor( public size: number, private fieldArray : RandomAccessField<any>[] ) {
+        constructor( private theSize: number, private fieldArray : RandomAccessField<any>[] ) {
             this.fieldMap = {};
             for (var i=0; i<fieldArray.length; i++) {
                 var field = fieldArray[i];
@@ -43,8 +43,10 @@ module ozone.columnStore {
             }
         }
 
+        size() : number { return this.theSize; }
+
         intSet() : IntSet {
-            return new ozone.intSet.RangeIntSet(0, this.size);
+            return new ozone.intSet.RangeIntSet(0, this.size());
         }
 
         fields() : RandomAccessField<any>[] {
@@ -70,7 +72,8 @@ module ozone.columnStore {
         }
 
         eachRow(rowAction:Function) {
-            for (var i=0; i<this.size; i++) {
+            var size = this.size();
+            for (var i=0; i<size; i++) {
                 rowAction(i);
             }
         }

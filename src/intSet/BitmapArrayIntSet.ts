@@ -5,16 +5,16 @@
 
 module ozone.intSet {
 
+    export var numberOfBitmapIntSetsConstructed = 0;
+
     /**
      * Stores indexes in an Array of numbers, treating them as 32-bit unsigned integers.
      */
     export class BitmapArrayIntSet implements PackedIntSet {
 
-
-        /***** Note: should we be ignoring min and max like this?  ******/
+        /** Function matches other IntSets, but in this case we don't care about min and max. */
         public static builder(min : number = 0, max: number = -1) : Reducer<number,IntSet> {
             var array : number[] = [];
-            var onesCounter : number = 0;
             var isFirst : boolean = true;
             var numOfLeadingWords : number = 0;
             var currentWordIndex : number = 0;
@@ -25,7 +25,6 @@ module ozone.intSet {
                     var thisWordIndex = bits.inWord(item) - numOfLeadingWords;
                     if (thisWordIndex < currentWordIndex){
                         throw new Error("BitmapArrayIntSet.builder() requires a sorted array to parse.");
-                        //******* Note: is there a better way to refer to the current method?
                     }
                     if (thisWordIndex > currentWordIndex) {
                         if (isFirst) {
@@ -41,38 +40,36 @@ module ozone.intSet {
                             currentWordIndex = thisWordIndex;
                         }
                     }
-                    onesCounter++;
                     currentWord = bits.setBit(bits.offset(item), currentWord);
                     isFirst = false;
-
                 },
                 onEnd:  function() {
-                    if (onesCounter > 0) {
+                    if ( !isFirst ) {
                         array[currentWordIndex] = currentWord;
                     }
-                    return new BitmapArrayIntSet(array, numOfLeadingWords,onesCounter);
+                    return new BitmapArrayIntSet(array, numOfLeadingWords);
                 }
             });
-
         }
 
         public isPacked = true;
         private minValue : number;
         private maxValue : number;
+        private cachedSize : number = null;
 
         /**
          * Constructs a BitmapArrayIntSet.
          * @param words         The bitmap (not including the offset bits) as a number array
          * @param wordOffset    The number of 32-bit words which are all zeroes which proceed the given array.
-         * @param theSize       The number of ones in the array (0 if 'words' is empty)
          */
         constructor(
             private words : number[],
-            private wordOffset : number,
-            private theSize : number) // TODO calculate on demand
+            private wordOffset : number)
         {
+            numberOfBitmapIntSetsConstructed++;
+
             if (words == null || words.length == 0) {
-                this.theSize = 0;
+                this.cachedSize = 0;
                 this.minValue = -1;
                 this.maxValue = -1;
             }
@@ -93,12 +90,23 @@ module ozone.intSet {
                     }
                 }
             }
+            this.size();
         }
 
         size() : number {
-            return this.theSize;
+            if (this.cachedSize === null) {
+                this.cachedSize = this.countSize();
+            }
+            return this.cachedSize;
         }
 
+        private countSize() : number {
+            var result = 0;
+            this.words.forEach(function(word) {
+                result += bits.countBits(word);
+            });
+            return result;
+        }
 
         has(theBit : number) : boolean {
             var indexOffset : number = theBit - this.wordOffset*32;
@@ -185,7 +193,10 @@ module ozone.intSet {
 
                 return ozone.intSet.packedBitwiseCompare(this, <PackedIntSet> set, bitwiseCompare, hasNextCompare, minPicker);
             }
-            return ozone.intSet.intersectionOfOrderedIterators(this.iterator(), set.iterator());
+
+            return intersectionOfOrderedIteratorsWithBuilder(
+                bestBuilderForIntersection(this, set).builder(),
+                [this.iterator(), set.iterator()]);
         }
 
         intersectionOfUnion(toUnion : IntSet[]):ozone.IntSet {

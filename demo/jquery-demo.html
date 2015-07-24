@@ -268,7 +268,7 @@
                 var value = values[valueIndex];
                 var filteredDb = columns[value];
                 if (filteredDb) {
-                    singleAxisData.push([value, filteredDb.size]);
+                    singleAxisData.push([value, filteredDb.size()]);
                 }
             }
             data = [singleAxisData];

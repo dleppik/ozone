@@ -9,14 +9,13 @@ describe("IntSet functions", function() {
 
     describe("mostEfficientIntSet", function() {
         var bits = ozone.intSet.bits;
-        var sparseArrayIntSet = new ozone.intSet.ArrayIndexIntSet([3, 324]);
-        var denseArrayIntSet = new ozone.intSet.ArrayIndexIntSet([0,2,3,4,10]);
+        var sparseArrayIntSet = ozone.intSet.ArrayIndexIntSet.fromArray([3, 324]);
+        var denseArrayIntSet = ozone.intSet.ArrayIndexIntSet.fromArray([0,2,3,4,10]);
         var sparseBitmapIntSet = new ozone.intSet.BitmapArrayIntSet(
             [bits.base2ToBits( "1000"), undefined, undefined, undefined,
                 undefined, undefined, undefined, undefined, undefined, undefined,
-                bits.base2ToBits( "10000")], 0, 2);
-        var denseBitmapIntSet = new ozone.intSet.BitmapArrayIntSet(
-            [bits.base2ToBits( "10000011101")], 0, 5);
+                bits.base2ToBits( "10000")], 0);
+        var denseBitmapIntSet = new ozone.intSet.BitmapArrayIntSet( [bits.base2ToBits( "10000011101")], 0);
 
         it("Produces RangeIntSet with consecutive data", function() {
             expect(ozone.intSet.mostEfficientIntSet(new ozone.intSet.ArrayIndexIntSet([3,4,5,6,7,8]))

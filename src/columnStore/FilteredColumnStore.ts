@@ -152,7 +152,7 @@ module ozone.columnStore {
     export function partitionColumnStore(store : ColumnStoreInterface, field : RandomAccessField<any>)
         : { [value: string]: RandomAccessStore; }
     {
-        if (store.size === 0) {
+        if (store.size() === 0) {
             return {};
         }
 
@@ -173,7 +173,7 @@ module ozone.columnStore {
         for (var i=0; i<allValues.length; i++) {
             var value = allValues[i];
             var filtered = store.filter(new ozone.ValueFilter(field, value));
-            if (filtered.size > 0) {
+            if (filtered.size() > 0) {
                 result[""+value] = filtered;
             }
         }
@@ -182,12 +182,11 @@ module ozone.columnStore {
 
     export class FilteredColumnStore extends StoreProxy implements ColumnStoreInterface {
 
-        size : number;
-
         constructor( public source : ColumnStore, private filterArray : Filter[], private filterBits : IntSet) {
             super(source);
-            this.size = filterBits.size();
         }
+
+        size() { return this.filterBits.size(); }
 
         intSet() : IntSet { return this.filterBits; }
 

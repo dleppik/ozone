@@ -34,7 +34,7 @@ module ozone.serialization {
             fieldData.push(writeField(fields[i]));
         }
         return {
-            size   : store.size,
+            size   : store.size(),
             fields : fieldData
         };
     }

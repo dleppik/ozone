@@ -1,3 +1,6 @@
+/// <reference path="../typings/jasmine/jasmine.d.ts"/>
+/// <reference path="../ozone.d.ts"/>
+
 "use strict";
 
 describe("BufferedOrderedIterator", function() {

@@ -219,7 +219,7 @@ function drawVisualization() {
 
         g.attr("transform", function(d, i) {
             var x = (i * 10) % 980;
-            var y = (d.db.size * 10) % 620;
+            var y = (d.db.size() * 10) % 620;
             return "translate(" + x + "," + y + ")";
         });
 

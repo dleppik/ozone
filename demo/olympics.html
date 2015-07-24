@@ -327,8 +327,19 @@
 
         function updateFilteredDb() {
             filteredDb = db;
+
+            var startTime = 0;
+            if (window.performance) {
+                startTime = window.performance.now();
+            }
+
             for(var i=0; i < filters.length; i++){
                 filteredDb = filteredDb.filter(filters[i]);
+            }
+
+            if (window.performance) {
+                var endTime = window.performance.now();
+                console.log("Ozone filtering and partitioning took "+(endTime-startTime)+" ms");
             }
         }
 
@@ -379,7 +390,7 @@
             }
 
             var data;
-            if (filteredDb.size === 0) {
+            if (filteredDb.size() === 0) {
                 data = {name: "Empty Data set"};
             }
             else {
@@ -500,8 +511,8 @@
             }
 
             var result = {
-                name: name+" ("+numberWithCommas(data.size)+")",
-                size: data.size
+                name: name+" ("+numberWithCommas(data.size())+")",
+                size: data.size()
             };
 
             if (fieldNames.length > 0) {

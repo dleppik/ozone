@@ -74,7 +74,7 @@ module ozone {
         partition(fieldDescription : FieldDescribing) : { [value: string]: RandomAccessStore; };
 
         /** The number of elements in the DataStore. */
-        size : number;
+        size() : number;
     }
 
 

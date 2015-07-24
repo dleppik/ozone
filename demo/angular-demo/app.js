@@ -113,7 +113,7 @@
 
 
         this.occuranceValue = function(field,occurance) {
-                return $scope.db.filter(field,occurance).size;
+                return $scope.db.filter(field,occurance).size();
         };
 
 

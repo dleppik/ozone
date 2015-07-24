@@ -256,8 +256,8 @@ function drawVisualization() {
         (function() {
             var data = {value : item, db : rawPartition[item]};
             partition.push(data);
-            if (data.db.size > maxValueSize) {
-                maxValueSize = data.db.size;
+            if (data.db.size() > maxValueSize) {
+                maxValueSize = data.db.size();
             }
         })();
 
@@ -300,7 +300,7 @@ function drawVisualization() {
 
         g.attr("transform", function (d, i) {
             var x = ((i * 20) % (containerWidth-40)) + 20;
-            var y = (containerHeight-20) - ( (d.db.size / maxValueSize) * (containerHeight-40));
+            var y = (containerHeight-20) - ( (d.db.size() / maxValueSize) * (containerHeight-40));
             return "translate(" + x + "," + y + ")";
         });
     }

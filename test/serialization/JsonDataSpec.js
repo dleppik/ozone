@@ -43,7 +43,7 @@ describe("JSON Serialization", function() {
 
         describe("Writing", function() {
             var serialized = writeStore(columnStore);
-            expect(serialized.size).toBe(columnStore.size);
+            expect(serialized.size).toBe(columnStore.size());
             expect(serialized.fields.length).toBe(4);
             for (var i=0; i<serialized.fields.length; i++) {
                 expect(serialized.fields[i].identifier).toBe(columnStore.fields()[i].identifier);
@@ -59,7 +59,7 @@ describe("JSON Serialization", function() {
                 var serialized = JSON.stringify(writeStore(columnStore));
                 var deserialized = readStore(JSON.parse(serialized));
 
-                expect(deserialized.size).toBe(columnStore.size);
+                expect(deserialized.size()).toBe(columnStore.size());
                 expect(deserialized.fields().length).toBe(columnStore.fields().length);
                 expect(deserialized.fields().length).toBe(4);
                 for (var i=0; i<deserialized.fields().length; i++) {
@@ -69,8 +69,8 @@ describe("JSON Serialization", function() {
                     expect(expectedField.displayName).toBe(actualField.displayName);
                 }
 
-                expect(  deserialized.filter("animal", "cow").size)
-                    .toBe(columnStore.filter("animal", "cow").size);
+                expect(  deserialized.filter("animal", "cow").size())
+                    .toBe(columnStore.filter("animal", "cow").size());
 
                 // What we shouldn't check:
                 // columnStore.intSet() doesn't need to match
@@ -110,8 +110,8 @@ describe("JSON Serialization", function() {
                 expect(deserialized.intSetForValue("b")).toEqual(RangeIntSet.fromTo(1, 10));
 
                 var store = new ozone.columnStore.ColumnStore(11, [deserialized]);
-                expect(store.filter("MyIndexed", "a").size ).toBe(0);
-                expect(store.filter("MyIndexed", "b").size ).toBe(10);
+                expect(store.filter("MyIndexed", "a").size() ).toBe(0);
+                expect(store.filter("MyIndexed", "b").size() ).toBe(10);
             });
 
             it("Reads an un-indexed Field", function() {

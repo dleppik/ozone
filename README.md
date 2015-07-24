@@ -47,15 +47,15 @@ Filter or partition to create a subset of the database, which can be treated as 
 ```JavaScript
 var dbOfWomen = db.filter('Gender', 'F');
 var dbOfMaleGermans = db.filter('Gender', 'M').filter('Country', 'Germany');
-var numberOfMaleGermans = dbOfMaleGermans.size;
+var numberOfMaleGermans = dbOfMaleGermans.size();
 
 // A partition filters on all values for a particular field
 
 var genderDbs = db.partition('Gender');
-if (genderDbs['F'].size === dbOfWomen.size) {
+if (genderDbs['F'].size() === dbOfWomen.size()) {
    console.log("It works!");
 }
-if (genderDbs['M'].filter('Country', 'Germany').size === dbOfMaleGermans.size) {
+if (genderDbs['M'].filter('Country', 'Germany').size() === dbOfMaleGermans.size()) {
    console.log("It works!");
 }
 ```
@@ -71,9 +71,12 @@ var itWorks = genderField.identifier  === 'Gender'  &&
               genderField.displayName === 'Participant Gender' &&
               genderField.typeOfValue === 'string';
 
-var filteringByFieldWorks = dbOfWomen.size === db.filter(genderField, 'F').size &&
-                            dbOfWomen.size === db.filter(dbOfMaleGermans.field('Gender', 'F')).size;
+var filteringByFieldWorks = dbOfWomen.size() === db.filter(genderField, 'F').size() &&
+                            dbOfWomen.size() === db.filter(dbOfMaleGermans.field('Gender', 'F')).size();
 ```
+
+NOTE: in version 0.1.12 and earlier, size is a value rather than a function.  (This was changed to avoid unnecessary
+calculations; even so, calls to db.size() are extremely fast.)
 
 Use field.distinctValueEstimate() to determine how to present the fields
 

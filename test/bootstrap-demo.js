@@ -37,7 +37,7 @@ for (var i=0; i< columnStore.fields().length; i++) {
         console.log("Values:");
         var valueMap = columnStore.partition(field.identifier);
         for (var entry in valueMap) {
-            console.log("    " + entry + " \t" + valueMap[entry].size);
+            console.log("    " + entry + " \t" + valueMap[entry].size());
         }
     }
     else {

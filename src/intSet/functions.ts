@@ -48,13 +48,25 @@ module ozone.intSet {
         return ~Math.max(minIndex, maxIndex);
     }
 
+
+    /** Convert from one IntSet type to another, using the provided builder. */
+    export function build(input : IntSet, builderSource : IntSetBuilding) : IntSet {
+        var builder = builderSource.builder(input.min(), input.max());
+        var iterator = input.iterator();
+        while (iterator.hasNext()) {
+            builder.onItem(iterator.next());
+        }
+        return builder.onEnd();
+    }
+
     /**
      * Return the default IntSet builder.  If min and max are provided, a builder optimized for that size may be returned.
      */
     export function builder(min : number = 0, max: number = -1) : Reducer<number,IntSet> {
-        return BitmapArrayIntSet.builder();
+        return BitmapArrayIntSet.builder(min, max);
     }
 
+    /** Convert to a more efficient IntSet implementation if necessary. */
     export function mostEfficientIntSet(input : IntSet) : IntSet {
         if (input.size() == 0) {
             return empty;
@@ -63,28 +75,37 @@ module ozone.intSet {
             return ozone.intSet.RangeIntSet.fromTo(input.min(), input.max());
         }
 
-        // If the data is sparse, use an ArrayIndexIntSet, if it is dense, use BitmapArrayIntSet.
-        // The values here are an educated guess, need to to some testing to optimize
-        var builder : Reducer<number, IntSet>;
-        var iterator = input.iterator();
-        if ((input.max() - input.min() + 1) / input.size() > 128) {
+        var builderSource : IntSetBuilding;
+        if (isSparse(input)) {
             if (input instanceof ArrayIndexIntSet) {
                 return input;
             }
-            builder = ArrayIndexIntSet.builder(input.min(), input.max());
+            builderSource = ArrayIndexIntSet;
         }
         else {
             if (input instanceof BitmapArrayIntSet) {
                 return input;
             }
-            builder = BitmapArrayIntSet.builder(input.min(), input.max());
+            builderSource = BitmapArrayIntSet;
         }
+        return build(input, builderSource);
+    }
 
-        while (iterator.hasNext()) {
-            builder.onItem(iterator.next());
+    /**
+     * If true, the input is sparse enough that an ArrayIndexIntSet is the best implementation to use.
+     */
+    function isSparse(input : IntSet) {
+        return (input.max() - input.min() + 1) / input.size() > 100;
+    }
+
+    /** If the any set is sparse, use an ArrayIndexIntSet, if it is dense, use BitmapArrayIntSet */
+    export function bestBuilderForIntersection(...toIntersect : IntSet[]) : IntSetBuilding {
+        for (var i=0; i<toIntersect.length; i++) {
+            if (isSparse(toIntersect[i])) {
+                return ArrayIndexIntSet;
+            }
         }
-
-        return builder.onEnd();
+        return BitmapArrayIntSet;
     }
 
 
@@ -119,9 +140,10 @@ module ozone.intSet {
         return builder.onEnd();
     }
 
-    /** Return a IntSet containing all the numbers provided by the ordered iterators. This is more efficient
+    /**
+     * Return a IntSet containing all the numbers provided by the ordered iterators. This is more efficient
      * than unionOfIterators.  Returns the type of IntSet most appropriate for the size of the data.
-     * */
+     */
     export function unionOfOrderedIterators(...iterators : OrderedIterator<number>[]) : IntSet {
         if (iterators.length===0) {
             return empty;
@@ -312,7 +334,6 @@ module ozone.intSet {
             var otherIterator   = set2.wordIterator();
             var array : number[] = [];
             var currentWord : number;
-            var size : number     = 0;
 
             var offset : number = minPicker(set1.minWord(), set2.minWord());
             myIterator.skipTo(offset);
@@ -320,10 +341,9 @@ module ozone.intSet {
 
             while (hasNextCompare(myIterator.hasNext(), otherIterator.hasNext())) {
                 currentWord = bitwiseCompare(myIterator.next(), otherIterator.next());
-                size += bits.countBits(currentWord);
                 array.push(currentWord);
             }
-            return mostEfficientIntSet(new BitmapArrayIntSet(array, offset, size));
+            return mostEfficientIntSet(new BitmapArrayIntSet(array, offset));
         }
         return ozone.intSet.unionOfOrderedIterators(set1.iterator(), set2.iterator());
     }

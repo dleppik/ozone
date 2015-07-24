@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Speed Test</title>
+
+    <script type="application/javascript" src="../ozone.js"></script>
+    <script type="application/javascript" src="SpeedTest.js"></script>
+</head>
+<style>
+    #test-results table {
+        border: 1px solid #ccc;
+    }
+    #test-results td {
+        text-align: right;
+    }
+</style>
+<body>
+
+    <h1>Speed test</h1>
+
+    <div id="test-results">
+    </div>
+
+    <div id="controls">
+        Seconds per test: <input id="seconds-per-test" type="number" value="0.25"><button id="run-test" name="Run">Run</button>
+    </div>
+
+    <script type="application/javascript">
+
+        var runTest = function() {
+            var secsPerTest = Number(document.getElementById("seconds-per-test").value);
+
+            document.getElementById("test-results").innerHTML = "<h2>Running tests...</h2>";
+            document.getElementById("controls").style.display = "none";
+
+            var resultHtml
+                    =   '<h2>Number of intersections per '+secsPerTest+' second(s)</h2>' +
+                        '<table class="test-results" id="result-table">' +
+                        '<tr><th>Test</th><th>Iterations</th><th>Iterations/second</th></tr>' +
+                        '</table>';
+
+            document.getElementById("test-results").innerHTML = resultHtml;
+
+            var table = document.getElementById("result-table");
+
+            var update = function(item) {
+                var repsPerSecond = item.reps / secsPerTest;
+                table.innerHTML = table.innerHTML + "<tr><th>"+item.name+"</th><td>"+item.reps+"</td><td>"+repsPerSecond+"</td></tr>";
+            };
+            var finish = function() {
+                document.getElementById("controls").style.display = "block";
+            };
+
+            testIntersections(secsPerTest*1000, update, finish);
+        };
+
+        document.getElementById("run-test").onclick = runTest;
+        runTest();
+
+    </script>
+</body>
+</html>

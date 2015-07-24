@@ -1,14 +1,16 @@
 /**
- * Copyright 2013 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
+ * Copyright 2013-2015 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
  */
 /// <reference path='../_all.ts' />
 
 module ozone.intSet {
+
+    export var numberOfArrayIndexIntSetsConstructed = 0;
+
     /**
      * The most trivial of general-purpose IntSet implementations;  a sorted array of indexes.  This can work well for
      * sparse data.
-     * We don't use a boolean[], because while in practice it should iterate in construction order or index
-     * order, we don't want to rely on JS runtime implementation details.
+     * We use this implementation and not a boolean[], because ECMA doesn't specify iteration order.
      */
     export class ArrayIndexIntSet implements IntSet {
 
@@ -27,15 +29,16 @@ module ozone.intSet {
             });
         }
 
-        public static fromArray(elements : number[]) {
-            return new ArrayIndexIntSet(elements.concat());
-        }
+        /** Creates a set backed by a copy of this array. The array must be sorted from lowest to highest. */
+        public static fromArray(elements : number[]) { return new ArrayIndexIntSet(elements.concat()); }
 
 
         size() : number { return this.indexes.length; }
 
-        /** Always use builder() to construct. */
-        constructor(private indexes : number[]) { }
+        /** Use builder() or fromArray() to construct. */
+        constructor(private indexes : number[]) {
+            numberOfArrayIndexIntSetsConstructed++;
+        }
 
         public toArray() : number[] {
             return this.indexes.concat();
@@ -82,7 +85,11 @@ module ozone.intSet {
             return unionOfOrderedIterators(this.iterator(), set.iterator());
         }
 
-        intersection(set : IntSet) : IntSet { return intersectionOfOrderedIterators(this.iterator(), set.iterator()); }
+        intersection(set : IntSet) : IntSet {
+            return intersectionOfOrderedIteratorsWithBuilder(
+                bestBuilderForIntersection(this, set).builder(),
+                [this.iterator(), set.iterator()]);
+        }
 
         intersectionOfUnion(toUnion : IntSet[]):ozone.IntSet { return ozone.intSet.intersectionOfUnionByIteration(this, toUnion); }
 
