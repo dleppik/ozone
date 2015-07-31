@@ -30,7 +30,7 @@ module ozone.transform {
      * imported the data, you should have consistent (if different) order even if the data has been converted from a
      * RowStore into a ColumnStore and back a few times.
      *
-     * See Field.values() for more discussion.
+     * @see ozone.Field.values() for more discussion.
      */
     export function sort(dataStoreIn : DataStore, sortColumns :  Array<string | SortOptions>) : rowStore.RowStore {
         var sortFunctions = sortColumns.map((column) => {
@@ -41,35 +41,49 @@ module ozone.transform {
         return rowStore.buildFromStore(dataStoreIn, {sortCompareFunction: sortFunc});
     }
 
+    export interface AggregateParams {
+        sizeFieldId? : string;
+        sortFields? : boolean | Array<string | SortOptions>;
+        includeFields? : string[];
+    }
+
     /**
      * Remove redundant rows and keep the original number of rows in a recordCountField; the resulting DataStore is
-     * sorted on all columns.
+     * sorted on all the output fields.
      *
      * @param dataStoreIn  the initial data source
      *
-     * @param sizeFieldId  the name of the field in the output DataStore that holds the number of aggregate records.
+     * @param options      May include the following:
+     *
+     *        sizeFieldId  the name of the field in the output DataStore that holds the number of aggregate records.
      *                     If it exists in dataStoreIn, it will be treated as an existing size field: it must be a
      *                     UnaryField<number>, and merged records will use the sum of the existing values.
+     *                     Default is "Records".
      *
-     * @param sortColumns  specifies the sort order for the columns.  Not all columns must be specified; the remaining
-     *                     columns will be sorted in the order listed in dataStoreIn.  If "false", no sort will be
-     *                     attempted and the dataStore must already be a RowStore sorted on every column.
+     *         sortFields  specifies the sort order (and optionally the compare function) for the columns.  Not all
+     *                     columns must be specified; the remaining columns will be sorted in the order listed in
+     *                     dataStoreIn.  To explicitly disable sorting because dataStoreIn is already sorted on all
+     *                     output columns, set this to "false".
+     *
+     *      includeFields  the name of the fields to include in the output, not including the size field.  By default,
+     *                     all fields are included.
      */
     export function aggregate(
         dataStoreIn : DataStore,
-        sizeFieldId  : string = "Records",
-        sortColumns : boolean | Array<string | SortOptions> = []
+        options : AggregateParams = {}
     ) : rowStore.RowStore {
 
+        var sizeFieldId = (options.sizeFieldId) ? options.sizeFieldId : "Records";
 
         var sortedStore : rowStore.RowStore;
-        if (sortColumns === false) {
+        if (options.sortFields  &&  options.sortFields === false) {
             sortedStore = <rowStore.RowStore> dataStoreIn;
         }
         else {
+            var sortFields = <Array<string | SortOptions>> (options.sortFields) ? options.sortFields : [];
             var sortOptions : Array<SortOptions> = [];
             var usedColumns = {};
-            (<Array<string | SortOptions>>sortColumns).forEach(function(item) {
+            (<Array<string | SortOptions>>sortFields).forEach(function(item) {
                 var name : string = (typeof(item) === 'string') ? <string>item : (<SortOptions>item).field;
                 if (name !== sizeFieldId) {
                     sortOptions.push({field : name, compare: compareFunction(dataStoreIn, item)});
@@ -107,11 +121,24 @@ module ozone.transform {
         }
 
         var fieldsToCopy : Field<any>[] = [];
-        sortedStore.fields().forEach((f) => {
-            if (f.identifier !== sizeFieldId) {
-                fieldsToCopy.push(f);
-            }
-        });
+        if (options.includeFields) {
+            options.includeFields.forEach( (fId) => {
+                if (fId !== sizeFieldId) {
+                    var f = sortedStore.field(fId);
+                    if (f===null) {
+                        throw new Error("Field '"+fId+"' does not exist");
+                    }
+                    fieldsToCopy.push(f);
+                }
+            });
+        }
+        else {
+            sortedStore.fields().forEach((f) => {
+                if (f.identifier !== sizeFieldId) {
+                    fieldsToCopy.push(f);
+                }
+            });
+        }
 
         var previousRowData : any = null;
         sortedStore.eachRow(function(row) {

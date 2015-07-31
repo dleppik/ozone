@@ -162,22 +162,7 @@ describe("transform.aggregate", function() {
     });
 
     it("Reuses an existing size column", function() {
-        var buildParams = {
-            buildAllFields: false,  // Only build the fields listed below
-            fields: {
-                a: {},
-                c: {},
-                Records: {typeOfValue: "number", aggregationRule: 'sum' }
-            }
-        };
-
-        var noStateRedundantDb = ozone.columnStore.buildFromStore(aggregatedRowDb, buildParams);
-        var noStateRowDb = ozone.transform.aggregate(noStateRedundantDb);
-
-        noStateRowDb.eachRow(function(row) {
-            console.log(row); // XXX
-        });
-
+        var noStateRowDb = ozone.transform.aggregate(aggregatedColumnDb, {includeFields: ['a', 'c']});
         var noStateColumnDb = ozone.columnStore.buildFromStore(noStateRowDb);
 
         expect(noStateColumnDb.size()).toBe(3);  // this will change when we redefine size() to include aggregates

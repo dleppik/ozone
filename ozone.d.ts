@@ -972,24 +972,36 @@ declare module ozone.transform {
      * imported the data, you should have consistent (if different) order even if the data has been converted from a
      * RowStore into a ColumnStore and back a few times.
      *
-     * See Field.values() for more discussion.
+     * @see ozone.Field.values() for more discussion.
      */
     function sort(dataStoreIn: DataStore, sortColumns: Array<string | SortOptions>): rowStore.RowStore;
+    interface AggregateParams {
+        sizeFieldId?: string;
+        sortFields?: boolean | Array<string | SortOptions>;
+        includeFields?: string[];
+    }
     /**
      * Remove redundant rows and keep the original number of rows in a recordCountField; the resulting DataStore is
-     * sorted on all columns.
+     * sorted on all the output fields.
      *
      * @param dataStoreIn  the initial data source
      *
-     * @param sizeFieldId  the name of the field in the output DataStore that holds the number of aggregate records.
+     * @param options      May include the following:
+     *
+     *        sizeFieldId  the name of the field in the output DataStore that holds the number of aggregate records.
      *                     If it exists in dataStoreIn, it will be treated as an existing size field: it must be a
      *                     UnaryField<number>, and merged records will use the sum of the existing values.
+     *                     Default is "Records".
      *
-     * @param sortColumns  specifies the sort order for the columns.  Not all columns must be specified; the remaining
-     *                     columns will be sorted in the order listed in dataStoreIn.  If "false", no sort will be
-     *                     attempted and the dataStore must already be a RowStore sorted on every column.
+     *         sortFields  specifies the sort order (and optionally the compare function) for the columns.  Not all
+     *                     columns must be specified; the remaining columns will be sorted in the order listed in
+     *                     dataStoreIn.  To explicitly disable sorting because dataStoreIn is already sorted on all
+     *                     output columns, set this to "false".
+     *
+     *      includeFields  the name of the fields to include in the output, not including the size field.  By default,
+     *                     all fields are included.
      */
-    function aggregate(dataStoreIn: DataStore, sizeFieldId?: string, sortColumns?: boolean | Array<string | SortOptions>): rowStore.RowStore;
+    function aggregate(dataStoreIn: DataStore, options?: AggregateParams): rowStore.RowStore;
 }
 /**
  * Copyright 2013 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
