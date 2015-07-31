@@ -28,6 +28,9 @@ module ozone {
          * values will return [1, 2, 3].
          */
         values(rowToken : any) : T[];
+
+        /** Exists only on a UnaryField.  You can check for a UnaryField with (typeof field['value'] === 'function'). */
+        value? : (rowToken : any) => T;
     }
 
     /** All fields in a RandomAccessStore are RandomAccessFields. */

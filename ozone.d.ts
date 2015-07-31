@@ -61,6 +61,8 @@ declare module ozone {
         };
         /** The number of elements in the DataStore. */
         size(): number;
+        /** Add all the values of a numerical field.  If the field does not exist or isn't numerical, returns 0. */
+        sum(field: string | Field<number>): number;
     }
     /** Shared properties of Field and FieldDescriptor. */
     interface FieldDescribing {
@@ -316,6 +318,8 @@ declare module ozone.columnStore {
      *          buildAllFields: boolean, default is true.  If false, any fields not listed under 'Fields' are ignored.
      */
     function buildFromStore(source: DataStore, params?: any): ColumnStore;
+    /** Used to implement ColumnStore.sum(). */
+    function sum(store: RandomAccessStore, fieldOrId: string | Field<number>): number;
 }
 /**
  * Copyright 2013-2014 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
@@ -392,6 +396,7 @@ declare module ozone.columnStore {
         private fieldMap;
         constructor(theSize: number, fieldArray: RandomAccessField<any>[]);
         size(): number;
+        sum(field: string | Field<number>): number;
         intSet(): IntSet;
         fields(): RandomAccessField<any>[];
         field(key: string): RandomAccessField<any>;
@@ -426,6 +431,7 @@ declare module ozone.columnStore {
         private filterBits;
         constructor(source: ColumnStore, filterArray: Filter[], filterBits: IntSet);
         size(): number;
+        sum(field: string | Field<number>): number;
         intSet(): IntSet;
         eachRow(rowAction: (rowToken: any) => void): void;
         filter(fieldNameOrFilter: any, value?: any): RandomAccessStore;
@@ -1028,6 +1034,8 @@ declare module ozone {
          * values will return [1, 2, 3].
          */
         values(rowToken: any): T[];
+        /** Exists only on a UnaryField.  You can check for a UnaryField with (typeof field['value'] === 'function'). */
+        value?: (rowToken: any) => T;
     }
     /** All fields in a RandomAccessStore are RandomAccessFields. */
     interface RandomAccessField<T> extends Field<T> {

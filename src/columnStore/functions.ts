@@ -72,4 +72,22 @@ module ozone.columnStore {
         }
         return new ColumnStore(length, resultFields);
     }
+
+    /** Used to implement ColumnStore.sum(). */
+    export function sum(store : RandomAccessStore, fieldOrId : string | Field<number>) : number {
+        var result = 0;
+        var field = <Field<number>> ( (typeof fieldOrId === 'string') ? store.field(fieldOrId) : fieldOrId );
+        if ( ! field  || field.typeOfValue !== 'number') {
+            return 0;
+        }
+        if (typeof field['value'] === 'function') {  // UnaryField
+            store.eachRow(function(r) { result += field.value(r); });
+        }
+        else {
+            var sumFunc = function(a,b) { return a+b };
+            store.eachRow(function(r) { result += field.values(r).reduce(sumFunc, 0); });
+        }
+
+        return result;
+    }
 }

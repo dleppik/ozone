@@ -45,6 +45,8 @@ module ozone.columnStore {
 
         size() : number { return this.theSize; }
 
+        sum(field : string | Field<number>) : number { return sum(this, field); }
+
         intSet() : IntSet {
             return new ozone.intSet.RangeIntSet(0, this.size());
         }

@@ -188,6 +188,8 @@ module ozone.columnStore {
 
         size() { return this.filterBits.size(); }
 
+        sum(field : string | Field<number>) : number { return sum(this, field); }
+
         intSet() : IntSet { return this.filterBits; }
 
         eachRow(rowAction : (rowToken : any) => void) { this.filterBits.each(rowAction); }

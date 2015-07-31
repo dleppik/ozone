@@ -201,5 +201,37 @@ describe("ColumnStore", function() {
         });
     });
 
+    describe("[Filtered]ColumnStore.sum()", function() {
+        var fieldInfo = {
+            num:   {typeOfValue: "number"},
+            multi: {typeOfValue: "number", multipleValuesPerRow: true}
+        };
+        var data = [
+            {num:    1,  multi: [  3,      4    ]},
+            {num:    3,  multi: [  6,      8    ]},
+            {num:    3,  multi: [  7,     11, 12]},
+            {num:   10,  multi: [ 13.5          ]},
+            {            multi: [               ]}
+        ];
+        var numberDb = ozone.columnStore.buildFromStore( ozone.rowStore.build(fieldInfo, data) );
+
+        it("Sums numbers in a UnaryField", function() {
+            expect(columnStore.sum("pin")).toBe(836);
+            expect(columnStore.filter('color', 'green').sum("pin")).toBe(315);
+            expect(numberDb.sum("num")).toBe(17);
+
+        });
+        it("Returns 0 on nonexistent or non-numerical fields", function() {
+            expect(columnStore.sum("does not exist")).toBe(0);
+            expect(columnStore.sum("animal")).toBe(0);
+            expect(columnStore.filter('color', 'green').sum("does not exist")).toBe(0);
+            expect(columnStore.filter('color', 'green').sum("animal")).toBe(0);
+        });
+
+        it("Sums numbers on a non-Unary field", function() {
+            expect(numberDb.sum("multi")).toBe(64.5);
+            expect(numberDb.filter("num", 3).sum("multi")).toBe(44);
+        });
+    });
 
 });

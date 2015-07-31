@@ -364,6 +364,23 @@ var ozone;
             return new columnStore.ColumnStore(length, resultFields);
         }
         columnStore.buildFromStore = buildFromStore;
+        /** Used to implement ColumnStore.sum(). */
+        function sum(store, fieldOrId) {
+            var result = 0;
+            var field = ((typeof fieldOrId === 'string') ? store.field(fieldOrId) : fieldOrId);
+            if (!field || field.typeOfValue !== 'number') {
+                return 0;
+            }
+            if (typeof field['value'] === 'function') {
+                store.eachRow(function (r) { result += field.value(r); });
+            }
+            else {
+                var sumFunc = function (a, b) { return a + b; };
+                store.eachRow(function (r) { result += field.values(r).reduce(sumFunc, 0); });
+            }
+            return result;
+        }
+        columnStore.sum = sum;
     })(columnStore = ozone.columnStore || (ozone.columnStore = {}));
 })(ozone || (ozone = {}));
 /**
@@ -518,6 +535,7 @@ var ozone;
                 }
             }
             ColumnStore.prototype.size = function () { return this.theSize; };
+            ColumnStore.prototype.sum = function (field) { return columnStore.sum(this, field); };
             ColumnStore.prototype.intSet = function () {
                 return new ozone.intSet.RangeIntSet(0, this.size());
             };
@@ -732,6 +750,7 @@ var ozone;
                 this.filterBits = filterBits;
             }
             FilteredColumnStore.prototype.size = function () { return this.filterBits.size(); };
+            FilteredColumnStore.prototype.sum = function (field) { return columnStore.sum(this, field); };
             FilteredColumnStore.prototype.intSet = function () { return this.filterBits; };
             FilteredColumnStore.prototype.eachRow = function (rowAction) { this.filterBits.each(rowAction); };
             FilteredColumnStore.prototype.filter = function (fieldNameOrFilter, value) {

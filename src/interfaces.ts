@@ -75,6 +75,9 @@ module ozone {
 
         /** The number of elements in the DataStore. */
         size() : number;
+
+        /** Add all the values of a numerical field.  If the field does not exist or isn't numerical, returns 0. */
+        sum(field : string | Field<number>) : number;
     }
 
 
