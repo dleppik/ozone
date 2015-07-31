@@ -525,7 +525,7 @@ var ozone;
                 return this.fieldArray;
             };
             ColumnStore.prototype.field = function (key) {
-                return this.fieldMap[key];
+                return this.fieldMap.hasOwnProperty(key) ? this.fieldMap[key] : null;
             };
             ColumnStore.prototype.filter = function (fieldNameOrFilter, value) {
                 return columnStore.filterColumnStore(this, this, columnStore.createFilter(this, fieldNameOrFilter, value));
@@ -1895,17 +1895,50 @@ var ozone;
                 for (var index in reader.columnNames) {
                     result[reader.columnNames[index]] = { typeOfValue: "string" };
                 }
-                reader.onEnd();
+                reader.onEnd(); // Reset, so we can reuse it for reading data rows from dataArray
                 return result;
             })();
             return build(fieldInfo, dataArray, reader);
         }
         rowStore.buildFromCsv = buildFromCsv;
+        function buildFromStore(source, params) {
+            if (params === void 0) { params = {}; }
+            var sourceFields = source.fields();
+            // Create all rows without regard to the type of field.  The JsonRowField classes are forgiving, so we can
+            // build the rows after the fact
+            var fieldsWithMultipleValues = {};
+            var rows = [];
+            source.eachRow(function (rowToken) {
+                var newRow = {};
+                sourceFields.forEach(function (field) {
+                    var values = field.values(rowToken);
+                    if (values.length === 1) {
+                        newRow[field.identifier] = values[0];
+                    }
+                    else if (values.length > 1) {
+                        newRow[field.identifier] = values;
+                        if (!fieldsWithMultipleValues.hasOwnProperty(field.identifier)) {
+                            fieldsWithMultipleValues[field.identifier] = true;
+                        }
+                    }
+                });
+                rows.push(newRow);
+            });
+            var fields = sourceFields.map(function (oldField) {
+                var fProto = (fieldsWithMultipleValues.hasOwnProperty(oldField.identifier)) ? rowStore.JsonRowField : rowStore.UnaryJsonRowField;
+                return new fProto(oldField.identifier, oldField.displayName, oldField.typeOfValue, oldField.typeConstructor, oldField.range(), oldField.distinctValueEstimate());
+            });
+            if (params.hasOwnProperty('sortCompareFunction')) {
+                rows.sort(params.sortCompareFunction);
+            }
+            return new rowStore.RowStore(fields, rows, null);
+        }
+        rowStore.buildFromStore = buildFromStore;
         /**
          * Build a RowStore.
-         * @param fieldInfo  Descriptors for each Field, converted to FieldDescriptors via FieldDescriptor.build().
-         * @param data       Data, either native (JsonField) format, or converted via a rowTransformer.
-         * @param rowTransformer
+         * @param fieldInfo       Descriptors for each Field, converted to FieldDescriptors via FieldDescriptor.build().
+         * @param data            Data, either native (JsonField) format, or converted via a rowTransformer.
+         * @param rowTransformer  Reducer, where onItem converts to a map from field IDs to values.
          */
         function build(fieldInfo, data, rowTransformer) {
             if (rowTransformer === void 0) { rowTransformer = null; }
@@ -1999,7 +2032,13 @@ var ozone;
 (function (ozone) {
     var rowStore;
     (function (rowStore) {
-        /** Converts CSV into simple JavaScript objects for use by RowStore.  The first row must provide column names. */
+        /**
+         * Converts CSV into simple JavaScript objects for use by RowStore.  The first row must provide column names.
+         * The RowStore's data is the CSV as an array (each line is an element of the array, including the header row and
+         * blank lines).  Thus, the line number corresponds is the array index plus one.  This also means that some lines
+         * don't map to rows in a RowStore.
+         *
+         */
         var CsvReader = (function () {
             function CsvReader(parameters) {
                 if (parameters === void 0) { parameters = {}; }
@@ -2022,6 +2061,10 @@ var ozone;
             CsvReader.prototype.onEnd = function () {
                 this.reset();
             };
+            /**
+             * Takes the next row in the CSV array and returns an object with column names mapping to column values.
+             * Returns null if the row needs to be skipped, for example if it's the header row or a blank line.
+             */
             CsvReader.prototype.onItem = function (row) {
                 this.rowNumber++;
                 if (this.ignoreFirstRow && this.rowNumber === 1) {
@@ -2134,8 +2177,8 @@ var ozone;
             RowStore.prototype.fields = function () {
                 return this.fieldArray;
             };
-            RowStore.prototype.field = function (name) {
-                return this.fieldMap[name];
+            RowStore.prototype.field = function (key) {
+                return this.fieldMap.hasOwnProperty(key) ? this.fieldMap[key] : null;
             };
             RowStore.prototype.eachRow = function (rowAction) {
                 for (var i = 0; i < this.rowData.length; i++) {
@@ -2145,7 +2188,9 @@ var ozone;
                         rowAction(row);
                     }
                 }
-                this.rowTransformer.onEnd();
+                if (this.rowTransformer) {
+                    this.rowTransformer.onEnd();
+                }
             };
             /** Replace an existing field with this one.  If the old field isn't found, the new one is added at the end. */
             RowStore.prototype.withField = function (newField) {
@@ -2158,6 +2203,21 @@ var ozone;
                 }
                 newFieldArray.concat(newField);
                 return new RowStore(newFieldArray, this.rowData, this.rowTransformer);
+            };
+            /** Primarily for unit testing; returns the rows in RowStore-native format. */
+            RowStore.prototype.toArray = function () {
+                var _this = this;
+                var result = [];
+                this.eachRow(function (oldRow) {
+                    var newRow = {};
+                    _this.fields().forEach(function (field) {
+                        newRow[field.identifier] = (field instanceof UnaryJsonRowField)
+                            ? field.value(oldRow)
+                            : field.values(oldRow);
+                    });
+                    result.push(newRow);
+                });
+                return result;
             };
             return RowStore;
         })();
@@ -2191,9 +2251,20 @@ var ozone;
                 }
                 return false;
             };
+            /**
+             * Returns an array containing the values in this row.  The rowToken is the row as key/value pairs.
+             * For this type of field, the format is forgiving: the entry
+             * may be missing, it may be a single value, or it may be an array of values.
+             */
             JsonRowField.prototype.values = function (rowToken) {
+                if (!rowToken.hasOwnProperty(this.identifier)) {
+                    return [];
+                }
                 var result = rowToken[this.identifier];
-                return (result == null) ? [] : result;
+                if (result == null) {
+                    return [];
+                }
+                return (Array.isArray(result)) ? result.concat() : [result];
             };
             return JsonRowField;
         })();
@@ -2229,8 +2300,9 @@ var ozone;
                 var v = this.value(rowToken);
                 return (v == null) ? [] : [v];
             };
+            /** The rowToken is the row as key/value pairs.  Returns null if the column ID is missing. */
             UnaryJsonRowField.prototype.value = function (rowToken) {
-                return rowToken[this.identifier];
+                return (rowToken.hasOwnProperty(this.identifier)) ? rowToken[this.identifier] : null;
             };
             return UnaryJsonRowField;
         })();
@@ -2487,6 +2559,237 @@ var ozone;
         serialization.ParsedType = ParsedType;
     })(serialization = ozone.serialization || (ozone.serialization = {}));
 })(ozone || (ozone = {}));
+/**
+ * Copyright 2015 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
+ */
+/// <reference path="../_all.ts" />
+/**
+ * Data transformers:  modify a DataStore and produce a new DataStore that is independent of its source.
+ * Transformers generally produce RowStores, and may produce a UnaryField when the original allowed multiple values.
+ */
+var ozone;
+(function (ozone) {
+    var transform;
+    (function (transform) {
+        /**
+         * Return a new DataStore with columns sorted.
+         *
+         * When a row has multiple values for a field, this currently sorts in the order presented by the DataStore.
+         * However, Ozone DataStores don't generally preserve or care about the order of values.  But if they present
+         * the data out of the original order, it is in some deterministic order.
+         *
+         * In other words:  if two cells with multiple values are compared, each value is compared in array order.  Thus,
+         * [1, 10, 2] does not compare as equal with [1, 2, 10].  However, if you had consistent order when you first
+         * imported the data, you should have consistent (if different) order even if the data has been converted from a
+         * RowStore into a ColumnStore and back a few times.
+         *
+         * See Field.values() for more discussion.
+         */
+        function sort(dataStoreIn, sortColumns) {
+            var sortFunctions = sortColumns.map(function (column) {
+                var field = (typeof column === 'string') ? column : column.field;
+                return { field: field, compare: compareFunction(dataStoreIn, column) };
+            });
+            var sortFunc = compareBySortOptionsFunction(dataStoreIn, sortFunctions);
+            return ozone.rowStore.buildFromStore(dataStoreIn, { sortCompareFunction: sortFunc });
+        }
+        transform.sort = sort;
+        /**
+         * Remove redundant rows and keep the original number of rows in a recordCountField; the resulting DataStore is
+         * sorted on all columns.
+         *
+         * @param dataStoreIn  the initial data source
+         *
+         * @param sizeFieldId  the name of the field in the output DataStore that holds the number of aggregate records.
+         *                     If it exists in dataStoreIn, it will be treated as an existing size field: it must be a
+         *                     UnaryField<number>, and merged records will use the sum of the existing values.
+         *
+         * @param sortColumns  specifies the sort order for the columns.  Not all columns must be specified; the remaining
+         *                     columns will be sorted in the order listed in dataStoreIn.  If "false", no sort will be
+         *                     attempted and the dataStore must already be a RowStore sorted on every column.
+         */
+        function aggregate(dataStoreIn, sizeFieldId, sortColumns) {
+            if (sizeFieldId === void 0) { sizeFieldId = "Records"; }
+            if (sortColumns === void 0) { sortColumns = []; }
+            var sortedStore;
+            if (sortColumns === false) {
+                sortedStore = dataStoreIn;
+            }
+            else {
+                var sortOptions = [];
+                var usedColumns = {};
+                sortColumns.forEach(function (item) {
+                    var name = (typeof (item) === 'string') ? item : item.field;
+                    if (name !== sizeFieldId) {
+                        sortOptions.push({ field: name, compare: compareFunction(dataStoreIn, item) });
+                        usedColumns[name] = true;
+                    }
+                });
+                dataStoreIn.fields().forEach(function (field) {
+                    if (field.identifier !== sizeFieldId && !usedColumns.hasOwnProperty(field.identifier)) {
+                        sortOptions.push({ field: field.identifier, compare: compareFunction(dataStoreIn, field.identifier) });
+                    }
+                });
+                sortedStore = sort(dataStoreIn, sortOptions);
+            }
+            if (!(sortedStore instanceof ozone.rowStore.RowStore)) {
+                throw new Error("Can only aggregate a sorted RowStore");
+            }
+            var oldStoreSizeColumn = sortedStore.field(sizeFieldId);
+            var rows = [];
+            var minSize = Number.POSITIVE_INFINITY;
+            var maxSize = 0;
+            function addRow(row) {
+                var size = row[sizeFieldId];
+                if (size < minSize) {
+                    minSize = size;
+                }
+                if (size > maxSize) {
+                    maxSize = size;
+                }
+                rows.push(row);
+            }
+            var fieldsToCopy = [];
+            sortedStore.fields().forEach(function (f) {
+                if (f.identifier !== sizeFieldId) {
+                    fieldsToCopy.push(f);
+                }
+            });
+            var previousRowData = null;
+            sortedStore.eachRow(function (row) {
+                var countInRow = (oldStoreSizeColumn) ? oldStoreSizeColumn.value(row) : 1;
+                var rowIsSame = (previousRowData === null) ? false : rowMatchesData(row, previousRowData, fieldsToCopy);
+                if (rowIsSame) {
+                    previousRowData[sizeFieldId] += countInRow;
+                }
+                else {
+                    if (previousRowData !== null) {
+                        addRow(previousRowData);
+                    }
+                    previousRowData = copyRow(row, fieldsToCopy);
+                    previousRowData[sizeFieldId] = countInRow;
+                }
+            });
+            if (previousRowData) {
+                addRow(previousRowData);
+            }
+            var newFields = sortedStore.fields().map(function (oldField) {
+                if (oldField.identifier === sizeFieldId) {
+                    return new ozone.rowStore.UnaryJsonRowField(oldField.identifier, oldField.displayName, 'number', null, new ozone.Range(minSize, maxSize, true), Number.POSITIVE_INFINITY);
+                }
+                else {
+                    var fProto = (oldField instanceof ozone.rowStore.UnaryJsonRowField)
+                        ? ozone.rowStore.UnaryJsonRowField
+                        : ozone.rowStore.JsonRowField;
+                    return new fProto(oldField.identifier, oldField.displayName, oldField.typeOfValue, oldField.typeConstructor, oldField.range(), oldField.distinctValueEstimate());
+                }
+            });
+            if (!oldStoreSizeColumn) {
+                newFields.push(new ozone.rowStore.UnaryJsonRowField(sizeFieldId, sizeFieldId, 'number', null, new ozone.Range(minSize, maxSize, true), Number.POSITIVE_INFINITY));
+            }
+            return new ozone.rowStore.RowStore(newFields, rows, null);
+        }
+        transform.aggregate = aggregate;
+        function rowMatchesData(rowToken, rowData, fieldsToCompare) {
+            for (var i = 0; i < fieldsToCompare.length; i++) {
+                var field = fieldsToCompare[i];
+                var fromToken = field.values(rowToken);
+                var fromData = [];
+                if (rowData.hasOwnProperty(field.identifier)) {
+                    var v = rowData[field.identifier];
+                    if (v !== null) {
+                        fromData = (Array.isArray(v)) ? v : [v];
+                    }
+                }
+                if (fromToken.length !== fromData.length) {
+                    return false;
+                }
+                for (var j = 0; j < fromToken.length; j++) {
+                    if (fromToken[j] !== fromData[j]) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+        function copyRow(row, fieldsToCopy) {
+            var result = {};
+            fieldsToCopy.forEach(function (field) {
+                var values = field.values(row);
+                if (values.length === 1) {
+                    result[field.identifier] = values[0];
+                }
+                else if (values.length > 1) {
+                    result[field.identifier] = values;
+                }
+            });
+            return result;
+        }
+        function compareBySortOptionsFunction(dataStore, sortOptions) {
+            var fields = sortOptions.map(function (o) { return dataStore.field(o.field); });
+            return function (rowA, rowB) {
+                for (var i = 0; i < sortOptions.length; i++) {
+                    var option = sortOptions[i];
+                    var field = fields[i];
+                    var valuesA = field.values(rowA);
+                    var valuesB = field.values(rowB);
+                    var commonValuesLength = Math.min(valuesA.length, valuesB.length);
+                    for (var j = 0; j < commonValuesLength; j++) {
+                        var valueA = valuesA[j];
+                        var valueB = valuesB[j];
+                        var compareResult = option.compare(valueA, valueB);
+                        if (compareResult !== 0) {
+                            return compareResult;
+                        }
+                    }
+                    if (valuesA.length < valuesB.length) {
+                        return -1;
+                    }
+                    else if (valuesA.length > valuesB.length) {
+                        return 1;
+                    }
+                }
+                return 0;
+            };
+        }
+        function compareFunction(dataStoreIn, sortColumn) {
+            if (typeof (sortColumn) === 'string') {
+                var field = dataStoreIn.field(sortColumn);
+                if (field) {
+                    if (field.typeOfValue === 'number') {
+                        return numberCompare;
+                    }
+                    if (field.typeOfValue === 'string') {
+                        return stringCompareFunction();
+                    }
+                }
+                else {
+                    return genericCompare;
+                }
+            }
+            else {
+                return sortColumn.compare;
+            }
+        }
+        function stringCompareFunction() {
+            if (Intl && Intl.Collator) {
+                return new Intl.Collator().compare;
+            }
+            return function (a, b) { return a.localeCompare(b); };
+        }
+        /** For edge cases, just avoid equality, especially if we accidentally get the same thing twice. */
+        var genericCompare = function (a, b) {
+            return (typeof (a) + a).localeCompare(typeof (b) + b);
+        };
+        var numberCompare = function (a, b) {
+            if (a < b)
+                return -1;
+            if (a > b)
+                return 1;
+            return 0;
+        };
+    })(transform = ozone.transform || (ozone.transform = {}));
+})(ozone || (ozone = {}));
 /// <reference path='interfaces.ts' />
 /// <reference path='util.ts' />
 /// <reference path='Field.ts' />
@@ -2507,6 +2810,7 @@ var ozone;
 /// <reference path='rowStore/RowStore.ts' />
 /// <reference path='serialization/jsonInterfaces.ts' />
 /// <reference path='serialization/functions.ts' />
+/// <reference path='transform/transform.ts' />
 /**
  * Copyright 2013 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
  */

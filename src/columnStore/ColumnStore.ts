@@ -54,7 +54,7 @@ module ozone.columnStore {
         }
 
         field(key:string) : RandomAccessField<any> {
-            return this.fieldMap[key];
+            return this.fieldMap.hasOwnProperty(key) ? this.fieldMap[key] : null;
         }
 
         filter(fieldNameOrFilter : any, value? : any) : RandomAccessStore {

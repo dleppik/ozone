@@ -15,19 +15,70 @@ module ozone.rowStore {
             for (var index in reader.columnNames) {
                 result[reader.columnNames[index]] = {typeOfValue: "string"};
             }
-            reader.onEnd();
+            reader.onEnd();  // Reset, so we can reuse it for reading data rows from dataArray
             return result;
         })();
 
         return build(fieldInfo, dataArray, reader);
     }
 
-        /**
-         * Build a RowStore.
-         * @param fieldInfo  Descriptors for each Field, converted to FieldDescriptors via FieldDescriptor.build().
-         * @param data       Data, either native (JsonField) format, or converted via a rowTransformer.
-         * @param rowTransformer
-         */
+    export function buildFromStore(source : DataStore, params : any = {}) {
+        var sourceFields = source.fields();
+
+
+        // Create all rows without regard to the type of field.  The JsonRowField classes are forgiving, so we can
+        // build the rows after the fact
+        var fieldsWithMultipleValues = {};
+        var rows = [];
+        source.eachRow(function(rowToken) {
+            var newRow = {};
+            sourceFields.forEach(function(field) {
+                var values = field.values(rowToken);
+                if (values.length === 1) {
+                    newRow[field.identifier] = values[0];
+                }
+                else if (values.length > 1) {
+                    newRow[field.identifier] = values;
+                    if (!fieldsWithMultipleValues.hasOwnProperty(field.identifier)) {
+                        fieldsWithMultipleValues[field.identifier] = true;
+                    }
+                }
+            });
+            rows.push(newRow);
+        });
+
+        var fields = sourceFields.map(function(oldField) {
+            var fProto : any = (fieldsWithMultipleValues.hasOwnProperty(oldField.identifier)) ? JsonRowField : UnaryJsonRowField;
+            return new fProto(
+                oldField.identifier,
+                oldField.displayName,
+                oldField.typeOfValue,
+                oldField.typeConstructor,
+                oldField.range(),
+                oldField.distinctValueEstimate()
+            );
+        });
+
+        if (params.hasOwnProperty('sortCompareFunction')) {
+            rows.sort(params.sortCompareFunction);
+
+            //if (Array.prototype.hasOwnProperty('timsort')) { // https://github.com/Scipion/interesting-javascript-codes/
+            //    (<any>rows).timsort(params.sortCompareFunction);
+            //}
+            //else {
+            //    rows.sort(params.sortCompareFunction);
+            //}
+        }
+
+        return new RowStore(fields, rows, null);
+    }
+
+    /**
+     * Build a RowStore.
+     * @param fieldInfo       Descriptors for each Field, converted to FieldDescriptors via FieldDescriptor.build().
+     * @param data            Data, either native (JsonField) format, or converted via a rowTransformer.
+     * @param rowTransformer  Reducer, where onItem converts to a map from field IDs to values.
+     */
     export function build(
         fieldInfo : {[key : string] : any},
         data : any[],

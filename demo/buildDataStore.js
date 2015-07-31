@@ -1,5 +1,6 @@
 /**
- * Convert the Olympics CSV file to an Ozone JSON file.
+ * Convert the Olympics CSV file to Ozone JSON files.  Note that each JSON file is a separate database showing
+ * off different features.
  *
  * Usage (must be run from this directory):
  *
@@ -50,3 +51,35 @@ var noAthleteBuildParams = {
 var noAthleteStore = ozone.columnStore.buildFromStore(rowStore, noAthleteBuildParams);
 var noAthleteJson = JSON.stringify(ozone.serialization.writeStore(noAthleteStore));
 fs.writeFileSync("SummerOlympicMedals.json", noAthleteJson, {encoding: 'utf-8'});
+
+// Without the athlete names, we don't need a row for every basketball player on the same team who got the same medal.
+// So create an aggregate DataStore that just keeps a count of athletes.  This transformation creates a RowStore,
+// which is ideal for transformations, but as always, we want a ColumnStore for actual querying.
+
+var athleteCountRowStore = ozone.transform.aggregate(noAthleteStore);
+var athleteCountColumnStore = ozone.columnStore.buildFromStore(athleteCountRowStore);
+var athleteCountJson = JSON.stringify(ozone.serialization.writeStore(athleteCountColumnStore));
+
+fs.writeFileSync("SummerOlympicMedalsAggregatedByAthlete.json", athleteCountJson, {encoding: 'utf-8'});
+
+// We can continue to shrink the data by removing columns and aggregating.  If we don't care when the event took place,
+// we can remove the year and city.
+
+var noAthleteOrYearBuildParams = {
+    buildAllFields: false,  // Only build the fields listed below
+    fields: {
+               Sport: {                                       },
+          Discipline: {                                       },
+                 NOC: { displayName: "Country"                },
+              Gender: {                                       },
+        Event_gender: { displayName: "Gender of Event"        },
+               Medal: { values : ["Bronze", "Silver", "Gold"] }
+    }
+};
+
+var unaggregatedNoAthleteOrYearStore = ozone.columnStore.buildFromStore(athleteCountColumnStore, noAthleteBuildParams);
+var noAthleteOrYearStore = ozone.columnStore.buildFromStore(
+    ozone.transform.aggregate(unaggregatedNoAthleteOrYearStore));
+var noAthleteOrYearJson = JSON.stringify(ozone.serialization.writeStore(noAthleteOrYearStore));
+fs.writeFileSync("SummerOlympicMedalsAggregatedByAthleteAndYear.json", noAthleteOrYearJson, {encoding: 'utf-8'});
+

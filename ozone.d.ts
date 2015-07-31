@@ -9,7 +9,7 @@ declare module ozone {
     interface DataStore {
         /** Returns the list of fields in their preferred order. */
         fields(): Field<any>[];
-        /** Returns the field matching the key. */
+        /** Returns the field matching the key, or null if the DataStore doesn't have that field. */
         field(key: string): Field<any>;
         /**
          * Iterate over the rows of the DataStore.  Use in conjunction with Field.values() and UnaryField.value().
@@ -729,11 +729,12 @@ declare module ozone.intSet {
 declare module ozone.rowStore {
     /** Build from a CSV file, with all resulting Fields treated as strings. */
     function buildFromCsv(csv: string): RowStore;
+    function buildFromStore(source: DataStore, params?: any): RowStore;
     /**
      * Build a RowStore.
-     * @param fieldInfo  Descriptors for each Field, converted to FieldDescriptors via FieldDescriptor.build().
-     * @param data       Data, either native (JsonField) format, or converted via a rowTransformer.
-     * @param rowTransformer
+     * @param fieldInfo       Descriptors for each Field, converted to FieldDescriptors via FieldDescriptor.build().
+     * @param data            Data, either native (JsonField) format, or converted via a rowTransformer.
+     * @param rowTransformer  Reducer, where onItem converts to a map from field IDs to values.
      */
     function build(fieldInfo: {
         [key: string]: any;
@@ -743,7 +744,13 @@ declare module ozone.rowStore {
  * Copyright 2013 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
  */
 declare module ozone.rowStore {
-    /** Converts CSV into simple JavaScript objects for use by RowStore.  The first row must provide column names. */
+    /**
+     * Converts CSV into simple JavaScript objects for use by RowStore.  The first row must provide column names.
+     * The RowStore's data is the CSV as an array (each line is an element of the array, including the header row and
+     * blank lines).  Thus, the line number corresponds is the array index plus one.  This also means that some lines
+     * don't map to rows in a RowStore.
+     *
+     */
     class CsvReader implements Reducer<any, void> {
         delimiter: string;
         quote: string;
@@ -754,6 +761,10 @@ declare module ozone.rowStore {
         private reset();
         /** Resets, including forgetting the column names. */
         onEnd(): void;
+        /**
+         * Takes the next row in the CSV array and returns an object with column names mapping to column values.
+         * Returns null if the row needs to be skipped, for example if it's the header row or a blank line.
+         */
         onItem(row: any): any;
         private lineToArray(row);
     }
@@ -780,10 +791,12 @@ declare module ozone.rowStore {
         private fieldMap;
         constructor(fieldArray: Field<any>[], rowData: any[], rowTransformer: Reducer<any, any>);
         fields(): Field<any>[];
-        field(name: string): Field<any>;
+        field(key: string): Field<any>;
         eachRow(rowAction: (rowToken: any) => void): void;
         /** Replace an existing field with this one.  If the old field isn't found, the new one is added at the end. */
         withField(newField: Field<any>): RowStore;
+        /** Primarily for unit testing; returns the rows in RowStore-native format. */
+        toArray(): any[];
     }
     /** The default non-unary Field type for RowStores. */
     class JsonRowField<T> implements Field<T> {
@@ -798,6 +811,11 @@ declare module ozone.rowStore {
         range(): Range;
         distinctValueEstimate(): number;
         canHold(otherField: Field<T>): boolean;
+        /**
+         * Returns an array containing the values in this row.  The rowToken is the row as key/value pairs.
+         * For this type of field, the format is forgiving: the entry
+         * may be missing, it may be a single value, or it may be an array of values.
+         */
         values(rowToken: any): T[];
     }
     class UnaryJsonRowField<T> implements UnaryField<T> {
@@ -812,6 +830,7 @@ declare module ozone.rowStore {
         distinctValueEstimate(): number;
         canHold(otherField: Field<T>): boolean;
         values(rowToken: any): T[];
+        /** The rowToken is the row as key/value pairs.  Returns null if the column ID is missing. */
         value(rowToken: any): T;
     }
     class RangeCalculator extends AbstractReducer<any, Range> {
@@ -928,6 +947,51 @@ declare module ozone.serialization {
     }
 }
 /**
+ * Copyright 2015 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
+ */
+/**
+ * Data transformers:  modify a DataStore and produce a new DataStore that is independent of its source.
+ * Transformers generally produce RowStores, and may produce a UnaryField when the original allowed multiple values.
+ */
+declare module ozone.transform {
+    interface SortOptions {
+        /** The identifier for the field */
+        field: string;
+        /** Comparison function for each value in a row */
+        compare: (a, b) => number;
+    }
+    /**
+     * Return a new DataStore with columns sorted.
+     *
+     * When a row has multiple values for a field, this currently sorts in the order presented by the DataStore.
+     * However, Ozone DataStores don't generally preserve or care about the order of values.  But if they present
+     * the data out of the original order, it is in some deterministic order.
+     *
+     * In other words:  if two cells with multiple values are compared, each value is compared in array order.  Thus,
+     * [1, 10, 2] does not compare as equal with [1, 2, 10].  However, if you had consistent order when you first
+     * imported the data, you should have consistent (if different) order even if the data has been converted from a
+     * RowStore into a ColumnStore and back a few times.
+     *
+     * See Field.values() for more discussion.
+     */
+    function sort(dataStoreIn: DataStore, sortColumns: Array<string | SortOptions>): rowStore.RowStore;
+    /**
+     * Remove redundant rows and keep the original number of rows in a recordCountField; the resulting DataStore is
+     * sorted on all columns.
+     *
+     * @param dataStoreIn  the initial data source
+     *
+     * @param sizeFieldId  the name of the field in the output DataStore that holds the number of aggregate records.
+     *                     If it exists in dataStoreIn, it will be treated as an existing size field: it must be a
+     *                     UnaryField<number>, and merged records will use the sum of the existing values.
+     *
+     * @param sortColumns  specifies the sort order for the columns.  Not all columns must be specified; the remaining
+     *                     columns will be sorted in the order listed in dataStoreIn.  If "false", no sort will be
+     *                     attempted and the dataStore must already be a RowStore sorted on every column.
+     */
+    function aggregate(dataStoreIn: DataStore, sizeFieldId?: string, sortColumns?: boolean | Array<string | SortOptions>): rowStore.RowStore;
+}
+/**
  * Copyright 2013 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
  */
 declare module ozone {
@@ -942,6 +1006,14 @@ declare module ozone {
          *
          * Filtered stores may reuse fields from the unfiltered view, resulting in erroneous results if called outside
          * of DataStore.eachRow().
+         *
+         * The values should be treated as a set, but this is not required.  Fields may sort values and ignore
+         * duplicate values--but they are not required to.  Thus, one type of Field might return [1, 3, 3, 2] while
+         * another type of field might present the same data as [1, 2, 3].
+         *
+         * If the order of the original import is not preserved, they should at least be in a deterministic order.
+         * Thus, if one row returns [1, 2, 3], but the original data import was [1, 3, 2], every row with the same
+         * values will return [1, 2, 3].
          */
         values(rowToken: any): T[];
     }
@@ -956,7 +1028,10 @@ declare module ozone {
          */
         rowHasValue(rowToken: any, value: any): boolean;
     }
-    /** A Field where values(row) returns at most one value. */
+    /**
+     * A Field where values(row) returns at most one value. This corresponds to a FieldDescriptor with
+     * multipleValuesPerRow=false.
+     */
     interface UnaryField<T> extends Field<T> {
         /**
          * Returns the single value of values(rowToken), or null.  This is called within DataStore.eachRow(), and uses

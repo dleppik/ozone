@@ -32,8 +32,8 @@ module ozone.rowStore {
             return this.fieldArray;
         }
 
-        public field(name : string) : Field<any> {
-            return this.fieldMap[name];
+        public field(key : string) : Field<any> {
+            return this.fieldMap.hasOwnProperty(key) ? this.fieldMap[key] : null;
         }
 
         public eachRow(rowAction : (rowToken : any) => void) {
@@ -44,7 +44,9 @@ module ozone.rowStore {
                     rowAction(row);
                 }
             }
-            this.rowTransformer.onEnd();
+            if (this.rowTransformer) {
+                this.rowTransformer.onEnd();
+            }
         }
 
         /** Replace an existing field with this one.  If the old field isn't found, the new one is added at the end. */
@@ -58,6 +60,21 @@ module ozone.rowStore {
             }
             newFieldArray.concat(newField);
             return new RowStore(newFieldArray, this.rowData, this.rowTransformer);
+        }
+
+        /** Primarily for unit testing; returns the rows in RowStore-native format. */
+        public toArray() : any[] {
+            var result = [];
+            this.eachRow((oldRow) => {
+                var newRow : any = {};
+                this.fields().forEach( (field) => {
+                    newRow[field.identifier] = (field instanceof UnaryJsonRowField)
+                        ? field.value(oldRow)
+                        : field.values(oldRow);
+                });
+                result.push(newRow);
+            });
+            return result;
         }
     }
 
@@ -92,9 +109,20 @@ module ozone.rowStore {
             return false;
         }
 
+        /**
+         * Returns an array containing the values in this row.  The rowToken is the row as key/value pairs.
+         * For this type of field, the format is forgiving: the entry
+         * may be missing, it may be a single value, or it may be an array of values.
+         */
         public values(rowToken : any) : T[] {
-            var result = <T[]> rowToken[this.identifier];
-            return (result==null) ? [] : result;
+            if ( ! rowToken.hasOwnProperty(this.identifier)) {
+                return [];
+            }
+            var result = rowToken[this.identifier];
+            if (result == null) {
+                return [];
+            }
+            return (Array.isArray(result)) ? result.concat() : [result];
         }
     }
 
@@ -131,8 +159,9 @@ module ozone.rowStore {
             return (v==null) ? [] : [v];
         }
 
+        /** The rowToken is the row as key/value pairs.  Returns null if the column ID is missing. */
         public value(rowToken : any) : T {
-            return rowToken[this.identifier];
+            return (rowToken.hasOwnProperty(this.identifier)) ? rowToken[this.identifier] : null;
         }
     }
 

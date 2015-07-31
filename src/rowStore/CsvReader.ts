@@ -5,7 +5,13 @@
 
 module ozone.rowStore {
 
-    /** Converts CSV into simple JavaScript objects for use by RowStore.  The first row must provide column names. */
+    /**
+     * Converts CSV into simple JavaScript objects for use by RowStore.  The first row must provide column names.
+     * The RowStore's data is the CSV as an array (each line is an element of the array, including the header row and
+     * blank lines).  Thus, the line number corresponds is the array index plus one.  This also means that some lines
+     * don't map to rows in a RowStore.
+     *
+     */
     export class CsvReader implements Reducer<any,void> {
 
         public delimiter : string = ',';
@@ -33,7 +39,10 @@ module ozone.rowStore {
             this.reset();
         }
 
-
+        /**
+         * Takes the next row in the CSV array and returns an object with column names mapping to column values.
+         * Returns null if the row needs to be skipped, for example if it's the header row or a blank line.
+         */
         public onItem(row : any) : any {
             this.rowNumber++;
             if (this.ignoreFirstRow  && this.rowNumber === 1) {

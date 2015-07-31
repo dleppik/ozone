@@ -23,3 +23,5 @@
 /// <reference path='serialization/jsonInterfaces.ts' />
 /// <reference path='serialization/functions.ts' />
 
+/// <reference path='transform/transform.ts' />
+

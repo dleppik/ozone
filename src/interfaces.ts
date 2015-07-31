@@ -17,7 +17,7 @@ module ozone {
         /** Returns the list of fields in their preferred order. */
         fields() : Field<any>[];
 
-        /** Returns the field matching the key. */
+        /** Returns the field matching the key, or null if the DataStore doesn't have that field. */
         field(key : string) : Field<any>;
 
         /**

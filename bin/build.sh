@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 #
-# Unix build script for this script.
+# Unix build script for ozone.js, ozone.min.js, etc.
 #
 
 cd "$( dirname "${BASH_SOURCE[0]}" )"

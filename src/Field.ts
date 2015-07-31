@@ -18,6 +18,14 @@ module ozone {
          *
          * Filtered stores may reuse fields from the unfiltered view, resulting in erroneous results if called outside
          * of DataStore.eachRow().
+         *
+         * The values should be treated as a set, but this is not required.  Fields may sort values and ignore
+         * duplicate values--but they are not required to.  Thus, one type of Field might return [1, 3, 3, 2] while
+         * another type of field might present the same data as [1, 2, 3].
+         *
+         * If the order of the original import is not preserved, they should at least be in a deterministic order.
+         * Thus, if one row returns [1, 2, 3], but the original data import was [1, 3, 2], every row with the same
+         * values will return [1, 2, 3].
          */
         values(rowToken : any) : T[];
     }
@@ -35,7 +43,10 @@ module ozone {
         rowHasValue(rowToken : any, value : any) : boolean;
     }
 
-    /** A Field where values(row) returns at most one value. */
+    /**
+     * A Field where values(row) returns at most one value. This corresponds to a FieldDescriptor with
+     * multipleValuesPerRow=false.
+     */
     export interface UnaryField<T> extends Field<T> {
         /**
          * Returns the single value of values(rowToken), or null.  This is called within DataStore.eachRow(), and uses
