@@ -10,8 +10,6 @@ var fs = require('fs');
 //var ozone = require('ozone-db');        // Usage when installed from npm
 var ozone = require('../ozone.js');  // Usage when building from source
 
-
-
 var filename = "../test/SummerOlympicMedallists1896to2008.csv";
 var rowStore = ozone.rowStore.buildFromCsv(fs.readFileSync(filename, {encoding: 'utf-8'}));
 

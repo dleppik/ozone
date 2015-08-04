@@ -61,30 +61,28 @@ module ozone.rowStore {
 
         if (params.hasOwnProperty('sortCompareFunction')) {
             rows.sort(params.sortCompareFunction);
-
-            //if (Array.prototype.hasOwnProperty('timsort')) { // https://github.com/Scipion/interesting-javascript-codes/
-            //    (<any>rows).timsort(params.sortCompareFunction);
-            //}
-            //else {
-            //    rows.sort(params.sortCompareFunction);
-            //}
         }
 
-        return new RowStore(fields, rows, null);
+        var sizeFieldId = source.sizeField() ? source.sizeField().identifier : null;
+
+        return new RowStore(fields, rows, null, sizeFieldId);
     }
 
     /**
      * Build a RowStore.
-     * @param fieldInfo       Descriptors for each Field, converted to FieldDescriptors via FieldDescriptor.build().
-     * @param data            Data, either native (JsonField) format, or converted via a rowTransformer.
-     * @param rowTransformer  Reducer, where onItem converts to a map from field IDs to values.
+     * @param fieldInfo          Descriptors for each Field, converted to FieldDescriptors via FieldDescriptor.build().
+     * @param data               Data, either native (JsonField) format, or converted via a rowTransformer.
+     * @param rowTransformer     Reducer, where onItem converts to a map from field IDs to values.
+     * @param recordCountFieldId The name of the field used to calculate size() in any RandomAccessDataStore constructed
+     *                           from this.
      */
     export function build(
         fieldInfo : {[key : string] : any},
         data : any[],
-            rowTransformer : Reducer<any,void> = null) : RowStore
-        {
-            var fieldDescriptors : FieldDescriptor[] = [];
+        rowTransformer : Reducer<any,void> = null,
+        recordCountFieldId : string = null)
+    : RowStore {
+            var fieldDescriptors = [];
             var fields : Field<any>[] = [];
             var toComputeRange : string[] = [];
             var toComputeDistinctValues : string[] = [];
@@ -109,7 +107,7 @@ module ozone.rowStore {
                 }
             }
 
-            var result = new RowStore(fields, data, rowTransformer);
+            var result = new RowStore(fields, data, rowTransformer, recordCountFieldId);
 
             if (toComputeDistinctValues.length > 0  || toComputeRange.length > 0) {
                 var rangeCalculators = {};

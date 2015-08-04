@@ -24,6 +24,14 @@ module ozone {
          * Iterate over the rows of the DataStore.  Use in conjunction with Field.values() and UnaryField.value().
          */
         eachRow(rowAction : (rowToken : any) => void);
+
+        /**
+         * Returns the field, if any, that lists the number of records each row represents.  This field has
+         * aggregationRule='sum'.
+         *
+         * @see ozone.transform.aggregate()
+         */
+        sizeField() : UnaryField<number>;
     }
 
 
@@ -73,8 +81,11 @@ module ozone {
         /** Returns partition(field.identifier). */
         partition(fieldDescription : FieldDescribing) : { [value: string]: RandomAccessStore; };
 
-        /** The number of elements in the DataStore. */
+        /** The number of elements in the DataStore, which may be greater than the number of rows if this is aggregated. */
         size() : number;
+
+        /** The number of rows in the DataStore. */
+        rowCount() : number;
 
         /** Add all the values of a numerical field.  If the field does not exist or isn't numerical, returns 0. */
         sum(field : string | Field<number>) : number;
@@ -110,6 +121,15 @@ module ozone {
          * Number.POSITIVE_INFINITY.
          */
         distinctValueEstimate() : number;
+
+        /**
+         *  If this is defined and not null, calling ozone.transform.aggregate() re-calculates the values of this field
+         *  when merging rows.
+         *
+         *  Currently the only legal non-null value is 'sum', in which merged rows are added together.  In the future
+         *  it might not be limited to string values.
+         */
+        aggregationRule? : string;
     }
 
     /**

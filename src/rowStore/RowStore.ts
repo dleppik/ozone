@@ -20,23 +20,41 @@ module ozone.rowStore {
          */
         private fieldMap : { [key: string]: Field<any>; } ;
 
-        constructor(private fieldArray : Field<any>[], private rowData : any[], private rowTransformer : Reducer<any,any>) {
+        constructor(private fieldArray : Field<any>[],
+                    private rowData : any[],
+                    private rowTransformer : Reducer<any,any>,
+                    private sizeFieldId : string)
+        {
             this.fieldMap = {};
             for (var i=0; i<fieldArray.length; i++) {
                 var field = fieldArray[i];
                 this.fieldMap[field.identifier] = field;
             }
+            if (sizeFieldId !== null) {
+                var rcField = this.fieldMap[sizeFieldId];
+                if (rcField===null) {
+                    throw new Error("No field named '"+sizeFieldId+"' for record count");
+                }
+                else if (rcField.typeOfValue !== 'number') {
+                    throw new Error(sizeFieldId+" can't be used as a record count, it isn't numerical");
+                }
+                else if (typeof rcField.value !== 'function') {
+                    throw new Error(sizeFieldId+" can't be used as a record count, it isn't unary");
+                }
+            }
         }
 
-        public fields() : Field<any>[] {
+        fields() : Field<any>[] {
             return this.fieldArray;
         }
 
-        public field(key : string) : Field<any> {
+        sizeField() : UnaryField<number> { return <UnaryField<number>> this.fieldMap[this.sizeFieldId]; }
+
+        field(key : string) : Field<any> {
             return this.fieldMap.hasOwnProperty(key) ? this.fieldMap[key] : null;
         }
 
-        public eachRow(rowAction : (rowToken : any) => void) {
+        eachRow(rowAction : (rowToken : any) => void) {
             for (var i=0; i<this.rowData.length; i++) {
                 var rawRow = this.rowData[i];
                 var row = (this.rowTransformer===null) ? rawRow : this.rowTransformer.onItem(rawRow);
@@ -50,16 +68,16 @@ module ozone.rowStore {
         }
 
         /** Replace an existing field with this one.  If the old field isn't found, the new one is added at the end. */
-        public withField(newField : Field<any>) : RowStore {
+        withField(newField : Field<any>) : RowStore {
             var newFieldArray : Field<any>[] = this.fieldArray.concat();
             for (var i=0; i<newFieldArray.length; i++) {
                 if (newFieldArray[i].identifier === newField.identifier) {
                     newFieldArray[i] = newField;
-                    return new RowStore(newFieldArray, this.rowData, this.rowTransformer);
+                    return new RowStore(newFieldArray, this.rowData, this.rowTransformer, this.sizeFieldId);
                 }
             }
             newFieldArray.concat(newField);
-            return new RowStore(newFieldArray, this.rowData, this.rowTransformer);
+            return new RowStore(newFieldArray, this.rowData, this.rowTransformer, this.sizeFieldId);
         }
 
         /** Primarily for unit testing; returns the rows in RowStore-native format. */

@@ -42,7 +42,7 @@ module ozone.transform {
     }
 
     export interface AggregateParams {
-        sizeFieldId? : string;
+        sizeField? : string;
         sortFields? : boolean | Array<string | SortOptions>;
         includeFields? : string[];
     }
@@ -55,7 +55,7 @@ module ozone.transform {
      *
      * @param options      May include the following:
      *
-     *        sizeFieldId  the name of the field in the output DataStore that holds the number of aggregate records.
+     *          sizeField  the name of the field in the output DataStore that holds the number of aggregate records.
      *                     If it exists in dataStoreIn, it will be treated as an existing size field: it must be a
      *                     UnaryField<number>, and merged records will use the sum of the existing values.
      *                     Default is "Records".
@@ -73,35 +73,9 @@ module ozone.transform {
         options : AggregateParams = {}
     ) : rowStore.RowStore {
 
-        var sizeFieldId = (options.sizeFieldId) ? options.sizeFieldId : "Records";
+        var sizeFieldId = (options.sizeField) ? options.sizeField : "Records";
 
-        var sortedStore : rowStore.RowStore;
-        if (options.sortFields  &&  options.sortFields === false) {
-            sortedStore = <rowStore.RowStore> dataStoreIn;
-        }
-        else {
-            var sortFields = <Array<string | SortOptions>> (options.sortFields) ? options.sortFields : [];
-            var sortOptions : Array<SortOptions> = [];
-            var usedColumns = {};
-            (<Array<string | SortOptions>>sortFields).forEach(function(item) {
-                var name : string = (typeof(item) === 'string') ? <string>item : (<SortOptions>item).field;
-                if (name !== sizeFieldId) {
-                    sortOptions.push({field : name, compare: compareFunction(dataStoreIn, item)});
-                    usedColumns[name] = true;
-                }
-            });
-
-            dataStoreIn.fields().forEach((field) => {
-                if (field.identifier !== sizeFieldId  &&  !usedColumns.hasOwnProperty(field.identifier)) {
-                    sortOptions.push({field : field.identifier, compare: compareFunction(dataStoreIn, field.identifier)});
-                }
-            });
-            sortedStore = sort(dataStoreIn, sortOptions);
-        }
-
-        if ( ! (sortedStore instanceof rowStore.RowStore) ) {
-            throw new Error("Can only aggregate a sorted RowStore");
-        }
+        var sortedStore = sortForAggregation(dataStoreIn, sizeFieldId, options);
 
         var oldStoreSizeColumn = <rowStore.UnaryJsonRowField<number>> sortedStore.field(sizeFieldId);
 
@@ -120,26 +94,7 @@ module ozone.transform {
             rows.push(row);
         }
 
-        var fieldsToCopy : Field<any>[] = [];
-        if (options.includeFields) {
-            options.includeFields.forEach( (fId) => {
-                if (fId !== sizeFieldId) {
-                    var f = sortedStore.field(fId);
-                    if (f===null) {
-                        throw new Error("Field '"+fId+"' does not exist");
-                    }
-                    fieldsToCopy.push(f);
-                }
-            });
-        }
-        else {
-            sortedStore.fields().forEach((f) => {
-                if (f.identifier !== sizeFieldId) {
-                    fieldsToCopy.push(f);
-                }
-            });
-        }
-
+        var fieldsToCopy = selectFieldsToCopy(sortedStore, sizeFieldId, options);
         var previousRowData : any = null;
         sortedStore.eachRow(function(row) {
             var countInRow : number = (oldStoreSizeColumn) ? oldStoreSizeColumn.value(row) : 1;
@@ -159,31 +114,31 @@ module ozone.transform {
             addRow(previousRowData);
         }
 
-        var newFields = sortedStore.fields().map((oldField) => {
-            if (oldField.identifier === sizeFieldId) {
-                return new ozone.rowStore.UnaryJsonRowField(
-                    oldField.identifier,
-                    oldField.displayName,
+        var newFields = fieldsToCopy.map((oldField) => {
+            var fProto : any = (oldField instanceof ozone.rowStore.UnaryJsonRowField)
+                ? ozone.rowStore.UnaryJsonRowField
+                : ozone.rowStore.JsonRowField;
+            return new fProto(
+                oldField.identifier,
+                oldField.displayName,
+                oldField.typeOfValue,
+                oldField.typeConstructor,
+                oldField.range(),
+                oldField.distinctValueEstimate());
+        });
+
+        if (oldStoreSizeColumn) {
+            newFields.push(
+                new ozone.rowStore.UnaryJsonRowField(
+                    oldStoreSizeColumn.identifier,
+                    oldStoreSizeColumn.displayName,
                     'number',
                     null,
                     new ozone.Range(minSize, maxSize, true),
-                    Number.POSITIVE_INFINITY);
-            }
-            else {
-                var fProto : any = (oldField instanceof ozone.rowStore.UnaryJsonRowField)
-                    ? ozone.rowStore.UnaryJsonRowField
-                    : ozone.rowStore.JsonRowField;
-                return new fProto(
-                    oldField.identifier,
-                    oldField.displayName,
-                    oldField.typeOfValue,
-                    oldField.typeConstructor,
-                    oldField.range(),
-                    oldField.distinctValueEstimate());
-            }
-        });
-
-        if ( ! oldStoreSizeColumn) {
+                    Number.POSITIVE_INFINITY)
+            );
+        }
+        else {
             newFields.push( new ozone.rowStore.UnaryJsonRowField(
                 sizeFieldId,
                 sizeFieldId,
@@ -193,7 +148,58 @@ module ozone.transform {
                 Number.POSITIVE_INFINITY));
         }
 
-        return new rowStore.RowStore(newFields, rows, null);
+        return new rowStore.RowStore(newFields, rows, null, sizeFieldId);
+    }
+
+    function sortForAggregation(dataStoreIn : DataStore, sizeFieldId : string, options:AggregateParams = {}) : rowStore.RowStore {
+        if (options.sortFields  &&  options.sortFields === false) {
+            if ( ! (dataStoreIn instanceof rowStore.RowStore) ) {
+                throw new Error("Can only aggregate a sorted RowStore");
+            }
+            return <rowStore.RowStore> dataStoreIn;
+        }
+        else {
+            var sortFields = <Array<string | SortOptions>> (options.sortFields) ? options.sortFields : [];
+            var sortOptions : Array<SortOptions> = [];
+            var usedColumns = {};
+            (<Array<string | SortOptions>>sortFields).forEach(function(item) {
+                var name : string = (typeof(item) === 'string') ? <string>item : (<SortOptions>item).field;
+                if (name !== sizeFieldId) {
+                    sortOptions.push({field : name, compare: compareFunction(dataStoreIn, item)});
+                    usedColumns[name] = true;
+                }
+            });
+
+            dataStoreIn.fields().forEach((field) => {
+                if (field.identifier !== sizeFieldId  &&  !usedColumns.hasOwnProperty(field.identifier)) {
+                    sortOptions.push({field : field.identifier, compare: compareFunction(dataStoreIn, field.identifier)});
+                }
+            });
+            return sort(dataStoreIn, sortOptions);
+        }
+    }
+
+    function selectFieldsToCopy(store : DataStore, sizeFieldId : string, options : AggregateParams) : Field<any>[] {
+        var fieldsToCopy : Field<any>[] = [];
+        if (options.includeFields) {
+            options.includeFields.forEach((fId) => {
+                if (fId !== sizeFieldId) {
+                    var f = store.field(fId);
+                    if (f === null) {
+                        throw new Error("Field '" + fId + "' does not exist");
+                    }
+                    fieldsToCopy.push(f);
+                }
+            });
+        }
+        else {
+            store.fields().forEach((f) => {
+                if (f.identifier !== sizeFieldId) {
+                    fieldsToCopy.push(f);
+                }
+            });
+        }
+        return fieldsToCopy;
     }
 
     function rowMatchesData(rowToken: any, rowData : any, fieldsToCompare : Field<any>[]) : boolean {

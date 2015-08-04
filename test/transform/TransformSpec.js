@@ -114,7 +114,7 @@ describe("transform.sort", function() {
 describe("transform.aggregate", function() {
 
     function assertProperSize(size, db) {
-        expect(db.size()).toBe(1);          // this will change when we redefine size() to include aggregates
+        expect(db.size()).toBe(size);
         var numMatchingRows = 0;
         db.eachRow(function(row) {
             expect(db.field("Records").value(row)).toBe(size);
@@ -152,7 +152,8 @@ describe("transform.aggregate", function() {
 
     it("Creates an accurate size column", function() {
 
-        expect(aggregatedColumnDb.size()).toBe(5);  // this will change when we redefine size() to include aggregates
+        expect(aggregatedColumnDb.size()).toBe(data.length);
+        expect(aggregatedColumnDb.rowCount()).toBe(5);
 
         assertProperSize(5, aggregatedColumnDb.filter('a', 'cat').filter('b', 'MN').filter('c', 'red'));
         assertProperSize(4, aggregatedColumnDb.filter('a', 'dog').filter('b', 'NY').filter('c', 'yellow'));
@@ -165,10 +166,19 @@ describe("transform.aggregate", function() {
         var noStateRowDb = ozone.transform.aggregate(aggregatedColumnDb, {includeFields: ['a', 'c']});
         var noStateColumnDb = ozone.columnStore.buildFromStore(noStateRowDb);
 
-        expect(noStateColumnDb.size()).toBe(3);  // this will change when we redefine size() to include aggregates
+        expect(noStateColumnDb.size()).toBe(data.length);
+        expect(noStateColumnDb.rowCount()).toBe(3);
 
         assertProperSize(6, noStateColumnDb.filter('a', 'cat').filter('c', 'red'));
         assertProperSize(6, noStateColumnDb.filter('a', 'dog').filter('c', 'yellow'));
         assertProperSize(3, noStateColumnDb.filter('a', 'cat').filter('c', 'white'));
+    });
+
+    it("Includes only the specified columns and the size column", function() {
+        var aggregated = ozone.transform.aggregate(initialDb, {includeFields: ['a', 'c'], sizeField: 'sz'});
+        expect(aggregated.fields().length).toBe(3);
+        expect(aggregated.field('a')).toBeTruthy();
+        expect(aggregated.field('c')).toBeTruthy();
+        expect(aggregated.field('sz')).toBeTruthy();
     });
 });

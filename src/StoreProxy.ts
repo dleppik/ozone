@@ -4,21 +4,11 @@
 /// <reference path='_all.ts' />
 module ozone {
     export class StoreProxy implements DataStore {
+        constructor( public source : DataStore ) { }
+        fields()           : Field<any>[]             { return this.source.fields(); }
+        field(key: string) : Field<any>               { return this.source.field(key); }
+        sizeField() : ozone.UnaryField<number> { return this.source.sizeField(); }
 
-        constructor( public source : DataStore ) {
-        }
-
-        public fields(): Field<any>[] {
-            return this.source.fields();
-        }
-
-        public field(key: string): Field<any> {
-            return this.source.field(key);
-        }
-
-        eachRow(rowAction : (rowToken : any) => void) {
-            this.source.eachRow(rowAction);
-        }
-
+        eachRow(rowAction : (rowToken : any) => void) { this.source.eachRow(rowAction); }
     }
 }

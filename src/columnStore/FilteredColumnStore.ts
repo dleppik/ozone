@@ -152,7 +152,7 @@ module ozone.columnStore {
     export function partitionColumnStore(store : ColumnStoreInterface, field : RandomAccessField<any>)
         : { [value: string]: RandomAccessStore; }
     {
-        if (store.size() === 0) {
+        if (store.rowCount() === 0) {
             return {};
         }
 
@@ -186,9 +186,18 @@ module ozone.columnStore {
             super(source);
         }
 
-        size() { return this.filterBits.size(); }
+        size() {
+            return (this.sizeField())  ?  this.sum(this.sizeField())  :  this.rowCount();
+        }
 
-        sum(field : string | Field<number>) : number { return sum(this, field); }
+
+        rowCount():number {
+            return this.filterBits.size();
+        }
+
+        sum(field : string | Field<number>) : number {
+            return sum(this, field);
+        }
 
         intSet() : IntSet { return this.filterBits; }
 

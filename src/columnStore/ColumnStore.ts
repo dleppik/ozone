@@ -34,30 +34,38 @@ module ozone.columnStore {
          */
         private fieldMap : { [key: string]: RandomAccessField<any>; } ;
 
-
-        constructor( private theSize: number, private fieldArray : RandomAccessField<any>[] ) {
+        constructor( private theRowCount: number, private fieldArray : RandomAccessField<any>[], private sizeFieldId : string ) {
             this.fieldMap = {};
             for (var i=0; i<fieldArray.length; i++) {
                 var field = fieldArray[i];
                 this.fieldMap[field.identifier] = field;
             }
+
+            if (sizeFieldId) {
+                var rcField = this.fieldMap[sizeFieldId];
+                if (rcField===null) {
+                    throw new Error("No field named '"+sizeFieldId+"' for record count");
+                }
+                else if (rcField.typeOfValue !== 'number') {
+                    throw new Error(sizeFieldId+" can't be used as a record count, it isn't numerical");
+                }
+                else if (typeof rcField.value !== 'function') {
+                    throw new Error(sizeFieldId+" can't be used as a record count, it isn't unary");
+                }
+            }
         }
 
-        size() : number { return this.theSize; }
+        size() : number { return (this.sizeFieldId)  ?  this.sum(this.sizeFieldId)  :  this.theRowCount; }
 
-        sum(field : string | Field<number>) : number { return sum(this, field); }
+        rowCount():number { return this.theRowCount; }
 
-        intSet() : IntSet {
-            return new ozone.intSet.RangeIntSet(0, this.size());
-        }
+        sum(field : string | Field<number>) : number { return ozone.columnStore.sum(this, field); }
 
-        fields() : RandomAccessField<any>[] {
-            return this.fieldArray;
-        }
+        intSet() : IntSet { return new ozone.intSet.RangeIntSet(0, this.size()); }
 
-        field(key:string) : RandomAccessField<any> {
-            return this.fieldMap.hasOwnProperty(key) ? this.fieldMap[key] : null;
-        }
+        fields() : RandomAccessField<any>[] { return this.fieldArray; }
+
+        field(key:string) : RandomAccessField<any> { return (this.fieldMap.hasOwnProperty(key)) ? this.fieldMap[key] : null; }
 
         filter(fieldNameOrFilter : any, value? : any) : RandomAccessStore {
             return filterColumnStore(this, this, createFilter(this, fieldNameOrFilter, value));
@@ -74,11 +82,12 @@ module ozone.columnStore {
         }
 
         eachRow(rowAction:Function) {
-            var size = this.size();
-            for (var i=0; i<size; i++) {
+            var max = this.rowCount();
+            for (var i=0; i<max; i++) {
                 rowAction(i);
             }
         }
 
+        sizeField() : UnaryField<number> { return <any> this.field(this.sizeFieldId); }
     }
 }

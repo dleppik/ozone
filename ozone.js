@@ -280,15 +280,10 @@ var ozone;
         function StoreProxy(source) {
             this.source = source;
         }
-        StoreProxy.prototype.fields = function () {
-            return this.source.fields();
-        };
-        StoreProxy.prototype.field = function (key) {
-            return this.source.field(key);
-        };
-        StoreProxy.prototype.eachRow = function (rowAction) {
-            this.source.eachRow(rowAction);
-        };
+        StoreProxy.prototype.fields = function () { return this.source.fields(); };
+        StoreProxy.prototype.field = function (key) { return this.source.field(key); };
+        StoreProxy.prototype.sizeField = function () { return this.source.sizeField(); };
+        StoreProxy.prototype.eachRow = function (rowAction) { this.source.eachRow(rowAction); };
         return StoreProxy;
     })();
     ozone.StoreProxy = StoreProxy;
@@ -361,7 +356,8 @@ var ozone;
                     resultFields.push(builder.onEnd());
                 }
             }
-            return new columnStore.ColumnStore(length, resultFields);
+            var sizeFieldId = source.sizeField() ? source.sizeField().identifier : null;
+            return new columnStore.ColumnStore(length, resultFields, sizeFieldId);
         }
         columnStore.buildFromStore = buildFromStore;
         /** Used to implement ColumnStore.sum(). */
@@ -525,26 +521,34 @@ var ozone;
          * </p>
          */
         var ColumnStore = (function () {
-            function ColumnStore(theSize, fieldArray) {
-                this.theSize = theSize;
+            function ColumnStore(theRowCount, fieldArray, sizeFieldId) {
+                this.theRowCount = theRowCount;
                 this.fieldArray = fieldArray;
+                this.sizeFieldId = sizeFieldId;
                 this.fieldMap = {};
                 for (var i = 0; i < fieldArray.length; i++) {
                     var field = fieldArray[i];
                     this.fieldMap[field.identifier] = field;
                 }
+                if (sizeFieldId) {
+                    var rcField = this.fieldMap[sizeFieldId];
+                    if (rcField === null) {
+                        throw new Error("No field named '" + sizeFieldId + "' for record count");
+                    }
+                    else if (rcField.typeOfValue !== 'number') {
+                        throw new Error(sizeFieldId + " can't be used as a record count, it isn't numerical");
+                    }
+                    else if (typeof rcField.value !== 'function') {
+                        throw new Error(sizeFieldId + " can't be used as a record count, it isn't unary");
+                    }
+                }
             }
-            ColumnStore.prototype.size = function () { return this.theSize; };
-            ColumnStore.prototype.sum = function (field) { return columnStore.sum(this, field); };
-            ColumnStore.prototype.intSet = function () {
-                return new ozone.intSet.RangeIntSet(0, this.size());
-            };
-            ColumnStore.prototype.fields = function () {
-                return this.fieldArray;
-            };
-            ColumnStore.prototype.field = function (key) {
-                return this.fieldMap.hasOwnProperty(key) ? this.fieldMap[key] : null;
-            };
+            ColumnStore.prototype.size = function () { return (this.sizeFieldId) ? this.sum(this.sizeFieldId) : this.theRowCount; };
+            ColumnStore.prototype.rowCount = function () { return this.theRowCount; };
+            ColumnStore.prototype.sum = function (field) { return ozone.columnStore.sum(this, field); };
+            ColumnStore.prototype.intSet = function () { return new ozone.intSet.RangeIntSet(0, this.size()); };
+            ColumnStore.prototype.fields = function () { return this.fieldArray; };
+            ColumnStore.prototype.field = function (key) { return (this.fieldMap.hasOwnProperty(key)) ? this.fieldMap[key] : null; };
             ColumnStore.prototype.filter = function (fieldNameOrFilter, value) {
                 return columnStore.filterColumnStore(this, this, columnStore.createFilter(this, fieldNameOrFilter, value));
             };
@@ -556,11 +560,12 @@ var ozone;
                 return columnStore.partitionColumnStore(this, this.field(key));
             };
             ColumnStore.prototype.eachRow = function (rowAction) {
-                var size = this.size();
-                for (var i = 0; i < size; i++) {
+                var max = this.rowCount();
+                for (var i = 0; i < max; i++) {
                     rowAction(i);
                 }
             };
+            ColumnStore.prototype.sizeField = function () { return this.field(this.sizeFieldId); };
             return ColumnStore;
         })();
         columnStore.ColumnStore = ColumnStore;
@@ -715,7 +720,7 @@ var ozone;
             return 0;
         }
         function partitionColumnStore(store, field) {
-            if (store.size() === 0) {
+            if (store.rowCount() === 0) {
                 return {};
             }
             var indexedField;
@@ -749,8 +754,15 @@ var ozone;
                 this.filterArray = filterArray;
                 this.filterBits = filterBits;
             }
-            FilteredColumnStore.prototype.size = function () { return this.filterBits.size(); };
-            FilteredColumnStore.prototype.sum = function (field) { return columnStore.sum(this, field); };
+            FilteredColumnStore.prototype.size = function () {
+                return (this.sizeField()) ? this.sum(this.sizeField()) : this.rowCount();
+            };
+            FilteredColumnStore.prototype.rowCount = function () {
+                return this.filterBits.size();
+            };
+            FilteredColumnStore.prototype.sum = function (field) {
+                return columnStore.sum(this, field);
+            };
             FilteredColumnStore.prototype.intSet = function () { return this.filterBits; };
             FilteredColumnStore.prototype.eachRow = function (rowAction) { this.filterBits.each(rowAction); };
             FilteredColumnStore.prototype.filter = function (fieldNameOrFilter, value) {
@@ -1950,17 +1962,21 @@ var ozone;
             if (params.hasOwnProperty('sortCompareFunction')) {
                 rows.sort(params.sortCompareFunction);
             }
-            return new rowStore.RowStore(fields, rows, null);
+            var sizeFieldId = source.sizeField() ? source.sizeField().identifier : null;
+            return new rowStore.RowStore(fields, rows, null, sizeFieldId);
         }
         rowStore.buildFromStore = buildFromStore;
         /**
          * Build a RowStore.
-         * @param fieldInfo       Descriptors for each Field, converted to FieldDescriptors via FieldDescriptor.build().
-         * @param data            Data, either native (JsonField) format, or converted via a rowTransformer.
-         * @param rowTransformer  Reducer, where onItem converts to a map from field IDs to values.
+         * @param fieldInfo          Descriptors for each Field, converted to FieldDescriptors via FieldDescriptor.build().
+         * @param data               Data, either native (JsonField) format, or converted via a rowTransformer.
+         * @param rowTransformer     Reducer, where onItem converts to a map from field IDs to values.
+         * @param recordCountFieldId The name of the field used to calculate size() in any RandomAccessDataStore constructed
+         *                           from this.
          */
-        function build(fieldInfo, data, rowTransformer) {
+        function build(fieldInfo, data, rowTransformer, recordCountFieldId) {
             if (rowTransformer === void 0) { rowTransformer = null; }
+            if (recordCountFieldId === void 0) { recordCountFieldId = null; }
             var fieldDescriptors = [];
             var fields = [];
             var toComputeRange = [];
@@ -1984,7 +2000,7 @@ var ozone;
                     fields.push(field);
                 }
             }
-            var result = new rowStore.RowStore(fields, data, rowTransformer);
+            var result = new rowStore.RowStore(fields, data, rowTransformer, recordCountFieldId);
             if (toComputeDistinctValues.length > 0 || toComputeRange.length > 0) {
                 var rangeCalculators = {};
                 for (var i = 0; i < toComputeRange.length; i++) {
@@ -2183,19 +2199,33 @@ var ozone;
          * handle data more efficiently.  For this reason the public API only allows row access from start to end.
          */
         var RowStore = (function () {
-            function RowStore(fieldArray, rowData, rowTransformer) {
+            function RowStore(fieldArray, rowData, rowTransformer, sizeFieldId) {
                 this.fieldArray = fieldArray;
                 this.rowData = rowData;
                 this.rowTransformer = rowTransformer;
+                this.sizeFieldId = sizeFieldId;
                 this.fieldMap = {};
                 for (var i = 0; i < fieldArray.length; i++) {
                     var field = fieldArray[i];
                     this.fieldMap[field.identifier] = field;
                 }
+                if (sizeFieldId !== null) {
+                    var rcField = this.fieldMap[sizeFieldId];
+                    if (rcField === null) {
+                        throw new Error("No field named '" + sizeFieldId + "' for record count");
+                    }
+                    else if (rcField.typeOfValue !== 'number') {
+                        throw new Error(sizeFieldId + " can't be used as a record count, it isn't numerical");
+                    }
+                    else if (typeof rcField.value !== 'function') {
+                        throw new Error(sizeFieldId + " can't be used as a record count, it isn't unary");
+                    }
+                }
             }
             RowStore.prototype.fields = function () {
                 return this.fieldArray;
             };
+            RowStore.prototype.sizeField = function () { return this.fieldMap[this.sizeFieldId]; };
             RowStore.prototype.field = function (key) {
                 return this.fieldMap.hasOwnProperty(key) ? this.fieldMap[key] : null;
             };
@@ -2217,11 +2247,11 @@ var ozone;
                 for (var i = 0; i < newFieldArray.length; i++) {
                     if (newFieldArray[i].identifier === newField.identifier) {
                         newFieldArray[i] = newField;
-                        return new RowStore(newFieldArray, this.rowData, this.rowTransformer);
+                        return new RowStore(newFieldArray, this.rowData, this.rowTransformer, this.sizeFieldId);
                     }
                 }
                 newFieldArray.concat(newField);
-                return new RowStore(newFieldArray, this.rowData, this.rowTransformer);
+                return new RowStore(newFieldArray, this.rowData, this.rowTransformer, this.sizeFieldId);
             };
             /** Primarily for unit testing; returns the rows in RowStore-native format. */
             RowStore.prototype.toArray = function () {
@@ -2411,7 +2441,8 @@ var ozone;
             for (var i = 0; i < storeData.fields.length; i++) {
                 fields[i] = readField(storeData.fields[i]);
             }
-            return new ozone.columnStore.ColumnStore(storeData.size, fields);
+            var sizeFieldId = storeData.sizeFieldId ? storeData.sizeFieldId : null;
+            return new ozone.columnStore.ColumnStore(storeData.rowCount, fields, sizeFieldId);
         }
         serialization.readStore = readStore;
         function writeStore(store) {
@@ -2420,10 +2451,14 @@ var ozone;
             for (var i = 0; i < fields.length; i++) {
                 fieldData.push(writeField(fields[i]));
             }
-            return {
-                size: store.size(),
+            var result = {
+                rowCount: store.size(),
                 fields: fieldData
             };
+            if (store.sizeField()) {
+                result['sizeFieldId'] = store.sizeField().identifier;
+            }
+            return result;
         }
         serialization.writeStore = writeStore;
         function readField(fieldData) {
@@ -2621,7 +2656,7 @@ var ozone;
          *
          * @param options      May include the following:
          *
-         *        sizeFieldId  the name of the field in the output DataStore that holds the number of aggregate records.
+         *          sizeField  the name of the field in the output DataStore that holds the number of aggregate records.
          *                     If it exists in dataStoreIn, it will be treated as an existing size field: it must be a
          *                     UnaryField<number>, and merged records will use the sum of the existing values.
          *                     Default is "Records".
@@ -2636,32 +2671,8 @@ var ozone;
          */
         function aggregate(dataStoreIn, options) {
             if (options === void 0) { options = {}; }
-            var sizeFieldId = (options.sizeFieldId) ? options.sizeFieldId : "Records";
-            var sortedStore;
-            if (options.sortFields && options.sortFields === false) {
-                sortedStore = dataStoreIn;
-            }
-            else {
-                var sortFields = (options.sortFields) ? options.sortFields : [];
-                var sortOptions = [];
-                var usedColumns = {};
-                sortFields.forEach(function (item) {
-                    var name = (typeof (item) === 'string') ? item : item.field;
-                    if (name !== sizeFieldId) {
-                        sortOptions.push({ field: name, compare: compareFunction(dataStoreIn, item) });
-                        usedColumns[name] = true;
-                    }
-                });
-                dataStoreIn.fields().forEach(function (field) {
-                    if (field.identifier !== sizeFieldId && !usedColumns.hasOwnProperty(field.identifier)) {
-                        sortOptions.push({ field: field.identifier, compare: compareFunction(dataStoreIn, field.identifier) });
-                    }
-                });
-                sortedStore = sort(dataStoreIn, sortOptions);
-            }
-            if (!(sortedStore instanceof ozone.rowStore.RowStore)) {
-                throw new Error("Can only aggregate a sorted RowStore");
-            }
+            var sizeFieldId = (options.sizeField) ? options.sizeField : "Records";
+            var sortedStore = sortForAggregation(dataStoreIn, sizeFieldId, options);
             var oldStoreSizeColumn = sortedStore.field(sizeFieldId);
             var rows = [];
             var minSize = Number.POSITIVE_INFINITY;
@@ -2676,25 +2687,7 @@ var ozone;
                 }
                 rows.push(row);
             }
-            var fieldsToCopy = [];
-            if (options.includeFields) {
-                options.includeFields.forEach(function (fId) {
-                    if (fId !== sizeFieldId) {
-                        var f = sortedStore.field(fId);
-                        if (f === null) {
-                            throw new Error("Field '" + fId + "' does not exist");
-                        }
-                        fieldsToCopy.push(f);
-                    }
-                });
-            }
-            else {
-                sortedStore.fields().forEach(function (f) {
-                    if (f.identifier !== sizeFieldId) {
-                        fieldsToCopy.push(f);
-                    }
-                });
-            }
+            var fieldsToCopy = selectFieldsToCopy(sortedStore, sizeFieldId, options);
             var previousRowData = null;
             sortedStore.eachRow(function (row) {
                 var countInRow = (oldStoreSizeColumn) ? oldStoreSizeColumn.value(row) : 1;
@@ -2713,23 +2706,70 @@ var ozone;
             if (previousRowData) {
                 addRow(previousRowData);
             }
-            var newFields = sortedStore.fields().map(function (oldField) {
-                if (oldField.identifier === sizeFieldId) {
-                    return new ozone.rowStore.UnaryJsonRowField(oldField.identifier, oldField.displayName, 'number', null, new ozone.Range(minSize, maxSize, true), Number.POSITIVE_INFINITY);
-                }
-                else {
-                    var fProto = (oldField instanceof ozone.rowStore.UnaryJsonRowField)
-                        ? ozone.rowStore.UnaryJsonRowField
-                        : ozone.rowStore.JsonRowField;
-                    return new fProto(oldField.identifier, oldField.displayName, oldField.typeOfValue, oldField.typeConstructor, oldField.range(), oldField.distinctValueEstimate());
-                }
+            var newFields = fieldsToCopy.map(function (oldField) {
+                var fProto = (oldField instanceof ozone.rowStore.UnaryJsonRowField)
+                    ? ozone.rowStore.UnaryJsonRowField
+                    : ozone.rowStore.JsonRowField;
+                return new fProto(oldField.identifier, oldField.displayName, oldField.typeOfValue, oldField.typeConstructor, oldField.range(), oldField.distinctValueEstimate());
             });
-            if (!oldStoreSizeColumn) {
+            if (oldStoreSizeColumn) {
+                newFields.push(new ozone.rowStore.UnaryJsonRowField(oldStoreSizeColumn.identifier, oldStoreSizeColumn.displayName, 'number', null, new ozone.Range(minSize, maxSize, true), Number.POSITIVE_INFINITY));
+            }
+            else {
                 newFields.push(new ozone.rowStore.UnaryJsonRowField(sizeFieldId, sizeFieldId, 'number', null, new ozone.Range(minSize, maxSize, true), Number.POSITIVE_INFINITY));
             }
-            return new ozone.rowStore.RowStore(newFields, rows, null);
+            return new ozone.rowStore.RowStore(newFields, rows, null, sizeFieldId);
         }
         transform.aggregate = aggregate;
+        function sortForAggregation(dataStoreIn, sizeFieldId, options) {
+            if (options === void 0) { options = {}; }
+            if (options.sortFields && options.sortFields === false) {
+                if (!(dataStoreIn instanceof ozone.rowStore.RowStore)) {
+                    throw new Error("Can only aggregate a sorted RowStore");
+                }
+                return dataStoreIn;
+            }
+            else {
+                var sortFields = (options.sortFields) ? options.sortFields : [];
+                var sortOptions = [];
+                var usedColumns = {};
+                sortFields.forEach(function (item) {
+                    var name = (typeof (item) === 'string') ? item : item.field;
+                    if (name !== sizeFieldId) {
+                        sortOptions.push({ field: name, compare: compareFunction(dataStoreIn, item) });
+                        usedColumns[name] = true;
+                    }
+                });
+                dataStoreIn.fields().forEach(function (field) {
+                    if (field.identifier !== sizeFieldId && !usedColumns.hasOwnProperty(field.identifier)) {
+                        sortOptions.push({ field: field.identifier, compare: compareFunction(dataStoreIn, field.identifier) });
+                    }
+                });
+                return sort(dataStoreIn, sortOptions);
+            }
+        }
+        function selectFieldsToCopy(store, sizeFieldId, options) {
+            var fieldsToCopy = [];
+            if (options.includeFields) {
+                options.includeFields.forEach(function (fId) {
+                    if (fId !== sizeFieldId) {
+                        var f = store.field(fId);
+                        if (f === null) {
+                            throw new Error("Field '" + fId + "' does not exist");
+                        }
+                        fieldsToCopy.push(f);
+                    }
+                });
+            }
+            else {
+                store.fields().forEach(function (f) {
+                    if (f.identifier !== sizeFieldId) {
+                        fieldsToCopy.push(f);
+                    }
+                });
+            }
+            return fieldsToCopy;
+        }
         function rowMatchesData(rowToken, rowData, fieldsToCompare) {
             for (var i = 0; i < fieldsToCompare.length; i++) {
                 var field = fieldsToCompare[i];

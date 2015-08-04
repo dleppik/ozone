@@ -15,6 +15,13 @@ declare module ozone {
          * Iterate over the rows of the DataStore.  Use in conjunction with Field.values() and UnaryField.value().
          */
         eachRow(rowAction: (rowToken: any) => void): any;
+        /**
+         * Returns the field, if any, that lists the number of records each row represents.  This field has
+         * aggregationRule='sum'.
+         *
+         * @see ozone.transform.aggregate()
+         */
+        sizeField(): UnaryField<number>;
     }
     /**
      * A DataStore that can be queried.  Also the result of most queries.  Fields from filtered views can be used
@@ -59,8 +66,10 @@ declare module ozone {
         partition(fieldDescription: FieldDescribing): {
             [value: string]: RandomAccessStore;
         };
-        /** The number of elements in the DataStore. */
+        /** The number of elements in the DataStore, which may be greater than the number of rows if this is aggregated. */
         size(): number;
+        /** The number of rows in the DataStore. */
+        rowCount(): number;
         /** Add all the values of a numerical field.  If the field does not exist or isn't numerical, returns 0. */
         sum(field: string | Field<number>): number;
     }
@@ -88,6 +97,14 @@ declare module ozone {
          * Number.POSITIVE_INFINITY.
          */
         distinctValueEstimate(): number;
+        /**
+         *  If this is defined and not null, calling ozone.transform.aggregate() re-calculates the values of this field
+         *  when merging rows.
+         *
+         *  Currently the only legal non-null value is 'sum', in which merged rows are added together.  In the future
+         *  it might not be limited to string values.
+         */
+        aggregationRule?: string;
     }
     /**
      * Primarily useful for builders, in which you collect data (onItem) into an intermediate data type, and then
@@ -298,6 +315,7 @@ declare module ozone {
         constructor(source: DataStore);
         fields(): Field<any>[];
         field(key: string): Field<any>;
+        sizeField(): ozone.UnaryField<number>;
         eachRow(rowAction: (rowToken: any) => void): void;
     }
 }
@@ -387,15 +405,17 @@ declare module ozone.columnStore {
      * </p>
      */
     class ColumnStore implements ColumnStoreInterface {
-        private theSize;
+        private theRowCount;
         private fieldArray;
+        private sizeFieldId;
         /**
          * ECMAScript doesn't require associative arrays to retain the order of their keys, although most
          * implementations do.  (Rhino doesn't.)  So a separate fieldArray isn't completely redundant.
          */
         private fieldMap;
-        constructor(theSize: number, fieldArray: RandomAccessField<any>[]);
+        constructor(theRowCount: number, fieldArray: RandomAccessField<any>[], sizeFieldId: string);
         size(): number;
+        rowCount(): number;
         sum(field: string | Field<number>): number;
         intSet(): IntSet;
         fields(): RandomAccessField<any>[];
@@ -406,6 +426,7 @@ declare module ozone.columnStore {
         removeFilter(filter: Filter): RandomAccessStore;
         partition(fieldAny: any): any;
         eachRow(rowAction: Function): void;
+        sizeField(): UnaryField<number>;
     }
 }
 /**
@@ -431,6 +452,7 @@ declare module ozone.columnStore {
         private filterBits;
         constructor(source: ColumnStore, filterArray: Filter[], filterBits: IntSet);
         size(): number;
+        rowCount(): number;
         sum(field: string | Field<number>): number;
         intSet(): IntSet;
         eachRow(rowAction: (rowToken: any) => void): void;
@@ -738,13 +760,15 @@ declare module ozone.rowStore {
     function buildFromStore(source: DataStore, params?: any): RowStore;
     /**
      * Build a RowStore.
-     * @param fieldInfo       Descriptors for each Field, converted to FieldDescriptors via FieldDescriptor.build().
-     * @param data            Data, either native (JsonField) format, or converted via a rowTransformer.
-     * @param rowTransformer  Reducer, where onItem converts to a map from field IDs to values.
+     * @param fieldInfo          Descriptors for each Field, converted to FieldDescriptors via FieldDescriptor.build().
+     * @param data               Data, either native (JsonField) format, or converted via a rowTransformer.
+     * @param rowTransformer     Reducer, where onItem converts to a map from field IDs to values.
+     * @param recordCountFieldId The name of the field used to calculate size() in any RandomAccessDataStore constructed
+     *                           from this.
      */
     function build(fieldInfo: {
         [key: string]: any;
-    }, data: any[], rowTransformer?: Reducer<any, void>): RowStore;
+    }, data: any[], rowTransformer?: Reducer<any, void>, recordCountFieldId?: string): RowStore;
 }
 /**
  * Copyright 2013 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
@@ -790,13 +814,15 @@ declare module ozone.rowStore {
         private fieldArray;
         private rowData;
         private rowTransformer;
+        private sizeFieldId;
         /**
          * ECMAScript doesn't require associative arrays to retain the order of their keys, although most
          * implementations do.  (Rhino doesn't.)  So a separate fieldArray isn't completely redundant.
          */
         private fieldMap;
-        constructor(fieldArray: Field<any>[], rowData: any[], rowTransformer: Reducer<any, any>);
+        constructor(fieldArray: Field<any>[], rowData: any[], rowTransformer: Reducer<any, any>, sizeFieldId: string);
         fields(): Field<any>[];
+        sizeField(): UnaryField<number>;
         field(key: string): Field<any>;
         eachRow(rowAction: (rowToken: any) => void): void;
         /** Replace an existing field with this one.  If the old field isn't found, the new one is added at the end. */
@@ -867,8 +893,9 @@ declare module ozone.rowStore {
 declare module ozone.serialization {
     /** Mirrors DataStore.  Really should be called DataStoreData, but that would be silly. */
     interface StoreData {
-        size: number;
+        rowCount: number;
         fields: FieldMetaData[];
+        sizeFieldId?: string;
     }
     /**
      * Mirrors FieldDescribing.  Type may currently be "indexed" or "unindexed."
@@ -982,7 +1009,7 @@ declare module ozone.transform {
      */
     function sort(dataStoreIn: DataStore, sortColumns: Array<string | SortOptions>): rowStore.RowStore;
     interface AggregateParams {
-        sizeFieldId?: string;
+        sizeField?: string;
         sortFields?: boolean | Array<string | SortOptions>;
         includeFields?: string[];
     }
@@ -994,7 +1021,7 @@ declare module ozone.transform {
      *
      * @param options      May include the following:
      *
-     *        sizeFieldId  the name of the field in the output DataStore that holds the number of aggregate records.
+     *          sizeField  the name of the field in the output DataStore that holds the number of aggregate records.
      *                     If it exists in dataStoreIn, it will be treated as an existing size field: it must be a
      *                     UnaryField<number>, and merged records will use the sum of the existing values.
      *                     Default is "Records".
@@ -1059,6 +1086,16 @@ declare module ozone {
          */
         value(rowToken: any): T;
     }
+    /** Describes the JSON that FieldDescriptor.build() can take. */
+    interface FieldDescriptorOptions {
+        typeOfValue: string;
+        identifier?: string;
+        displayName?: string;
+        unlimitedValues?: boolean;
+        range?: Range;
+        multipleValuesPerRow?: boolean;
+        distinctValues?: number;
+    }
     class FieldDescriptor implements FieldDescribing {
         identifier: string;
         typeOfValue: string;
@@ -1076,7 +1113,7 @@ declare module ozone {
          *
          * The default for multipleValuesPerRow is false.
          */
-        static build(ajax: any, identifier?: string): FieldDescriptor;
+        static build(ajax: FieldDescriptorOptions, identifier?: string): FieldDescriptor;
         constructor(identifier: string, typeOfValue: string, typeConstructor: any, multipleValuesPerRow: boolean, displayName: string, precomputedRange: Range, distinctValues: number, shouldCalculateDistinctValues: boolean);
         range(): Range;
         distinctValueEstimate(): number;

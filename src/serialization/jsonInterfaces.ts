@@ -21,8 +21,9 @@ module ozone.serialization {
 
     /** Mirrors DataStore.  Really should be called DataStoreData, but that would be silly. */
     export interface StoreData {
-        size : number;
+        rowCount : number;
         fields : FieldMetaData[];
+        sizeFieldId? : string;
     }
 
     /**

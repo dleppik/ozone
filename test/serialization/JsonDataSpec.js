@@ -42,12 +42,21 @@ describe("JSON Serialization", function() {
         var writeStore = ozone.serialization.writeStore;
 
         describe("Writing", function() {
-            var serialized = writeStore(columnStore);
-            expect(serialized.size).toBe(columnStore.size());
-            expect(serialized.fields.length).toBe(4);
-            for (var i=0; i<serialized.fields.length; i++) {
-                expect(serialized.fields[i].identifier).toBe(columnStore.fields()[i].identifier);
-            }
+            it("writes a simple DataStore", function() {
+                var serialized = writeStore(columnStore);
+                expect(serialized.rowCount).toBe(columnStore.rowCount());
+                expect(serialized.fields.length).toBe(4);
+                for (var i=0; i<serialized.fields.length; i++) {
+                    expect(serialized.fields[i].identifier).toBe(columnStore.fields()[i].identifier);
+                }
+            });
+            it("writes an aggregate DataStore", function() {
+                var aggregated = ozone.columnStore.buildFromStore(
+                    ozone.transform.aggregate(columnStore, {includeFields: ['name', 'animal']})
+                );
+                var serialized = writeStore(aggregated);
+                expect(serialized.rowCount).toBe(columnStore.rowCount());
+            });
         });
 
         //
@@ -55,7 +64,7 @@ describe("JSON Serialization", function() {
         // to go wrong at this level.
         //
         describe("Round Trip", function() {
-            it("Writes to a string and reads back a Store", function() {
+            it("Writes to a string and reads back a non-aggregated Store", function() {
                 var serialized = JSON.stringify(writeStore(columnStore));
                 var deserialized = readStore(JSON.parse(serialized));
 
@@ -68,6 +77,36 @@ describe("JSON Serialization", function() {
                     expect(expectedField.identifier).toBe(actualField.identifier);
                     expect(expectedField.displayName).toBe(actualField.displayName);
                 }
+
+                expect(  deserialized.filter("animal", "cow").size())
+                    .toBe(columnStore.filter("animal", "cow").size());
+
+                // What we shouldn't check:
+                // columnStore.intSet() doesn't need to match
+            });
+
+            it("Writes to a string and reads back an aggregated Store", function() {
+                var aggregated = ozone.columnStore.buildFromStore(
+                    ozone.transform.aggregate(columnStore, {includeFields: ['name', 'animal']})
+                );
+
+                var serialized = JSON.stringify(writeStore(aggregated));
+                var deserialized = readStore(JSON.parse(serialized));
+
+                expect(deserialized.sizeField().identifier).toBe('Records');
+
+                expect(deserialized.rowCount()).toBe(aggregated.rowCount());
+                expect(deserialized.size()).toBe(aggregated.size());
+                expect(deserialized.fields().length).toBe(aggregated.fields().length);
+                expect(deserialized.fields().length).toBe(3);
+                for (var i=0; i<deserialized.fields().length; i++) {
+                    var expectedField = aggregated.fields()[i];
+                    var actualField = deserialized.fields()[i];
+                    expect(expectedField.identifier).toBe(actualField.identifier);
+                    expect(expectedField.displayName).toBe(actualField.displayName);
+                }
+
+                expect(deserialized.sum('Records')).toBe(columnStore.size());
 
                 expect(  deserialized.filter("animal", "cow").size())
                     .toBe(columnStore.filter("animal", "cow").size());

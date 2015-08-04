@@ -58,6 +58,17 @@ module ozone {
         value(rowToken : any) : T;
     }
 
+    /** Describes the JSON that FieldDescriptor.build() can take. */
+    export interface FieldDescriptorOptions {
+        typeOfValue      : string;
+        identifier?      : string;
+        displayName?     : string;
+        unlimitedValues? : boolean;
+        range?           : Range;
+        multipleValuesPerRow? : boolean;
+        distinctValues?  : number;
+    }
+
     export class FieldDescriptor implements FieldDescribing {
 
         /**
@@ -68,7 +79,7 @@ module ozone {
          *
          * The default for multipleValuesPerRow is false.
          */
-        public static build(ajax : any, identifier : string = null) {
+        public static build(ajax : FieldDescriptorOptions, identifier : string = null) {
             var id = (identifier===null) ? ajax["identifier"] : identifier;
             var displayName : string = ajax["displayName"]  ?  ajax["displayName"]  :  id;
             var precomputedRange : Range = ajax["range"] ? Range.build(ajax["range"]) : null ;

@@ -201,7 +201,7 @@ describe("ColumnStore", function() {
         });
     });
 
-    describe("[Filtered]ColumnStore.sum()", function() {
+    describe("ColumnStore/FilteredColumnStore.sum()", function() {
         var fieldInfo = {
             num:   {typeOfValue: "number"},
             multi: {typeOfValue: "number", multipleValuesPerRow: true}

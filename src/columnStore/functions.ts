@@ -70,7 +70,8 @@ module ozone.columnStore {
                 resultFields.push(builder.onEnd());
             }
         }
-        return new ColumnStore(length, resultFields);
+        var sizeFieldId = source.sizeField() ? source.sizeField().identifier : null;
+        return new ColumnStore(length, resultFields, sizeFieldId);
     }
 
     /** Used to implement ColumnStore.sum(). */

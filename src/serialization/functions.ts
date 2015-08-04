@@ -24,7 +24,8 @@ module ozone.serialization {
         for (var i=0; i<storeData.fields.length; i++) {
             fields[i] = readField(storeData.fields[i]);
         }
-        return new columnStore.ColumnStore(storeData.size, fields);
+        var sizeFieldId = storeData.sizeFieldId ? storeData.sizeFieldId : null;
+        return new columnStore.ColumnStore(storeData.rowCount, fields, sizeFieldId);
     }
 
     export function writeStore(store : columnStore.ColumnStore) : StoreData {
@@ -33,10 +34,14 @@ module ozone.serialization {
         for (var i=0; i< fields.length; i++) {
             fieldData.push(writeField(fields[i]));
         }
-        return {
-            size   : store.size(),
-            fields : fieldData
+        var result : StoreData = {
+            rowCount : store.size(),
+            fields   : fieldData
         };
+        if (store.sizeField()) {
+            result['sizeFieldId'] = store.sizeField().identifier;
+        }
+        return result;
     }
 
     export function readField(fieldData : FieldMetaData) : RandomAccessField<any> {
