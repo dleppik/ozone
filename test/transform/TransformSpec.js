@@ -128,12 +128,12 @@ describe("transform.aggregate", function() {
         {a: 'dog', b: 'NY', c:'yellow', n: 8},  // 4 copies
         {a: 'cat', b: 'CA', c:'white',  n: 3},  // 3 copies
         {a: 'dog', b: 'SD', c:'yellow', n: 2},  // 2 copies
-        {a: 'cat', b: 'TX', c:'red',    n: 0},  // unique
+        {a: 'cat', b: 'TX', c:'red',    n: 7},  // unique
 
         {a: 'cat', b: 'MN', c:'red',    n: 6},
         {a: 'dog', b: 'NY', c:'yellow', n: 9},
         {a: 'cat', b: 'CA', c:'white',  n: 4},
-        {a: 'dog', b: 'SD', c:'yellow', n: 7},
+        {a: 'dog', b: 'SD', c:'yellow'      },
 
         {a: 'cat', b: 'MN', c:'red',    n: 2},
         {a: 'dog', b: 'NY', c:'yellow', n: 8},
@@ -164,6 +164,21 @@ describe("transform.aggregate", function() {
         assertProperSize(3, aggregatedColumnDb.filter('a', 'cat').filter('b', 'CA').filter('c', 'white'));
         assertProperSize(2, aggregatedColumnDb.filter('a', 'dog').filter('b', 'SD').filter('c', 'yellow'));
         assertProperSize(1, aggregatedColumnDb.filter('a', 'cat').filter('b', 'TX').filter('c', 'red'));
+    });
+
+    it("Merges with an aggregationRule correctly", function() {
+        function assertSum(sum, filteredDb) {
+            expect(filteredDb.rowCount()).toBe(1);
+            filteredDb.eachRow(function(row) {
+                expect(filteredDb.field('n').values(row)[0]).toBe(sum);
+            });
+        }
+
+        assertSum(4+6+2+8+1, aggregatedColumnDb.filter('a', 'cat').filter('b', 'MN').filter('c', 'red'));
+        assertSum(  8+9+8+6, aggregatedColumnDb.filter('a', 'dog').filter('b', 'NY').filter('c', 'yellow'));
+        assertSum(    3+4+3, aggregatedColumnDb.filter('a', 'cat').filter('b', 'CA').filter('c', 'white'));
+        assertSum(        2, aggregatedColumnDb.filter('a', 'dog').filter('b', 'SD').filter('c', 'yellow'));
+        assertSum(        7, aggregatedColumnDb.filter('a', 'cat').filter('b', 'TX').filter('c', 'red'));
     });
 
     it("Reuses an existing size column", function() {
