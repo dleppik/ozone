@@ -181,6 +181,12 @@ describe("transform.aggregate", function() {
         assertSum(        7, aggregatedColumnDb.filter('a', 'cat').filter('b', 'TX').filter('c', 'red'));
     });
 
+    it("Produces unary fields whenever possible", function() {
+        ['a', 'b', 'c', 'n', 'Records'].forEach(function(id) {
+            expect(aggregatedRowDb.field(id).value).toBeDefined();
+        });
+    });
+
     it("Reuses an existing size column", function() {
         var noStateRowDb = ozone.transform.aggregate(aggregatedColumnDb, {includeFields: ['a', 'c']});
         var noStateColumnDb = ozone.columnStore.buildFromStore(noStateRowDb);
