@@ -100,7 +100,7 @@ var ozone;
         for (var _i = 0; _i < arguments.length; _i++) {
             descriptors[_i - 0] = arguments[_i];
         }
-        return mergeObjects(["identifier", "displayName", "typeOfValue", "typeConstructor"], ["range", "distinctValueEstimate"], descriptors);
+        return mergeObjects(["identifier", "displayName", "typeOfValue", "typeConstructor", "aggregationRule"], ["range", "distinctValueEstimate"], descriptors);
     }
     ozone.mergeFieldDescriptors = mergeFieldDescriptors;
     function mergeObjects(fields, functions, items) {
@@ -403,6 +403,7 @@ var ozone;
                 this.typeOfValue = descriptor.typeOfValue;
                 this.typeConstructor = descriptor.typeConstructor;
                 this.valueEstimate = descriptor.distinctValueEstimate();
+                this.aggregationRule = (descriptor.aggregationRule) ? descriptor.aggregationRule : null;
                 var range = descriptor.range();
                 if (typeof range === 'undefined' || descriptor.typeOfValue !== 'number') {
                     range = null;
@@ -825,6 +826,7 @@ var ozone;
                 this.typeOfValue = descriptor.typeOfValue;
                 this.typeConstructor = descriptor.typeConstructor;
                 this.rangeVal = range;
+                this.aggregationRule = (descriptor.aggregationRule) ? descriptor.aggregationRule : null;
             }
             /**
              * Returns a reducer that can be run on a source DataStore to reproduce a sourceField.
@@ -1957,7 +1959,7 @@ var ozone;
             });
             var fields = sourceFields.map(function (oldField) {
                 var fProto = (fieldsWithMultipleValues.hasOwnProperty(oldField.identifier)) ? rowStore.JsonRowField : rowStore.UnaryJsonRowField;
-                return new fProto(oldField.identifier, oldField.displayName, oldField.typeOfValue, oldField.typeConstructor, oldField.range(), oldField.distinctValueEstimate());
+                return new fProto(oldField.identifier, oldField.displayName, oldField.typeOfValue, oldField.typeConstructor, oldField.range(), oldField.distinctValueEstimate(), oldField.aggregationRule);
             });
             if (params.hasOwnProperty('sortCompareFunction')) {
                 rows.sort(params.sortCompareFunction);
@@ -1996,7 +1998,7 @@ var ozone;
                         fProto = rowStore.JsonRowField;
                     else
                         fProto = rowStore.UnaryJsonRowField;
-                    var field = new fProto(fd.identifier, fd.displayName, fd.typeOfValue, null, fd.range(), fd.distinctValueEstimate());
+                    var field = new fProto(fd.identifier, fd.displayName, fd.typeOfValue, null, fd.range(), fd.distinctValueEstimate(), fd.aggregationRule);
                     fields.push(field);
                 }
             }
@@ -2027,7 +2029,7 @@ var ozone;
                     var range = rc.onEnd();
                     var f = rc.field;
                     fProto = proto(f);
-                    var newField = new fProto(f.identifier, f.displayName, f.typeOfValue, f.typeConstructor, range, f.distinctValueEstimate());
+                    var newField = new fProto(f.identifier, f.displayName, f.typeOfValue, f.typeConstructor, range, f.distinctValueEstimate(), f.aggregationRule);
                     result = result.withField(newField);
                 }
                 for (var valueKey in valueCalculators) {
@@ -2044,7 +2046,7 @@ var ozone;
                     }
                     f = vc.field;
                     fProto = proto(f);
-                    newField = new fProto(f.identifier, f.displayName, f.typeOfValue, f.typeConstructor, f.range(), numValues);
+                    newField = new fProto(f.identifier, f.displayName, f.typeOfValue, f.typeConstructor, f.range(), numValues, f.aggregationRule);
                     result = result.withField(newField);
                 }
             }
@@ -2274,10 +2276,11 @@ var ozone;
         /** The default non-unary Field type for RowStores. */
         var JsonRowField = (function () {
             /** Private constructor:  please use factory methods. */
-            function JsonRowField(identifier, displayName, typeOfValue, typeConstructor, rangeVal, distinctValueEstimateVal) {
+            function JsonRowField(identifier, displayName, typeOfValue, typeConstructor, rangeVal, distinctValueEstimateVal, aggregationRuleMustNotBeUsed) {
                 if (typeConstructor === void 0) { typeConstructor = null; }
                 if (rangeVal === void 0) { rangeVal = null; }
                 if (distinctValueEstimateVal === void 0) { distinctValueEstimateVal = Number.POSITIVE_INFINITY; }
+                if (aggregationRuleMustNotBeUsed === void 0) { aggregationRuleMustNotBeUsed = null; }
                 this.identifier = identifier;
                 this.displayName = displayName;
                 this.typeOfValue = typeOfValue;
@@ -2319,16 +2322,18 @@ var ozone;
         })();
         rowStore.JsonRowField = JsonRowField;
         var UnaryJsonRowField = (function () {
-            function UnaryJsonRowField(identifier, displayName, typeOfValue, typeConstructor, rangeVal, distinctValueEstimateVal) {
+            function UnaryJsonRowField(identifier, displayName, typeOfValue, typeConstructor, rangeVal, distinctValueEstimateVal, aggregationRule) {
                 if (typeConstructor === void 0) { typeConstructor = null; }
                 if (rangeVal === void 0) { rangeVal = null; }
                 if (distinctValueEstimateVal === void 0) { distinctValueEstimateVal = Number.POSITIVE_INFINITY; }
+                if (aggregationRule === void 0) { aggregationRule = null; }
                 this.identifier = identifier;
                 this.displayName = displayName;
                 this.typeOfValue = typeOfValue;
                 this.typeConstructor = typeConstructor;
                 this.rangeVal = rangeVal;
                 this.distinctValueEstimateVal = distinctValueEstimateVal;
+                this.aggregationRule = aggregationRule;
             }
             UnaryJsonRowField.prototype.range = function () {
                 return this.rangeVal;
@@ -2530,6 +2535,9 @@ var ozone;
             if (f.typeConstructor !== null) {
                 result['typeConstructorName'] = f.typeConstructor.toString();
             }
+            if (f.aggregationRule) {
+                result['aggregationRule'] = f.aggregationRule;
+            }
             var range = f.range();
             if (range !== null) {
                 result['range'] = range;
@@ -2558,15 +2566,12 @@ var ozone;
         serialization.readIntSet = readIntSet;
         function writeIntSet(toWrite) {
             if (toWrite.size() === 0)
-                return writeEmptyIntSet(toWrite);
+                return { type: "empty" };
             if (toWrite instanceof ozone.intSet.RangeIntSet)
                 return writeRangeIntSet(toWrite);
             return writeIntSetArrayData(toWrite);
         }
         serialization.writeIntSet = writeIntSet;
-        function writeEmptyIntSet(toWrite) {
-            return { type: "empty" }; // Trivial function, but this provides compile-time type safety
-        }
         function writeRangeIntSet(rangeIntSet) {
             return {
                 type: "range",
@@ -2650,7 +2655,7 @@ var ozone;
         transform.sort = sort;
         /**
          * Remove redundant rows and keep the original number of rows in a recordCountField; the resulting DataStore is
-         * sorted on all the output fields.
+         * sorted on all the fields used for merging.  (A pair of rows can only be merged if they are consecutive.)
          *
          * @param dataStoreIn  the initial data source
          *
@@ -2662,9 +2667,8 @@ var ozone;
          *                     Default is "Records".
          *
          *         sortFields  specifies the sort order (and optionally the compare function) for the columns.  Not all
-         *                     columns must be specified; the remaining columns will be sorted in the order listed in
-         *                     dataStoreIn.  To explicitly disable sorting because dataStoreIn is already sorted on all
-         *                     output columns, set this to "false".
+         *                     columns must be specified; the remaining columns that are needed for merging will be sorted
+         *                     in the order listed in dataStoreIn.  To explicitly disable sorting, set this to "false".
          *
          *      includeFields  the name of the fields to include in the output, not including the size field.  By default,
          *                     all fields are included.
@@ -2688,11 +2692,28 @@ var ozone;
                 rows.push(row);
             }
             var fieldsToCopy = selectFieldsToCopy(sortedStore, sizeFieldId, options);
+            var fieldsToCompare = [];
+            var fieldsToSum = [];
+            for (var i = 0; i < fieldsToCopy.length; i++) {
+                var field = fieldsToCopy[i];
+                if (field.aggregationRule) {
+                    if (field.aggregationRule !== 'sum') {
+                        throw new Error("Unknown aggregation rule: " + field.aggregationRule + " for " + field.identifier);
+                    }
+                    fieldsToSum.push(field);
+                }
+                else {
+                    fieldsToCompare.push(field);
+                }
+            }
             var previousRowData = null;
             sortedStore.eachRow(function (row) {
                 var countInRow = (oldStoreSizeColumn) ? oldStoreSizeColumn.value(row) : 1;
-                var rowIsSame = (previousRowData === null) ? false : rowMatchesData(row, previousRowData, fieldsToCopy);
+                var rowIsSame = (previousRowData === null) ? false : rowMatchesData(row, previousRowData, fieldsToCompare);
                 if (rowIsSame) {
+                    fieldsToSum.forEach(function (field) {
+                        previousRowData[field.identifier] += field.value(row);
+                    });
                     previousRowData[sizeFieldId] += countInRow;
                 }
                 else {
@@ -2710,13 +2731,13 @@ var ozone;
                 var fProto = (oldField instanceof ozone.rowStore.UnaryJsonRowField)
                     ? ozone.rowStore.UnaryJsonRowField
                     : ozone.rowStore.JsonRowField;
-                return new fProto(oldField.identifier, oldField.displayName, oldField.typeOfValue, oldField.typeConstructor, oldField.range(), oldField.distinctValueEstimate());
+                return new fProto(oldField.identifier, oldField.displayName, oldField.typeOfValue, oldField.typeConstructor, oldField.range(), oldField.distinctValueEstimate(), oldField.aggregationRule);
             });
             if (oldStoreSizeColumn) {
-                newFields.push(new ozone.rowStore.UnaryJsonRowField(oldStoreSizeColumn.identifier, oldStoreSizeColumn.displayName, 'number', null, new ozone.Range(minSize, maxSize, true), Number.POSITIVE_INFINITY));
+                newFields.push(new ozone.rowStore.UnaryJsonRowField(oldStoreSizeColumn.identifier, oldStoreSizeColumn.displayName, 'number', null, new ozone.Range(minSize, maxSize, true), Number.POSITIVE_INFINITY, 'sum'));
             }
             else {
-                newFields.push(new ozone.rowStore.UnaryJsonRowField(sizeFieldId, sizeFieldId, 'number', null, new ozone.Range(minSize, maxSize, true), Number.POSITIVE_INFINITY));
+                newFields.push(new ozone.rowStore.UnaryJsonRowField(sizeFieldId, sizeFieldId, 'number', null, new ozone.Range(minSize, maxSize, true), Number.POSITIVE_INFINITY, 'sum'));
             }
             return new ozone.rowStore.RowStore(newFields, rows, null, sizeFieldId);
         }
@@ -2741,7 +2762,7 @@ var ozone;
                     }
                 });
                 dataStoreIn.fields().forEach(function (field) {
-                    if (field.identifier !== sizeFieldId && !usedColumns.hasOwnProperty(field.identifier)) {
+                    if (field.identifier !== sizeFieldId && !usedColumns[field.identifier] && !field.aggregationRule) {
                         sortOptions.push({ field: field.identifier, compare: compareFunction(dataStoreIn, field.identifier) });
                     }
                 });
@@ -2804,6 +2825,14 @@ var ozone;
                 }
             });
             return result;
+        }
+        function arrayContains(item, a) {
+            for (var i = 0; i < a.length; i++) {
+                if (a[i] === item) {
+                    return true;
+                }
+            }
+            return false;
         }
         function compareBySortOptionsFunction(dataStore, sortOptions) {
             var fields = sortOptions.map(function (o) { return dataStore.field(o.field); });
@@ -2898,7 +2927,7 @@ var ozone;
 var ozone;
 (function (ozone) {
     var FieldDescriptor = (function () {
-        function FieldDescriptor(identifier, typeOfValue, typeConstructor, multipleValuesPerRow, displayName, precomputedRange, distinctValues, shouldCalculateDistinctValues) {
+        function FieldDescriptor(identifier, typeOfValue, typeConstructor, multipleValuesPerRow, displayName, precomputedRange, distinctValues, shouldCalculateDistinctValues, aggregationRule) {
             this.identifier = identifier;
             this.typeOfValue = typeOfValue;
             this.typeConstructor = typeConstructor;
@@ -2907,6 +2936,7 @@ var ozone;
             this.precomputedRange = precomputedRange;
             this.distinctValues = distinctValues;
             this.shouldCalculateDistinctValues = shouldCalculateDistinctValues;
+            this.aggregationRule = aggregationRule;
         }
         /**
          * Factory method for building from AJAX.  The AJAX must contain typeOfValue.  If an identifier is not provided
@@ -2925,8 +2955,9 @@ var ozone;
             var distinctValues = (shouldCalculateDistinctValues || ajax["unlimitedValues"])
                 ? Number.POSITIVE_INFINITY
                 : ajax["distinctValues"];
-            var allowsMultipleValues = ajax["multipleValuesPerRow"] ? true : false;
-            return new FieldDescriptor(id, ajax["typeOfValue"], null, allowsMultipleValues, displayName, precomputedRange, distinctValues, shouldCalculateDistinctValues);
+            var allowsMultipleValues = (ajax.multipleValuesPerRow) ? true : false;
+            var aggregationRule = ajax.aggregationRule ? ajax.aggregationRule : null;
+            return new FieldDescriptor(id, ajax["typeOfValue"], null, allowsMultipleValues, displayName, precomputedRange, distinctValues, shouldCalculateDistinctValues, aggregationRule);
         };
         FieldDescriptor.prototype.range = function () {
             return this.precomputedRange;

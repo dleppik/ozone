@@ -49,7 +49,7 @@ module ozone.transform {
 
     /**
      * Remove redundant rows and keep the original number of rows in a recordCountField; the resulting DataStore is
-     * sorted on all the output fields.
+     * sorted on all the fields used for merging.  (A pair of rows can only be merged if they are consecutive.)
      *
      * @param dataStoreIn  the initial data source
      *
@@ -61,9 +61,8 @@ module ozone.transform {
      *                     Default is "Records".
      *
      *         sortFields  specifies the sort order (and optionally the compare function) for the columns.  Not all
-     *                     columns must be specified; the remaining columns will be sorted in the order listed in
-     *                     dataStoreIn.  To explicitly disable sorting because dataStoreIn is already sorted on all
-     *                     output columns, set this to "false".
+     *                     columns must be specified; the remaining columns that are needed for merging will be sorted
+     *                     in the order listed in dataStoreIn.  To explicitly disable sorting, set this to "false".
      *
      *      includeFields  the name of the fields to include in the output, not including the size field.  By default,
      *                     all fields are included.
@@ -95,11 +94,29 @@ module ozone.transform {
         }
 
         var fieldsToCopy = selectFieldsToCopy(sortedStore, sizeFieldId, options);
+        var fieldsToCompare : Field<any>[] = [];
+        var fieldsToSum : Field<any>[] = [];
+        for (var i=0; i<fieldsToCopy.length; i++) {
+            var field = fieldsToCopy[i];
+            if (field.aggregationRule) {
+                if (field.aggregationRule !== 'sum') {
+                    throw new Error("Unknown aggregation rule: "+field.aggregationRule+" for "+field.identifier);
+                }
+                fieldsToSum.push(field);
+            }
+            else {
+                fieldsToCompare.push(field);
+            }
+        }
+
         var previousRowData : any = null;
         sortedStore.eachRow(function(row) {
             var countInRow : number = (oldStoreSizeColumn) ? oldStoreSizeColumn.value(row) : 1;
-            var rowIsSame = (previousRowData === null)  ?  false  :  rowMatchesData(row, previousRowData, fieldsToCopy);
+            var rowIsSame = (previousRowData === null)  ?  false  :  rowMatchesData(row, previousRowData, fieldsToCompare);
             if (rowIsSame) {
+                fieldsToSum.forEach(function(field) {
+                    previousRowData[field.identifier] += field.value(row);
+                });
                 previousRowData[sizeFieldId] += countInRow;
             }
             else {
@@ -124,7 +141,8 @@ module ozone.transform {
                 oldField.typeOfValue,
                 oldField.typeConstructor,
                 oldField.range(),
-                oldField.distinctValueEstimate());
+                oldField.distinctValueEstimate(),
+                oldField.aggregationRule);
         });
 
         if (oldStoreSizeColumn) {
@@ -135,7 +153,8 @@ module ozone.transform {
                     'number',
                     null,
                     new ozone.Range(minSize, maxSize, true),
-                    Number.POSITIVE_INFINITY)
+                    Number.POSITIVE_INFINITY,
+                    'sum')
             );
         }
         else {
@@ -145,7 +164,8 @@ module ozone.transform {
                 'number',
                 null,
                 new ozone.Range(minSize, maxSize, true),
-                Number.POSITIVE_INFINITY));
+                Number.POSITIVE_INFINITY,
+                'sum'));
         }
 
         return new rowStore.RowStore(newFields, rows, null, sizeFieldId);
@@ -171,7 +191,7 @@ module ozone.transform {
             });
 
             dataStoreIn.fields().forEach((field) => {
-                if (field.identifier !== sizeFieldId  &&  !usedColumns.hasOwnProperty(field.identifier)) {
+                if (field.identifier !== sizeFieldId  &&  !usedColumns[field.identifier]  &&  !field.aggregationRule) {
                     sortOptions.push({field : field.identifier, compare: compareFunction(dataStoreIn, field.identifier)});
                 }
             });
@@ -237,6 +257,15 @@ module ozone.transform {
             }
         });
         return result;
+    }
+
+    function arrayContains(item: any, a : any[]) : boolean {
+        for (var i=0; i<a.length; i++) {
+            if (a[i] === item) {
+                return true;
+            }
+        }
+        return false;
     }
 
     function compareBySortOptionsFunction(dataStore : DataStore, sortOptions : Array<SortOptions>) : (rowA,rowB) => number {

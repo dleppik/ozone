@@ -72,6 +72,7 @@ module ozone.columnStore {
             this.typeOfValue     = descriptor.typeOfValue;
             this.typeConstructor = descriptor.typeConstructor;
             this.valueEstimate   = descriptor.distinctValueEstimate();
+            this.aggregationRule = (descriptor.aggregationRule) ? descriptor.aggregationRule : null;
 
             var range : Range = descriptor.range();
             if (typeof range === 'undefined' || descriptor.typeOfValue !== 'number') {
@@ -88,13 +89,14 @@ module ozone.columnStore {
             }
         }
 
-        identifier    : string;
-        displayName   : string;
-        typeOfValue   : string;
-        typeConstructor;
+        identifier      : string;
+        displayName     : string;
+        typeOfValue     : string;
+        typeConstructor : any;
+        aggregationRule : string;
 
         private valueEstimate : number;
-        private rangeValue : ozone.Range;
+        private    rangeValue : ozone.Range;
 
         value(rowToken):T {
             var index = (<number> rowToken)-this.offset;

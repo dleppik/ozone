@@ -116,6 +116,9 @@ module ozone.serialization {
         if (f.typeConstructor !== null) {
             result['typeConstructorName'] = f.typeConstructor.toString();
         }
+        if (f.aggregationRule) {
+            result['aggregationRule'] = f.aggregationRule;
+        }
         var range = f.range();
         if (range !== null) {
             result['range'] = range;
@@ -145,13 +148,9 @@ module ozone.serialization {
     }
 
     export function writeIntSet( toWrite : IntSet ) : IntSetMetaData {
-        if (toWrite.size() === 0)                  return writeEmptyIntSet(toWrite);
+        if (toWrite.size() === 0)                  return {type: "empty"};
         if (toWrite instanceof intSet.RangeIntSet) return writeRangeIntSet(<intSet.RangeIntSet> toWrite);
         return writeIntSetArrayData(toWrite);
-    }
-
-    function writeEmptyIntSet(toWrite : IntSet) : IntSetMetaData {
-        return { type: "empty"};  // Trivial function, but this provides compile-time type safety
     }
 
     function writeRangeIntSet(rangeIntSet : intSet.RangeIntSet) : IntSetRangeData {

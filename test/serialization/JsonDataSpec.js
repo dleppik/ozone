@@ -56,6 +56,14 @@ describe("JSON Serialization", function() {
                 );
                 var serialized = writeStore(aggregated);
                 expect(serialized.rowCount).toBe(columnStore.rowCount());
+                serialized.fields.forEach(function(field) {
+                    if (field.identifier === 'Records') {
+                        expect(field.aggregationRule).toBe('sum');
+                    }
+                    else {
+                        expect(field.aggregationRule).toBeFalsy();
+                    }
+                });
             });
         });
 
@@ -107,6 +115,7 @@ describe("JSON Serialization", function() {
                 }
 
                 expect(deserialized.sum('Records')).toBe(columnStore.size());
+                expect(deserialized.sizeField().aggregationRule).toBe('sum');
 
                 expect(  deserialized.filter("animal", "cow").size())
                     .toBe(columnStore.filter("animal", "cow").size());

@@ -124,27 +124,31 @@ describe("transform.aggregate", function() {
     }
 
     var data = [
-        {a: 'cat', b: 'MN', c:'red'   },  // 5 copies
-        {a: 'dog', b: 'NY', c:'yellow'},  // 4 copies
-        {a: 'cat', b: 'CA', c:'white' },  // 3 copies
-        {a: 'dog', b: 'SD', c:'yellow' },  // 2 copies
-        {a: 'cat', b: 'TX', c:'red'   },  // unique
+        {a: 'cat', b: 'MN', c:'red',    n: 4},  // 5 copies
+        {a: 'dog', b: 'NY', c:'yellow', n: 8},  // 4 copies
+        {a: 'cat', b: 'CA', c:'white',  n: 3},  // 3 copies
+        {a: 'dog', b: 'SD', c:'yellow', n: 2},  // 2 copies
+        {a: 'cat', b: 'TX', c:'red',    n: 0},  // unique
 
-        {a: 'cat', b: 'MN', c:'red'},
-        {a: 'dog', b: 'NY', c:'yellow'},
-        {a: 'cat', b: 'CA', c:'white'},
-        {a: 'dog', b: 'SD', c:'yellow'},
+        {a: 'cat', b: 'MN', c:'red',    n: 6},
+        {a: 'dog', b: 'NY', c:'yellow', n: 9},
+        {a: 'cat', b: 'CA', c:'white',  n: 4},
+        {a: 'dog', b: 'SD', c:'yellow', n: 7},
 
-        {a: 'cat', b: 'MN', c:'red'},
-        {a: 'dog', b: 'NY', c:'yellow'},
-        {a: 'cat', b: 'CA', c:'white'},
+        {a: 'cat', b: 'MN', c:'red',    n: 2},
+        {a: 'dog', b: 'NY', c:'yellow', n: 8},
+        {a: 'cat', b: 'CA', c:'white',  n: 3},
 
-        {a: 'cat', b: 'MN', c:'red'},
-        {a: 'dog', b: 'NY', c:'yellow'},
+        {a: 'cat', b: 'MN', c:'red',    n: 8},
+        {a: 'dog', b: 'NY', c:'yellow', n: 6},
 
-        {a: 'cat', b: 'MN', c:'red'}
+        {a: 'cat', b: 'MN', c:'red',    n: 1}
     ];
-    var fieldInfo = { a: {typeOfValue: "string"}, b: {typeOfValue: "string"}, c: {typeOfValue: "string"}};
+    var fieldInfo = {
+        a: {typeOfValue: "string"},
+        b: {typeOfValue: "string"},
+        c: {typeOfValue: "string"},
+        n: {typeOfValue: "number", aggregationRule: "sum"}};
     var initialDb = ozone.rowStore.build(fieldInfo, data);
     var aggregatedRowDb = ozone.transform.aggregate( initialDb );
     var aggregatedColumnDb = ozone.columnStore.buildFromStore( aggregatedRowDb );

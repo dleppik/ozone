@@ -37,6 +37,7 @@ module ozone.serialization {
         displayName: string;
         typeOfValue : string;
         distinctValueEstimate : number;
+        aggregationRule? : string;
     }
 
     export interface NumericalFieldMetaData extends FieldMetaData {

@@ -126,7 +126,7 @@ module ozone {
          *  If this is defined and not null, calling ozone.transform.aggregate() re-calculates the values of this field
          *  when merging rows.
          *
-         *  Currently the only legal non-null value is 'sum', in which merged rows are added together.  In the future
+         *  Currently the only legal non-null value is 'sum', in which merged values are added together.  In the future
          *  it might not be limited to string values.
          */
         aggregationRule? : string;

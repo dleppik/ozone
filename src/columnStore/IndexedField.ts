@@ -96,6 +96,7 @@ module ozone.columnStore {
         displayName : string;
         typeOfValue : string;
         typeConstructor : any;
+        aggregationRule : string;
 
         private rangeVal : Range;
 
@@ -109,6 +110,7 @@ module ozone.columnStore {
             this.typeOfValue     = descriptor.typeOfValue;
             this.typeConstructor = descriptor.typeConstructor;
             this.rangeVal        = range;
+            this.aggregationRule = (descriptor.aggregationRule) ? descriptor.aggregationRule : null;
         }
 
         public allValues() : T[] {

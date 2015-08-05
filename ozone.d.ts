@@ -101,7 +101,7 @@ declare module ozone {
          *  If this is defined and not null, calling ozone.transform.aggregate() re-calculates the values of this field
          *  when merging rows.
          *
-         *  Currently the only legal non-null value is 'sum', in which merged rows are added together.  In the future
+         *  Currently the only legal non-null value is 'sum', in which merged values are added together.  In the future
          *  it might not be limited to string values.
          */
         aggregationRule?: string;
@@ -367,6 +367,7 @@ declare module ozone.columnStore {
         displayName: string;
         typeOfValue: string;
         typeConstructor: any;
+        aggregationRule: string;
         private valueEstimate;
         private rangeValue;
         value(rowToken: any): T;
@@ -501,6 +502,7 @@ declare module ozone.columnStore {
         displayName: string;
         typeOfValue: string;
         typeConstructor: any;
+        aggregationRule: string;
         private rangeVal;
         constructor(descriptor: FieldDescribing, valueList: T[], valueMap: {
             (valueId: string): IntSet;
@@ -839,7 +841,7 @@ declare module ozone.rowStore {
         private rangeVal;
         private distinctValueEstimateVal;
         /** Private constructor:  please use factory methods. */
-        constructor(identifier: string, displayName: string, typeOfValue: string, typeConstructor?: any, rangeVal?: Range, distinctValueEstimateVal?: number);
+        constructor(identifier: string, displayName: string, typeOfValue: string, typeConstructor?: any, rangeVal?: Range, distinctValueEstimateVal?: number, aggregationRuleMustNotBeUsed?: string);
         range(): Range;
         distinctValueEstimate(): number;
         canHold(otherField: Field<T>): boolean;
@@ -857,7 +859,8 @@ declare module ozone.rowStore {
         typeConstructor: any;
         private rangeVal;
         private distinctValueEstimateVal;
-        constructor(identifier: string, displayName: string, typeOfValue: string, typeConstructor?: any, rangeVal?: Range, distinctValueEstimateVal?: number);
+        aggregationRule: string;
+        constructor(identifier: string, displayName: string, typeOfValue: string, typeConstructor?: any, rangeVal?: Range, distinctValueEstimateVal?: number, aggregationRule?: string);
         range(): Range;
         distinctValueEstimate(): number;
         canHold(otherField: Field<T>): boolean;
@@ -908,6 +911,7 @@ declare module ozone.serialization {
         displayName: string;
         typeOfValue: string;
         distinctValueEstimate: number;
+        aggregationRule?: string;
     }
     interface NumericalFieldMetaData extends FieldMetaData {
         range: RangeData;
@@ -1015,7 +1019,7 @@ declare module ozone.transform {
     }
     /**
      * Remove redundant rows and keep the original number of rows in a recordCountField; the resulting DataStore is
-     * sorted on all the output fields.
+     * sorted on all the fields used for merging.  (A pair of rows can only be merged if they are consecutive.)
      *
      * @param dataStoreIn  the initial data source
      *
@@ -1027,9 +1031,8 @@ declare module ozone.transform {
      *                     Default is "Records".
      *
      *         sortFields  specifies the sort order (and optionally the compare function) for the columns.  Not all
-     *                     columns must be specified; the remaining columns will be sorted in the order listed in
-     *                     dataStoreIn.  To explicitly disable sorting because dataStoreIn is already sorted on all
-     *                     output columns, set this to "false".
+     *                     columns must be specified; the remaining columns that are needed for merging will be sorted
+     *                     in the order listed in dataStoreIn.  To explicitly disable sorting, set this to "false".
      *
      *      includeFields  the name of the fields to include in the output, not including the size field.  By default,
      *                     all fields are included.
@@ -1095,6 +1098,7 @@ declare module ozone {
         range?: Range;
         multipleValuesPerRow?: boolean;
         distinctValues?: number;
+        aggregationRule?: string;
     }
     class FieldDescriptor implements FieldDescribing {
         identifier: string;
@@ -1105,6 +1109,7 @@ declare module ozone {
         precomputedRange: Range;
         distinctValues: number;
         shouldCalculateDistinctValues: boolean;
+        aggregationRule: string;
         /**
          * Factory method for building from AJAX.  The AJAX must contain typeOfValue.  If an identifier is not provided
          * separately, that must also be provided. Additionally it may provide displayName, precomputedRange,
@@ -1114,7 +1119,7 @@ declare module ozone {
          * The default for multipleValuesPerRow is false.
          */
         static build(ajax: FieldDescriptorOptions, identifier?: string): FieldDescriptor;
-        constructor(identifier: string, typeOfValue: string, typeConstructor: any, multipleValuesPerRow: boolean, displayName: string, precomputedRange: Range, distinctValues: number, shouldCalculateDistinctValues: boolean);
+        constructor(identifier: string, typeOfValue: string, typeConstructor: any, multipleValuesPerRow: boolean, displayName: string, precomputedRange: Range, distinctValues: number, shouldCalculateDistinctValues: boolean, aggregationRule: string);
         range(): Range;
         distinctValueEstimate(): number;
     }

@@ -105,7 +105,8 @@ module ozone.rowStore {
                      public typeOfValue : string,
                      public typeConstructor : any = null,
                      private rangeVal : Range = null,
-                     private distinctValueEstimateVal : number = Number.POSITIVE_INFINITY)
+                     private distinctValueEstimateVal : number = Number.POSITIVE_INFINITY,
+                     aggregationRuleMustNotBeUsed : string = null)
         {
         }
 
@@ -150,7 +151,8 @@ module ozone.rowStore {
                      public typeOfValue : string,
                      public typeConstructor : any = null,
                      private rangeVal : Range = null,
-                     private distinctValueEstimateVal : number = Number.POSITIVE_INFINITY)
+                     private distinctValueEstimateVal : number = Number.POSITIVE_INFINITY,
+                     public aggregationRule : string = null)
         {
         }
 

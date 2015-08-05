@@ -67,6 +67,7 @@ module ozone {
         range?           : Range;
         multipleValuesPerRow? : boolean;
         distinctValues?  : number;
+        aggregationRule? : string;
     }
 
     export class FieldDescriptor implements FieldDescribing {
@@ -88,10 +89,12 @@ module ozone {
                 ?  Number.POSITIVE_INFINITY
                 :  ajax["distinctValues"];
 
-            var allowsMultipleValues = ajax["multipleValuesPerRow"] ? true : false;
+            var allowsMultipleValues = (ajax.multipleValuesPerRow) ? true : false;
+
+            var aggregationRule = ajax.aggregationRule ? ajax.aggregationRule : null;
 
             return new FieldDescriptor(id, ajax["typeOfValue"], null, allowsMultipleValues, displayName,
-                precomputedRange, distinctValues, shouldCalculateDistinctValues);
+                precomputedRange, distinctValues, shouldCalculateDistinctValues, aggregationRule);
         }
 
         constructor( public identifier : string,
@@ -101,7 +104,8 @@ module ozone {
                             public displayName: string,
                             public precomputedRange : Range,
                             public distinctValues : number,
-                            public shouldCalculateDistinctValues : boolean)
+                            public shouldCalculateDistinctValues : boolean,
+                            public aggregationRule : string)
         {
         }
 

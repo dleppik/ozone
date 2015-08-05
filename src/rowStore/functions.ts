@@ -55,7 +55,8 @@ module ozone.rowStore {
                 oldField.typeOfValue,
                 oldField.typeConstructor,
                 oldField.range(),
-                oldField.distinctValueEstimate()
+                oldField.distinctValueEstimate(),
+                oldField.aggregationRule
             );
         });
 
@@ -102,7 +103,8 @@ module ozone.rowStore {
                         fProto = JsonRowField;
                     else
                         fProto = UnaryJsonRowField;
-                    var field = new fProto(fd.identifier, fd.displayName, fd.typeOfValue, null, fd.range(), fd.distinctValueEstimate());
+                    var field = new fProto(fd.identifier, fd.displayName, fd.typeOfValue, null, fd.range(),
+                        fd.distinctValueEstimate(), fd.aggregationRule);
                     fields.push(field);
                 }
             }
@@ -138,7 +140,8 @@ module ozone.rowStore {
                     var range = <Range> rc.onEnd();
                     var f = rc.field;
                     fProto = proto(f);
-                    var newField =  new fProto(f.identifier, f.displayName, f.typeOfValue, f.typeConstructor, range, f.distinctValueEstimate());
+                    var newField = new fProto(f.identifier, f.displayName, f.typeOfValue, f.typeConstructor,
+                        range, f.distinctValueEstimate(), f.aggregationRule);
                     result = result.withField(newField);
                 }
 
@@ -156,7 +159,8 @@ module ozone.rowStore {
                     }
                     f = vc.field;
                     fProto = proto(f);
-                    newField = new fProto(f.identifier, f.displayName, f.typeOfValue, f.typeConstructor, f.range(), numValues);
+                    newField = new fProto(f.identifier, f.displayName, f.typeOfValue,
+                        f.typeConstructor, f.range(), numValues, f.aggregationRule);
                     result = result.withField(newField);
                 }
             }

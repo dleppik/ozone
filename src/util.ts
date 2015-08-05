@@ -102,7 +102,7 @@ module ozone {
      */
     export function mergeFieldDescriptors(...descriptors : FieldDescribing[]) : FieldDescribing {
         return mergeObjects(
-            ["identifier", "displayName", "typeOfValue", "typeConstructor"],
+            ["identifier", "displayName", "typeOfValue", "typeConstructor", "aggregationRule"],
             ["range", "distinctValueEstimate"],
             descriptors);
     }
