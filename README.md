@@ -75,8 +75,7 @@ var filteringByFieldWorks = dbOfWomen.size() === db.filter(genderField, 'F').siz
                             dbOfWomen.size() === db.filter(dbOfMaleGermans.field('Gender', 'F')).size();
 ```
 
-NOTE: in version 0.1.12 and earlier, size is a value rather than a function.  (This was changed to avoid unnecessary
-calculations; even so, calls to db.size() are extremely fast.)
+NOTE: in version 0.1.12 and earlier, size is a value rather than a function.  Also, db.size() is not necessarily the same as the number of rows.  See Aggregation below.
 
 Use field.distinctValueEstimate() to determine how to present the fields
 
@@ -172,6 +171,14 @@ stored in rows), and uses that to produce its native ColumnStore.  If your data 
 
 To minimize file size and memory usage, sort the rows on at least one column before converting to Ozone format.
 
+Aggregation
+-----------
+
+Ozone lets you combine rows that are not meaningfully different.  This is especially useful if you are removing columns you don't need.  Aggregation creates (or adds to) a field that keeps track of the per-row size, so that size() returns the same value as before.  By default, that field is named 'Records'.  To find out how many rows there are, call rowCount() instead of size().
+
+A field may be designated as a count, so that its values are added together during aggregation.  See [aggregationRule in the FieldDescribing interface](https://github.com/dleppik/ozone/blob/master/src/interfaces.ts) for details.
+
+ See [demo/buildDataStore.js](https://github.com/dleppik/ozone/blob/master/demo/buildDataStore.js) for an example of ozone.transform.aggregate(), or [the transform.ts source comments](https://github.com/dleppik/ozone/blob/master/src/transform/transform.ts) to see the options.
 
 Compatibility
 -------------
