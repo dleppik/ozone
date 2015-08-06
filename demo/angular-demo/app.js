@@ -20,7 +20,7 @@
         $scope.currentFilters= [];
 
 
-        $http.get("../SummerOlympicMedals.json")
+        $http.get("../SummerOlympicMedalsAggregatedByAthlete.json")
             .success(function(data){
                 $scope.unfilteredDb = ozone.serialization.readStore(data);
                 $scope.fields = $scope.unfilteredDb.fields();

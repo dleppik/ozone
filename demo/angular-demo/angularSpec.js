@@ -61,7 +61,7 @@ describe("testing of angular demo", function() {
 
             beforeEach(inject(function(_$httpBackend_, $rootScope){
                 $httpBackend = _$httpBackend_;
-                $httpBackend.expectGET("../SummerOlympicMedals.json").
+                $httpBackend.expectGET("../SummerOlympicMedalsAggregatedByAthlete.json").
                     respond(JSON.stringify(ozone.serialization.writeStore(columnStore)));
 
                 scope = $rootScope.$new();

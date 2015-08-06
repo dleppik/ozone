@@ -21,6 +21,14 @@
     <div id="flot-placeholder"></div>
 </div>
 
+<div class="graph-key">
+    <span class="dataset-name">Number of Olympic medals</span>
+    <div class="filters-in-use">
+        <div class="filter-list"></div>
+    </div>
+</div>
+
+
 <div class="controls">
     <table>
         <tr>
@@ -38,9 +46,6 @@
 <div class="filter-widget">
 </div>
 
-<div class="filters-in-use">
-    <div class="filter-list"></div>
-</div>
 
 <div class="upload-csv">
     <h1>
@@ -51,6 +56,8 @@
         <h2>Upload...</h2>
 
         <input type="file" class="upload-csv-file"/>
+
+        <div class="upload-progress"></div>
 
         <div class="note">IE 9 and below don't support JavaScript file uploads.</div>
 
@@ -113,7 +120,7 @@
         // Setup and load default data
         //
 
-        $.getJSON("SummerOlympicMedals.json", function( storeJson ) {
+        $.getJSON("SummerOlympicMedalsAggregatedByAthlete.json", function( storeJson ) {
             dbContext = {
                 db: ozone.serialization.readStore(storeJson),
                 onChange: redraw
@@ -136,8 +143,39 @@
                 if (files.length > 0) {
                     var file = files[0];
                     var reader = new FileReader();
-                    reader.onload = function(event) { replaceDbWithCsv(reader.result); };
+
+                    reader.addEventListener('loadstart', function() { $(".upload-progress").html("Loading..."); });
+                    reader.addEventListener('progress', function(event) {
+                        if (event.lengthComputable) {
+                            $(".upload-progress").html(Math.round(event.loaded/event.total)+"% loaded");
+                        }
+                        else {
+                            $(".upload-progress").html("Loaded "+event.loaded+" bytes");
+                        }
+                    });
+
+                    reader.addEventListener('load', function(event) {
+                        $(".upload-progress").html("File uploaded, processing...");
+                        try {
+                            replaceDbWithCsv(reader.result);
+                        }
+                        catch (err) {
+                            $(".upload-progress").text(err);
+                            throw err;  // For console
+                        }
+                        $(".upload-progress").html("File done loading");
+                    });
+
+                    reader.addEventListener('abort', function(event) {
+                        $(".upload-progress").html("File upload aborted");
+                    });
+
+                    reader.addEventListener('error', function(event) {
+                        $(".upload-progress").html("Error loading file");
+                    });
+
                     reader.readAsText(file);
+                    $(".dataset-name").html("");
                 }
             }
             else {
@@ -148,6 +186,7 @@
         $("form.csv-upload-form").submit(function(event) {
             replaceDbWithCsv( $(this).find(".enter-csv-field").get(0).value );
             event.preventDefault();
+            $(".dataset-name").html("");
         });
 
         function replaceDbWithCsv( csv ) {

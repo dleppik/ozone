@@ -88,7 +88,6 @@ module ozone.columnStore {
             var sumFunc = function(a,b) { return a+b };
             store.eachRow(function(r) { result += field.values(r).reduce(sumFunc, 0); });
         }
-
         return result;
     }
 }

@@ -21,6 +21,14 @@ body {
   padding: 16px 0;
 }
 
+.graph-key {
+  text-align: center;
+}
+
+.graph-key .filters-in-use {
+  display: inline-block;
+}
+
 .filters-in-use h3 {
   display: inline-block;
 }

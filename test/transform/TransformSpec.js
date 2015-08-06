@@ -148,7 +148,10 @@ describe("transform.aggregate", function() {
         a: {typeOfValue: "string"},
         b: {typeOfValue: "string"},
         c: {typeOfValue: "string"},
-        n: {typeOfValue: "number", aggregationRule: "sum"}};
+        n: {typeOfValue: "number", aggregationRule: "sum"},
+        x: {typeOfValue: "number", aggregationRule: "sum"}
+    };
+
     var initialDb = ozone.rowStore.build(fieldInfo, data);
     var aggregatedRowDb = ozone.transform.aggregate( initialDb );
     var aggregatedColumnDb = ozone.columnStore.buildFromStore( aggregatedRowDb );
@@ -167,18 +170,21 @@ describe("transform.aggregate", function() {
     });
 
     it("Merges with an aggregationRule correctly", function() {
-        function assertSum(sum, filteredDb) {
+        function assertSum(sum, fieldId, filteredDb) {
             expect(filteredDb.rowCount()).toBe(1);
             filteredDb.eachRow(function(row) {
-                expect(filteredDb.field('n').values(row)[0]).toBe(sum);
+                expect(filteredDb.field(fieldId).values(row)[0]).toBe(sum);
             });
         }
 
-        assertSum(4+6+2+8+1, aggregatedColumnDb.filter('a', 'cat').filter('b', 'MN').filter('c', 'red'));
-        assertSum(  8+9+8+6, aggregatedColumnDb.filter('a', 'dog').filter('b', 'NY').filter('c', 'yellow'));
-        assertSum(    3+4+3, aggregatedColumnDb.filter('a', 'cat').filter('b', 'CA').filter('c', 'white'));
-        assertSum(        2, aggregatedColumnDb.filter('a', 'dog').filter('b', 'SD').filter('c', 'yellow'));
-        assertSum(        7, aggregatedColumnDb.filter('a', 'cat').filter('b', 'TX').filter('c', 'red'));
+        assertSum(4+6+2+8+1, 'n', aggregatedColumnDb.filter('a', 'cat').filter('b', 'MN').filter('c', 'red'));
+        assertSum(  8+9+8+6, 'n', aggregatedColumnDb.filter('a', 'dog').filter('b', 'NY').filter('c', 'yellow'));
+        assertSum(    3+4+3, 'n', aggregatedColumnDb.filter('a', 'cat').filter('b', 'CA').filter('c', 'white'));
+        assertSum(        2, 'n', aggregatedColumnDb.filter('a', 'dog').filter('b', 'SD').filter('c', 'yellow'));
+        assertSum(        7, 'n', aggregatedColumnDb.filter('a', 'cat').filter('b', 'TX').filter('c', 'red'));
+
+        expect(aggregatedColumnDb.sum('x')).toBe(0);
+        assertSum(0, 'x', aggregatedColumnDb.filter('a', 'cat').filter('b', 'MN').filter('c', 'red'));
     });
 
     it("Produces unary fields whenever possible", function() {

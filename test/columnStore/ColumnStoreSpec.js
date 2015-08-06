@@ -46,6 +46,39 @@ describe("ColumnStore", function() {
         expect(   pinField instanceof ozone.columnStore.UnIndexedField ).toBe(true);
     });
 
+    it("Builds from a RowStore with some blank data", function() {
+        var dataWithBlanks =
+            "name,   color, animal, pin\n"+
+            "Alice,       ,       ,    \n"+  // First and last row are required by constructors to be trimmed
+            "Bob,    green,    dog, 102\n"+
+            "Chris,       ,    cat, 103\n"+
+            "Doug,     red,       , 104\n"+
+            "Ellie,  green,    cow, 105\n"+
+            "Frank,   blue,    dog,    \n"+
+            "Greg,     red,    cat, 107\n"+
+            "Hubert,      ,       ,    \n";
+
+        var params = {
+            fields: {
+                name: { class: ozone.columnStore.UnIndexedField },
+                pin:  { class: ozone.columnStore.UnIndexedField,
+                    typeOfValue: "number",
+                    range: new ozone.Range(101, 108, true)
+                }
+            }
+        };
+
+        var    rowStore = ozone.rowStore.buildFromCsv(dataWithBlanks);
+        var columnStore = ozone.columnStore.buildFromStore( rowStore, params);
+
+        var fields = columnStore.fields();
+        for (var i=0; i < fields.length; i++) {
+            var field = fields[i];
+            expect(field).toBeDefined();
+            expect(field).toBe(columnStore.field(field.identifier));
+        }
+    });
+
     it("Builds ignoring fields when buildAllFields is false", function() {
         var params = {
             fields: {

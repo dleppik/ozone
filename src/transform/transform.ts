@@ -115,7 +115,12 @@ module ozone.transform {
             var rowIsSame = (previousRowData === null)  ?  false  :  rowMatchesData(row, previousRowData, fieldsToCompare);
             if (rowIsSame) {
                 fieldsToSum.forEach(function(field) {
-                    previousRowData[field.identifier] += field.value(row);
+                    if (previousRowData.hasOwnProperty(field.identifier)) {
+                        previousRowData[field.identifier] += field.value(row);
+                    }
+                    else {
+                        previousRowData[field.identifier] = field.value(row);
+                    }
                 });
                 previousRowData[sizeFieldId] += countInRow;
             }

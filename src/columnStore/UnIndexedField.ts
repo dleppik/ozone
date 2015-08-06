@@ -25,7 +25,7 @@ module ozone.columnStore {
             var array : T[] = [];
             var offset = 0;
             var nullValues = (typeof(params["nullValues"]) === "object" )  ?  params["nullValues"] : [];
-            var nullProxy = (typeof(params["nullProxy"]) === "undefined")  ?  params["nullProxy"]  : [];
+            var nullProxy = (typeof(params["nullProxy"]) === "undefined")  ?  null : params["nullProxy"];
             var nullMap = {};
             for (var i=0; i<nullValues.length; i++) {
                 var nv = nullValues[i];
@@ -57,6 +57,9 @@ module ozone.columnStore {
                     }
                 },
                 onEnd: function() : UnIndexedField<T> {
+                    while ((array.length > 0)  &&  (array[array.length-1] === nullProxy)) {
+                        array.pop();  // Trim the end
+                    }
                     return new UnIndexedField(descriptor, array, offset, nullProxy);
                 }
             };
@@ -85,7 +88,7 @@ module ozone.columnStore {
             }
 
             if (array.length > 0  &&  (array[0] === nullProxy  || array[array.length-1] === nullProxy) ) {
-                throw new Error("Array must be trimmed");
+                throw new Error("Array must be trimmed (Field: "+this.identifier+")");
             }
         }
 

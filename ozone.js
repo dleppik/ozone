@@ -413,7 +413,7 @@ var ozone;
                     this.valueEstimate = array.length;
                 }
                 if (array.length > 0 && (array[0] === nullProxy || array[array.length - 1] === nullProxy)) {
-                    throw new Error("Array must be trimmed");
+                    throw new Error("Array must be trimmed (Field: " + this.identifier + ")");
                 }
             }
             /**
@@ -431,7 +431,7 @@ var ozone;
                 var array = [];
                 var offset = 0;
                 var nullValues = (typeof (params["nullValues"]) === "object") ? params["nullValues"] : [];
-                var nullProxy = (typeof (params["nullProxy"]) === "undefined") ? params["nullProxy"] : [];
+                var nullProxy = (typeof (params["nullProxy"]) === "undefined") ? null : params["nullProxy"];
                 var nullMap = {};
                 for (var i = 0; i < nullValues.length; i++) {
                     var nv = nullValues[i];
@@ -459,6 +459,9 @@ var ozone;
                         }
                     },
                     onEnd: function () {
+                        while ((array.length > 0) && (array[array.length - 1] === nullProxy)) {
+                            array.pop(); // Trim the end
+                        }
                         return new UnIndexedField(descriptor, array, offset, nullProxy);
                     }
                 };
@@ -2712,7 +2715,12 @@ var ozone;
                 var rowIsSame = (previousRowData === null) ? false : rowMatchesData(row, previousRowData, fieldsToCompare);
                 if (rowIsSame) {
                     fieldsToSum.forEach(function (field) {
-                        previousRowData[field.identifier] += field.value(row);
+                        if (previousRowData.hasOwnProperty(field.identifier)) {
+                            previousRowData[field.identifier] += field.value(row);
+                        }
+                        else {
+                            previousRowData[field.identifier] = field.value(row);
+                        }
                     });
                     previousRowData[sizeFieldId] += countInRow;
                 }

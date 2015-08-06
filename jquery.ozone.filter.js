@@ -67,13 +67,11 @@
             .appendTo($widget);
 
         appendOption($fields, chooseFieldText);
-        (function (fields) {
-            for (var i=0; i<fields.length; i++) {
-                var field = fields[i];
+        ctx.db.fields().forEach(function(field) {
+            if (! field.aggregationRule) {
                 appendOption($fields, field.displayName, field.identifier);
-
             }
-        })( ctx.db.fields() );
+        });
 
         $fields.change(function() {
             var field = ctx.db.field(this.value);

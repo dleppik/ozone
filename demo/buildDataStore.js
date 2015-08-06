@@ -47,8 +47,11 @@ var noAthleteBuildParams = {
 };
 
 var noAthleteStore = ozone.columnStore.buildFromStore(rowStore, noAthleteBuildParams);
-var noAthleteJson = JSON.stringify(ozone.serialization.writeStore(noAthleteStore));
-fs.writeFileSync("SummerOlympicMedals.json", noAthleteJson, {encoding: 'utf-8'});
+
+// Don't bother writing this, as you're about to see a better solution.
+//
+//var noAthleteJson = JSON.stringify(ozone.serialization.writeStore(noAthleteStore));
+//fs.writeFileSync("SummerOlympicMedals.json", noAthleteJson, {encoding: 'utf-8'});
 
 //
 // Aggregation
