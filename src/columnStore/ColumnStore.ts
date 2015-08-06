@@ -34,6 +34,8 @@ module ozone.columnStore {
          */
         private fieldMap : { [key: string]: RandomAccessField<any>; } ;
 
+        private cachedSize: number = null;
+
         constructor( private theRowCount: number, private fieldArray : RandomAccessField<any>[], private sizeFieldId : string ) {
             this.fieldMap = {};
             for (var i=0; i<fieldArray.length; i++) {
@@ -55,7 +57,12 @@ module ozone.columnStore {
             }
         }
 
-        size() : number { return (this.sizeFieldId)  ?  this.sum(this.sizeFieldId)  :  this.theRowCount; }
+        size() : number {
+            if (this.cachedSize === null) {
+                this.cachedSize = (this.sizeFieldId)  ?  this.sum(this.sizeFieldId)  :  this.theRowCount;
+            }
+            return this.cachedSize;
+        }
 
         rowCount():number { return this.theRowCount; }
 

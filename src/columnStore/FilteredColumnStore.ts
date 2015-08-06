@@ -182,22 +182,23 @@ module ozone.columnStore {
 
     export class FilteredColumnStore extends StoreProxy implements ColumnStoreInterface {
 
+        private cachedSize : number = null;
+
         constructor( public source : ColumnStore, private filterArray : Filter[], private filterBits : IntSet) {
             super(source);
         }
 
-        size() {
-            return (this.sizeField())  ?  this.sum(this.sizeField())  :  this.rowCount();
+        size() : number {
+            if (this.cachedSize === null) {
+                this.cachedSize = (this.sizeField())  ?  this.sum(this.sizeField())  : this.rowCount();
+            }
+            return this.cachedSize;
         }
 
 
-        rowCount():number {
-            return this.filterBits.size();
-        }
+        rowCount():number { return this.filterBits.size(); }
 
-        sum(field : string | Field<number>) : number {
-            return sum(this, field);
-        }
+        sum(field : string | Field<number>) : number { return sum(this, field); }
 
         intSet() : IntSet { return this.filterBits; }
 

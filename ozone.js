@@ -529,6 +529,7 @@ var ozone;
                 this.theRowCount = theRowCount;
                 this.fieldArray = fieldArray;
                 this.sizeFieldId = sizeFieldId;
+                this.cachedSize = null;
                 this.fieldMap = {};
                 for (var i = 0; i < fieldArray.length; i++) {
                     var field = fieldArray[i];
@@ -547,7 +548,12 @@ var ozone;
                     }
                 }
             }
-            ColumnStore.prototype.size = function () { return (this.sizeFieldId) ? this.sum(this.sizeFieldId) : this.theRowCount; };
+            ColumnStore.prototype.size = function () {
+                if (this.cachedSize === null) {
+                    this.cachedSize = (this.sizeFieldId) ? this.sum(this.sizeFieldId) : this.theRowCount;
+                }
+                return this.cachedSize;
+            };
             ColumnStore.prototype.rowCount = function () { return this.theRowCount; };
             ColumnStore.prototype.sum = function (field) { return ozone.columnStore.sum(this, field); };
             ColumnStore.prototype.intSet = function () { return new ozone.intSet.RangeIntSet(0, this.size()); };
@@ -757,16 +763,16 @@ var ozone;
                 this.source = source;
                 this.filterArray = filterArray;
                 this.filterBits = filterBits;
+                this.cachedSize = null;
             }
             FilteredColumnStore.prototype.size = function () {
-                return (this.sizeField()) ? this.sum(this.sizeField()) : this.rowCount();
+                if (this.cachedSize === null) {
+                    this.cachedSize = (this.sizeField()) ? this.sum(this.sizeField()) : this.rowCount();
+                }
+                return this.cachedSize;
             };
-            FilteredColumnStore.prototype.rowCount = function () {
-                return this.filterBits.size();
-            };
-            FilteredColumnStore.prototype.sum = function (field) {
-                return columnStore.sum(this, field);
-            };
+            FilteredColumnStore.prototype.rowCount = function () { return this.filterBits.size(); };
+            FilteredColumnStore.prototype.sum = function (field) { return columnStore.sum(this, field); };
             FilteredColumnStore.prototype.intSet = function () { return this.filterBits; };
             FilteredColumnStore.prototype.eachRow = function (rowAction) { this.filterBits.each(rowAction); };
             FilteredColumnStore.prototype.filter = function (fieldNameOrFilter, value) {

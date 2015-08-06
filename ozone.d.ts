@@ -414,6 +414,7 @@ declare module ozone.columnStore {
          * implementations do.  (Rhino doesn't.)  So a separate fieldArray isn't completely redundant.
          */
         private fieldMap;
+        private cachedSize;
         constructor(theRowCount: number, fieldArray: RandomAccessField<any>[], sizeFieldId: string);
         size(): number;
         rowCount(): number;
@@ -451,6 +452,7 @@ declare module ozone.columnStore {
         source: ColumnStore;
         private filterArray;
         private filterBits;
+        private cachedSize;
         constructor(source: ColumnStore, filterArray: Filter[], filterBits: IntSet);
         size(): number;
         rowCount(): number;
