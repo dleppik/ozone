@@ -2834,14 +2834,6 @@ var ozone;
             });
             return result;
         }
-        function arrayContains(item, a) {
-            for (var i = 0; i < a.length; i++) {
-                if (a[i] === item) {
-                    return true;
-                }
-            }
-            return false;
-        }
         function compareBySortOptionsFunction(dataStore, sortOptions) {
             var fields = sortOptions.map(function (o) { return dataStore.field(o.field); });
             return function (rowA, rowB) {

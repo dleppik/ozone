@@ -264,15 +264,6 @@ module ozone.transform {
         return result;
     }
 
-    function arrayContains(item: any, a : any[]) : boolean {
-        for (var i=0; i<a.length; i++) {
-            if (a[i] === item) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     function compareBySortOptionsFunction(dataStore : DataStore, sortOptions : Array<SortOptions>) : (rowA,rowB) => number {
         var fields = sortOptions.map((o) => {return dataStore.field(o.field)});
 

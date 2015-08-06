@@ -68,7 +68,8 @@
 
         appendOption($fields, chooseFieldText);
         ctx.db.fields().forEach(function(field) {
-            if (! field.aggregationRule) {
+            // Only filter on IndexedFields with non-aggregate data.
+            if (typeof(field.allValues) === "function"  &&  ! field.aggregationRule) {
                 appendOption($fields, field.displayName, field.identifier);
             }
         });

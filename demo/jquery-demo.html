@@ -270,12 +270,12 @@
                 var $el = $(this);
                 $el.html("");
 
-                var fields = dbContext.db.fields();
-                for (var i=0; i<fields.length; i++) {
-                    var field = fields[i];
-                    var selected = (xAxisField === field) ? " selected" : "";
-                    $el.append("<option "+selected+" value='"+field.identifier+"'>"+field.displayName+"</option>");
-                }
+                dbContext.db.fields().forEach(function(field){
+                    if (typeof(field.allValues) === "function") {  // Make sure it's an IndexedField
+                        var selected = (xAxisField === field) ? " selected" : "";
+                        $el.append("<option "+selected+" value='"+field.identifier+"'>"+field.displayName+"</option>");
+                    }
+                });
             });
         }
 
