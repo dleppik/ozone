@@ -111,7 +111,7 @@ var filterList = d3.selectAll("#filterList");
 //
 
 var db;
-d3.json("SummerOlympicMedals.json", function(jsonData) {
+d3.json("SummerOlympicMedalsAggregatedByAthlete.json", function(jsonData) {
     db = ozone.serialization.readStore(jsonData);
     filteredDb = db;
 
