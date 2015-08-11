@@ -197,6 +197,7 @@ describe("ColumnStore", function() {
             });
         });
 
+
         it("Filters on multiple UnIndexedFields", function() {
             var frankDb = columnStore.filter( new ValueFilter(nameField, "Frank") );
             expect(frankDb.filter(pinField, 106).size()).toBe(1);
@@ -210,6 +211,26 @@ describe("ColumnStore", function() {
                 .filter( animalField, "dog")
                 .filter(    pinField, 106);
             expect(db.size()).toBe(1);
+        });
+
+
+        // Make sure we're not accidentally un-optimizing our fields
+        it("Filters a field with a RangeIntSet into a DB with a RangeIntSet", function() {
+            var values = {
+                "a": ozone.intSet.RangeIntSet.fromTo(10, 100),
+                "b": ozone.intSet.RangeIntSet.fromTo(5, 8)
+            };
+            var fieldDesc = ozone.FieldDescriptor.build({typeOfValue: 'string', identifier: 'f1'});
+            var f1 = new ozone.columnStore.IndexedField(fieldDesc, ['a','b'], values);
+            var store = new ozone.columnStore.ColumnStore(1000, [f1]);
+
+            expect(store.filter('f1', 'a').intSet() instanceof ozone.intSet.RangeIntSet).toBe(true);
+            expect(store.filter('f1', 'b').intSet() instanceof ozone.intSet.RangeIntSet).toBe(true);
+
+            var abStore = store
+                .filter('f1', 'a')
+                .filter('f1', 'b');
+            expect(abStore.intSet() instanceof ozone.intSet.RangeIntSet).toBe(true);
         });
     });
 
@@ -231,6 +252,21 @@ describe("ColumnStore", function() {
             expect(colorPartitions[106].size() ).toBe(1);
             expect(colorPartitions[107].size() ).toBe(1);
             expect(colorPartitions[108].size() ).toBe(1);
+        });
+
+        // Make sure we're not accidentally un-optimizing our fields
+        it("Partitions a field with RangeIntSets into DBs with RangeIntSets", function() {
+            var values = {
+                "a": ozone.intSet.RangeIntSet.fromTo(10, 100),
+                "b": ozone.intSet.RangeIntSet.fromTo(5, 8)
+            };
+            var fieldDesc = ozone.FieldDescriptor.build({typeOfValue: 'string', identifier: 'f1'});
+            var f1 = new ozone.columnStore.IndexedField(fieldDesc, ['a','b'], values);
+            var store = new ozone.columnStore.ColumnStore(1000, [f1]);
+
+            var partitions = store.partition('f1');
+            expect(partitions['a'].intSet() instanceof ozone.intSet.RangeIntSet).toBe(true);
+            expect(partitions['b'].intSet() instanceof ozone.intSet.RangeIntSet).toBe(true);
         });
     });
 

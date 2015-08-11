@@ -36,7 +36,7 @@ module ozone.columnStore {
 
         private cachedSize: number = null;
 
-        constructor( private theRowCount: number, private fieldArray : RandomAccessField<any>[], private sizeFieldId : string ) {
+        constructor( private theRowCount: number, private fieldArray : RandomAccessField<any>[], private sizeFieldId : string = null ) {
             this.fieldMap = {};
             for (var i=0; i<fieldArray.length; i++) {
                 var field = fieldArray[i];

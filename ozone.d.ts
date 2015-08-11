@@ -415,7 +415,7 @@ declare module ozone.columnStore {
          */
         private fieldMap;
         private cachedSize;
-        constructor(theRowCount: number, fieldArray: RandomAccessField<any>[], sizeFieldId: string);
+        constructor(theRowCount: number, fieldArray: RandomAccessField<any>[], sizeFieldId?: string);
         size(): number;
         rowCount(): number;
         sum(field: string | Field<number>): number;

@@ -526,6 +526,7 @@ var ozone;
          */
         var ColumnStore = (function () {
             function ColumnStore(theRowCount, fieldArray, sizeFieldId) {
+                if (sizeFieldId === void 0) { sizeFieldId = null; }
                 this.theRowCount = theRowCount;
                 this.fieldArray = fieldArray;
                 this.sizeFieldId = sizeFieldId;
