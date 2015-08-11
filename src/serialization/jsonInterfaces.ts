@@ -90,4 +90,27 @@ module ozone.serialization {
         /** The values, sorted from lowest to highest. */
         data : number[];
     }
+
+    /**
+     * ASCII Run-Length Encoding IntSet:  a fairly compact ASCII representation of a bitmap.  Type = "arle/n" where n
+     * is the base.  Typically arle/36.
+     *
+     * This is a quick, good-enough implementation that doesn't require WindowBase64.btoa() (not in IE 9 or Node.js)
+     * or ArrayBuffer (not in IE 9).  As a result, this is likely to go away once we drop support for IE 9.  (We are
+     * likely to be considerably slower than Microsoft in dropping IE 9 support.)
+     *
+     * Consists of a string of numbers; single digit numbers are written verbatim, while multi-digit numbers are in
+     * parentheses.  The base of the numbers varies; ARLE-10 is base-10, useful for debugging, ARLE-36 is the most
+     * compact. Thus, the ARLE-10 string '4(32)123(18)' yields the numbers [4, 32, 1, 2, 3, 18].
+     *
+     * Once the string of numbers is decoded, interpretation is simple run-length encoding: the first digit is the
+     * number of 0's, the second is the number of 1's, and so on.  Thus, the ARLE-10 string '3211' yields the
+     * little-endian bits 0001101, which in turn means that the IntSet consists of 3, 4, and 6.  Similarly, '0123'
+     * yields bits 100111, and the IntSet consists of the numbers [0, 3, 4, 5].  Note that '0' should only occur as the
+     * first character, where it indicates that the IntSet includes 0.  Because the bits should always end with a 1,
+     * there is always an even number of run-length numbers.
+     */
+    export interface IntSetArleData extends IntSetMetaData {
+        data : string;
+    }
 }

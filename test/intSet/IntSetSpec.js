@@ -190,30 +190,30 @@ describe("BitmapArrayIntSet tests", function() {
         expect(bitmap.max()).toBe(-1);
 
         // []
-        var bitmap = new ozone.intSet.BitmapArrayIntSet([], 0, 0);
+        bitmap = new ozone.intSet.BitmapArrayIntSet([], 0, 0);
         expect(bitmap.min()).toBe(-1);
         expect(bitmap.max()).toBe(-1);
 
         // ["1"]
-        var bitmap = new ozone.intSet.BitmapArrayIntSet([1|0], 0, 1);
+        bitmap = new ozone.intSet.BitmapArrayIntSet([1|0], 0, 1);
 
         expect(bitmap.min()).toBe(0);
         expect(bitmap.max()).toBe(0);
 
         // ["00000000000000000000000000000000" , "101"] or "10100000000000000000000000000000000"
-        var bitmap = new ozone.intSet.BitmapArrayIntSet([0|0, 5|0], 0, 3);
+        bitmap = new ozone.intSet.BitmapArrayIntSet([0|0, 5|0], 0, 3);
 
         expect(bitmap.min()).toBe(32);
         expect(bitmap.max()).toBe(34);
 
         // ["1000" , undefined, "101"] or "10100000000000000000000000000000000000000000000000000000000000000001000"
-        var bitmap = new ozone.intSet.BitmapArrayIntSet([8|0, undefined, 5|0], 0, 3);
+        bitmap = new ozone.intSet.BitmapArrayIntSet([8|0, undefined, 5|0], 0, 3);
 
         expect(bitmap.min()).toBe(3);
         expect(bitmap.max()).toBe(66);
 
         // ["101" , "00000000000000000000000000000000"] or "00000000000000000000000000000000101"
-        var bitmap = new ozone.intSet.BitmapArrayIntSet([5|0, 0|0], 0, 3);
+        bitmap = new ozone.intSet.BitmapArrayIntSet([5|0, 0|0], 0, 3);
 
         expect(bitmap.min()).toBe(0);
         expect(bitmap.max()).toBe(2);
@@ -227,7 +227,7 @@ describe("BitmapArrayIntSet tests", function() {
         expect(bitmap.has( 1)).toBe(false);
 
         // ["111000" , , "101"] or "10100000000000000000000000000(32 zeroes)111000"
-        var bitmap = new ozone.intSet.BitmapArrayIntSet([56|0, undefined, 5|0], 0, 5);
+        bitmap = new ozone.intSet.BitmapArrayIntSet([56|0, undefined, 5|0], 0, 5);
 
         expect(bitmap.has( 0)).toBe(false);
         expect(bitmap.has( 1)).toBe(false);
@@ -751,5 +751,72 @@ describe("IntSets", function() {
             ozone.intSet.BitmapArrayIntSet, "BitmapArrayIntSet",
             ozone.intSet.ArrayIndexIntSet, "ArrayIndexIntSet");
 
+    });
+
+    describe("ArleIntSet", function() {
+
+        var setFromArray = function(base, arrayOfIndexes) {
+            var builder = ozone.intSet.ArleIntSet.builderWithBase(base, 10);
+            arrayOfIndexes.forEach(function(item) { builder.onItem(item) });
+            var result = builder.onEnd();
+
+            expect(result.size()).toBe(arrayOfIndexes.length);
+            if (arrayOfIndexes.length > 0) {
+                expect(result.min()).toBe(arrayOfIndexes[0]);
+                expect(result.max()).toBe(arrayOfIndexes[arrayOfIndexes.length-1]);
+            }
+            var iterator = result.iterator();
+            arrayOfIndexes.forEach(function(item) {
+                expect(iterator.hasNext()).toBe(true);
+                var next = iterator.next();
+                expect(next).toBe(item);
+            });
+
+            return result;
+        };
+
+        it("Builds base-10", function() {
+            expect(setFromArray(10,           []).data).toBe("");
+            expect(setFromArray(10,    [3, 4, 6]).data).toBe("3211");
+            expect(setFromArray(10,    [1, 2, 3]).data).toBe("13");
+            expect(setFromArray(10, [0, 3, 4, 5]).data).toBe("0123");
+            expect(setFromArray(10, [0, 3, 5, 7]).data).toBe("01211111");
+            expect(setFromArray(10, [0, 1, 100, 105]).data).toBe("02(98)141");
+            expect(setFromArray(10, [101,102,103,104,105,106,107,108,109,110,111,112]).data).toBe("(101)(12)");
+        });
+
+        sharedBehaviorForIntSetClasses(ozone.intSet.ArleIntSet, "ArleIntSet");
+
+        behaviorAcrossIntSetClasses(
+            ozone.intSet.ArrayIndexIntSet, "ArleIntSet",
+            ozone.intSet.BitmapArrayIntSet, "BitmapArrayIntSet");
+
+        behaviorAcrossIntSetClasses(
+            ozone.intSet.BitmapArrayIntSet, "ArleIntSet",
+            ozone.intSet.ArrayIndexIntSet, "ArrayIndexIntSet");
+    });
+
+    describe("SimpleOrderedIterator", function() {
+        it("Iterates properly", function() {
+            intSetForEachArray(ozone.intSet.ArrayIndexIntSet, function(array, intSet) {
+                var iterator = new ozone.intSet.SimpleOrderedIterator(intSet.iterator());
+                array.forEach(function(item) {
+                    expect(iterator.hasNext()).toBe(true);
+                    expect(iterator.next()).toBe(item);
+                });
+                expect(iterator.hasNext()).toBe(false);
+            });
+        });
+        it("Seeks properly", function() {
+            intSetForEachArray(ozone.intSet.ArrayIndexIntSet, function(array, intSet) {
+                array.forEach(function(item) {
+                    var iterator = new ozone.intSet.SimpleOrderedIterator(intSet.iterator());
+                    iterator.skipTo(item);
+                    expect(iterator.hasNext()).toBe(true);
+                    var nextItem = iterator.next();
+                    expect(nextItem).toBe(item);
+                });
+            });
+        });
     });
 });

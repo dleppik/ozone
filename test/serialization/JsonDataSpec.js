@@ -273,9 +273,6 @@ describe("JSON Serialization", function() {
                 for (var i=0; i<valueIds.length; i++) {
                     var valueId = valueIds[i];
                     expect(serialized.values[i].value).toBe(valueId);
-                    var valueArray = serialized.values[i].data.data;
-                    var expectedValueArray = field.intSetForValue(valueId).toArray();
-                    expect(valueArray).toEqual(expectedValueArray);
                 }
             });
         });
@@ -292,14 +289,13 @@ describe("JSON Serialization", function() {
             }
 
             function roundTripIndexedField(field) {
-                var deserialized = roundTripWithGenericAssertions(field);
-
+                var   deserialized = roundTripWithGenericAssertions(field);
                 var expectedValues = field.allValues();
+
                 expect(deserialized.allValues()).toEqual(expectedValues);
-                for (var i=0 ;i<expectedValues.length; i++) {
-                    var value = expectedValues[i];
-                    expect(deserialized.intSetForValue(value)).toEqual(field.intSetForValue(value));
-                }
+                expectedValues.forEach(function(value) {
+                    expect(deserialized.intSetForValue(value).equals(field.intSetForValue(value))).toBe(true);
+                });
             }
 
             function roundTripUnIndexedField(field) {
@@ -366,14 +362,6 @@ describe("JSON Serialization", function() {
                 expect(result.min).toBe(10);
                 expect(result.max).toBe(50);
             });
-
-            it("Writes an array", function() {
-                var array = [1,3,7,15];
-                var intSet = new ArrayIndexIntSet(array);
-                var result = writeIntSet(intSet);
-                expect(result.type).toBe("array");
-                expect(result.data).toEqual(array);
-            });
         });
 
         describe("Round trip, with JSON.stringify/parse", function() {
@@ -387,10 +375,10 @@ describe("JSON Serialization", function() {
                 var initialSet = new ArrayIndexIntSet([1,3,7,15]);
                 var serialized = writeIntSet(initialSet);
                 var deserialized = readIntSet(serialized);
-                expect(deserialized).toEqual(initialSet);
+                expect(deserialized.equals(initialSet)).toBe(true);
             });
 
-            it ("Handles an array", function() {
+            it ("Handles a range", function() {
                 var initialSet = RangeIntSet.fromTo(10, 50);
                 var serialized = writeIntSet(initialSet);
                 var deserialized = readIntSet(serialized);

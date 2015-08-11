@@ -134,11 +134,12 @@ module ozone.serialization {
 
         if (jsonData.hasOwnProperty("type")) {
             var type = parseType(jsonData.type);
-            if (type.subTypes.length > 0) {
+            if (type.subTypes.length > 0  &&  type.mainType !== 'arle') {
                 throw new Error("Unknown subtypes: "+type.subTypes);
             }
             switch (type.mainType) {
-                case "array" : return intSet.ArrayIndexIntSet.fromArray(jsonData.data);
+                case "array" : return intSet.ArrayIndexIntSet.fromArray(jsonData.data);  // No longer written
+                case "arle"  : return readIntSetArleData(type, jsonData);
                 case "empty" : return ozone.intSet.empty;
                 case "range" : return intSet.RangeIntSet.fromTo(jsonData.min, jsonData.max);
                 default: throw new Error("Unknown IntSet type: "+jsonData.type)
@@ -150,7 +151,7 @@ module ozone.serialization {
     export function writeIntSet( toWrite : IntSet ) : IntSetMetaData {
         if (toWrite.size() === 0)                  return {type: "empty"};
         if (toWrite instanceof intSet.RangeIntSet) return writeRangeIntSet(<intSet.RangeIntSet> toWrite);
-        return writeIntSetArrayData(toWrite);
+        return writeIntSetArleData(toWrite);
     }
 
     function writeRangeIntSet(rangeIntSet : intSet.RangeIntSet) : IntSetRangeData {
@@ -161,17 +162,20 @@ module ozone.serialization {
         };
     }
 
-    function writeIntSetArrayData(toWrite : IntSet) : IntSetArrayData {
-        var array : number[] = [];
-        if (toWrite instanceof intSet.ArrayIndexIntSet) {
-            array = (<intSet.ArrayIndexIntSet> toWrite).toArray();
-        }
-        else {
-            toWrite.each(value => { array.push(value) });
-        }
+    function readIntSetArleData(parsedType : ParsedType, jsonData : any) : IntSet {
+        var base = Number(parsedType.subTypes[0]);
+        var arle = new intSet.ArleIntSet(base, jsonData.data);
+        return intSet.mostEfficientIntSet(arle);
+    }
+
+    function writeIntSetArleData(toWrite :  IntSet) : IntSetArleData {
+        var base = 36;
+        var builder = intSet.ArleIntSet.builderWithBase(base);
+        toWrite.each(builder.onItem);
+        var arle = builder.onEnd();
         return {
-            type: "array",
-            data: array
+            type: "arle/"+arle.base,
+            data: arle.data
         };
     }
 

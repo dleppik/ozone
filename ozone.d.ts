@@ -153,7 +153,7 @@ declare module ozone {
          * The behavior when size === 0 may change in future versions.
          */
         max(): number;
-        /** The number of values for which has() returns true.  This should be extremely fast. */
+        /** The number of values for which has() returns true.  This should generally be extremely fast. */
         size(): number;
         /** Iterate over all "true" elements in order. */
         each(action: (index: number) => void): any;
@@ -600,6 +600,66 @@ declare module ozone.intSet {
  * Copyright 2013-2015 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
  */
 declare module ozone.intSet {
+    /**
+     * Implements all IntSet methods in terms of iterator().
+     */
+    class AbstractIntSet implements IntSet {
+        private cachedMin;
+        private cachedMax;
+        private cachedSize;
+        private generateStats();
+        has(index: number): boolean;
+        min(): number;
+        max(): number;
+        size(): number;
+        each(action: (p1: number) => void): void;
+        iterator(): ozone.OrderedIterator<number>;
+        union(bm: ozone.IntSet): ozone.IntSet;
+        intersection(set: ozone.IntSet): ozone.IntSet;
+        intersectionOfUnion(toUnion: ozone.IntSet[]): ozone.IntSet;
+        equals(bm: ozone.IntSet): boolean;
+    }
+}
+/**
+ * Copyright 2013-2015 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
+ */
+declare module ozone.intSet {
+    /**
+     * ASCII Run-Length Encoding IntSet:  a fairly compact ASCII representation of a bitmap.  Intended for use in JSON,
+     * where data should be short and/or easily compressed.  Being simple enough to spot-check values is also desirable,
+     * and since JSON files are likely to be transmitted in a compressed format, we focus on compressibility rather than
+     * actual compactness.
+     *
+     * This is a quick, good-enough implementation that doesn't require WindowBase64.btoa() (not in IE 9 or Node.js)
+     * or ArrayBuffer (not in IE 9).  As a result, this is likely to go away once we drop support for IE 9.  (We are
+     * likely to be considerably slower than Microsoft in dropping IE 9 support.)
+     *
+     * Consists of a string of numbers; single digit numbers are written verbatim, while multi-digit numbers are in
+     * parentheses.  The base of the numbers varies; ARLE-10 is base-10, useful for debugging, ARLE-36 is the most
+     * compact. Thus, the ARLE-10 string '4(32)123(18)' yields the numbers [4, 32, 1, 2, 3, 18].
+     *
+     * Once the string of numbers is decoded, interpretation is simple run-length encoding: the first digit is the
+     * number of 0's, the second is the number of 1's, and so on.  Thus, the ARLE-10 string '3211' yields the
+     * little-endian bits 0001101, which in turn means that the IntSet consists of 3, 4, and 6.  Similarly, '0123'
+     * yields bits 100111, and the IntSet consists of the numbers [0, 3, 4, 5].  Note that '0' should only occur as the
+     * first character, where it indicates that the IntSet includes 0.  Because the bits should always end with a 1,
+     * there is always an even number of run-length numbers.
+     */
+    class ArleIntSet extends AbstractIntSet {
+        base: number;
+        data: string;
+        static builderWithBase(base: any): Reducer<number, ArleIntSet>;
+        static builder(min?: number, max?: number, base?: number): Reducer<number, IntSet>;
+        constructor(base: number, data: string);
+        /** Iterates over the run length numbers. */
+        runLengthIterator(): Iterator<number>;
+        iterator(): OrderedIterator<number>;
+    }
+}
+/**
+ * Copyright 2013-2015 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
+ */
+declare module ozone.intSet {
     var numberOfArrayIndexIntSetsConstructed: number;
     /**
      * The most trivial of general-purpose IntSet implementations;  a sorted array of indexes.  This can work well for
@@ -753,6 +813,23 @@ declare module ozone.intSet {
         intersection(bm: IntSet): IntSet;
         intersectionOfUnion(toUnion: IntSet[]): ozone.IntSet;
         toString(): string;
+    }
+}
+/**
+ * Copyright 2013-2015 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
+ */
+declare module ozone.intSet {
+    /**
+     * Wraps an Iterator to build an OrderedIterator.
+     */
+    class SimpleOrderedIterator<I> implements OrderedIterator<I> {
+        private iterator;
+        private nextItem;
+        private hasNextItem;
+        constructor(iterator: Iterator<I>);
+        hasNext(): boolean;
+        next(): I;
+        skipTo(item: I): void;
     }
 }
 /**
@@ -955,6 +1032,28 @@ declare module ozone.serialization {
     interface IntSetArrayData extends IntSetMetaData {
         /** The values, sorted from lowest to highest. */
         data: number[];
+    }
+    /**
+     * ASCII Run-Length Encoding IntSet:  a fairly compact ASCII representation of a bitmap.  Type = "arle/n" where n
+     * is the base.  Typically arle/36.
+     *
+     * This is a quick, good-enough implementation that doesn't require WindowBase64.btoa() (not in IE 9 or Node.js)
+     * or ArrayBuffer (not in IE 9).  As a result, this is likely to go away once we drop support for IE 9.  (We are
+     * likely to be considerably slower than Microsoft in dropping IE 9 support.)
+     *
+     * Consists of a string of numbers; single digit numbers are written verbatim, while multi-digit numbers are in
+     * parentheses.  The base of the numbers varies; ARLE-10 is base-10, useful for debugging, ARLE-36 is the most
+     * compact. Thus, the ARLE-10 string '4(32)123(18)' yields the numbers [4, 32, 1, 2, 3, 18].
+     *
+     * Once the string of numbers is decoded, interpretation is simple run-length encoding: the first digit is the
+     * number of 0's, the second is the number of 1's, and so on.  Thus, the ARLE-10 string '3211' yields the
+     * little-endian bits 0001101, which in turn means that the IntSet consists of 3, 4, and 6.  Similarly, '0123'
+     * yields bits 100111, and the IntSet consists of the numbers [0, 3, 4, 5].  Note that '0' should only occur as the
+     * first character, where it indicates that the IntSet includes 0.  Because the bits should always end with a 1,
+     * there is always an even number of run-length numbers.
+     */
+    interface IntSetArleData extends IntSetMetaData {
+        data: string;
     }
 }
 /**

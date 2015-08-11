@@ -188,7 +188,7 @@ module ozone {
          */
         max() : number;
 
-        /** The number of values for which has() returns true.  This should be extremely fast. */
+        /** The number of values for which has() returns true.  This should generally be extremely fast. */
         size() : number;
 
         /** Iterate over all "true" elements in order. */

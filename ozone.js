@@ -1411,6 +1411,235 @@ var ozone;
 (function (ozone) {
     var intSet;
     (function (intSet) {
+        /**
+         * Implements all IntSet methods in terms of iterator().
+         */
+        var AbstractIntSet = (function () {
+            function AbstractIntSet() {
+                this.cachedMin = null;
+                this.cachedMax = null;
+                this.cachedSize = null;
+            }
+            AbstractIntSet.prototype.generateStats = function () {
+                var max = Number.MIN_VALUE;
+                var size = 0;
+                var previous = -1;
+                this.each(function (n) {
+                    previous = n;
+                    size++;
+                });
+                this.cachedSize = size;
+                this.cachedMax = previous;
+            };
+            AbstractIntSet.prototype.has = function (index) {
+                var it = this.iterator();
+                it.skipTo(index);
+                return it.hasNext() && it.next() === index;
+            };
+            AbstractIntSet.prototype.min = function () {
+                if (this.cachedMin === null) {
+                    this.cachedMin = this.iterator().hasNext() ? this.iterator().next() : -1;
+                }
+                return this.cachedMin;
+            };
+            AbstractIntSet.prototype.max = function () {
+                if (this.cachedMax === null) {
+                    this.generateStats();
+                }
+                return this.cachedMax;
+            };
+            AbstractIntSet.prototype.size = function () {
+                if (this.cachedSize === null) {
+                    this.generateStats();
+                }
+                return this.cachedSize;
+            };
+            AbstractIntSet.prototype.each = function (action) {
+                var it = this.iterator();
+                while (it.hasNext()) {
+                    var item = it.next();
+                    action(item);
+                }
+            };
+            AbstractIntSet.prototype.iterator = function () {
+                throw new Error("Subclasses must provide an implementation of iterator()");
+            };
+            AbstractIntSet.prototype.union = function (bm) {
+                return intSet.unionOfOrderedIterators(this.iterator(), bm.iterator());
+            };
+            AbstractIntSet.prototype.intersection = function (set) {
+                return intSet.intersectionOfOrderedIteratorsWithBuilder(intSet.bestBuilderForIntersection(this, set).builder(), [this.iterator(), set.iterator()]);
+            };
+            AbstractIntSet.prototype.intersectionOfUnion = function (toUnion) {
+                return ozone.intSet.intersectionOfUnionByIteration(this, toUnion);
+            };
+            AbstractIntSet.prototype.equals = function (bm) {
+                return intSet.equalIntSets(this, bm);
+            };
+            return AbstractIntSet;
+        })();
+        intSet.AbstractIntSet = AbstractIntSet;
+    })(intSet = ozone.intSet || (ozone.intSet = {}));
+})(ozone || (ozone = {}));
+/**
+ * Copyright 2013-2015 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
+ */
+/// <reference path='../_all.ts' />
+var ozone;
+(function (ozone) {
+    var intSet;
+    (function (intSet) {
+        /**
+         * ASCII Run-Length Encoding IntSet:  a fairly compact ASCII representation of a bitmap.  Intended for use in JSON,
+         * where data should be short and/or easily compressed.  Being simple enough to spot-check values is also desirable,
+         * and since JSON files are likely to be transmitted in a compressed format, we focus on compressibility rather than
+         * actual compactness.
+         *
+         * This is a quick, good-enough implementation that doesn't require WindowBase64.btoa() (not in IE 9 or Node.js)
+         * or ArrayBuffer (not in IE 9).  As a result, this is likely to go away once we drop support for IE 9.  (We are
+         * likely to be considerably slower than Microsoft in dropping IE 9 support.)
+         *
+         * Consists of a string of numbers; single digit numbers are written verbatim, while multi-digit numbers are in
+         * parentheses.  The base of the numbers varies; ARLE-10 is base-10, useful for debugging, ARLE-36 is the most
+         * compact. Thus, the ARLE-10 string '4(32)123(18)' yields the numbers [4, 32, 1, 2, 3, 18].
+         *
+         * Once the string of numbers is decoded, interpretation is simple run-length encoding: the first digit is the
+         * number of 0's, the second is the number of 1's, and so on.  Thus, the ARLE-10 string '3211' yields the
+         * little-endian bits 0001101, which in turn means that the IntSet consists of 3, 4, and 6.  Similarly, '0123'
+         * yields bits 100111, and the IntSet consists of the numbers [0, 3, 4, 5].  Note that '0' should only occur as the
+         * first character, where it indicates that the IntSet includes 0.  Because the bits should always end with a 1,
+         * there is always an even number of run-length numbers.
+         */
+        var ArleIntSet = (function (_super) {
+            __extends(ArleIntSet, _super);
+            function ArleIntSet(base, data) {
+                _super.call(this);
+                this.base = base;
+                this.data = data;
+            }
+            ArleIntSet.builderWithBase = function (base) {
+                var data = "";
+                var done = false;
+                var lastWritten = -1;
+                var lastItem = -1;
+                var numConsecutive = 0;
+                var writeNumber = function (num) {
+                    var str = num.toString(base);
+                    data += (str.length === 1) ? str : "(" + str + ")";
+                };
+                var writePair = function (numFalse, numTrue) {
+                    writeNumber(numFalse);
+                    writeNumber(numTrue);
+                };
+                var numBlank = function () {
+                    var consecutiveStart = lastItem - numConsecutive + 1;
+                    return consecutiveStart - lastWritten - 1;
+                };
+                return {
+                    onItem: function (item) {
+                        if (done) {
+                            throw new Error("Builder being called multiple times.");
+                        }
+                        if (lastItem === item - 1 || lastItem === -1) {
+                            numConsecutive++;
+                        }
+                        else {
+                            writePair(numBlank(), numConsecutive);
+                            numConsecutive = 1;
+                            lastWritten = lastItem;
+                        }
+                        lastItem = item;
+                    },
+                    onEnd: function () {
+                        done = true;
+                        if (lastItem === -1) {
+                            return new ArleIntSet(base, "");
+                        }
+                        writePair(numBlank(), numConsecutive);
+                        return new ArleIntSet(base, data);
+                    }
+                };
+            };
+            ArleIntSet.builder = function (min, max, base) {
+                if (min === void 0) { min = 0; }
+                if (max === void 0) { max = -1; }
+                if (base === void 0) { base = 36; }
+                return this.builderWithBase(base);
+            };
+            /** Iterates over the run length numbers. */
+            ArleIntSet.prototype.runLengthIterator = function () {
+                var data = this.data;
+                var base = this.base;
+                var dataIndex = 0;
+                var hasNext = function () {
+                    return dataIndex < data.length;
+                };
+                var nextRleNumber = function () {
+                    if (hasNext()) {
+                        var ch = data.charAt(dataIndex);
+                        dataIndex++;
+                        var result = (ch === '(') ? readLongNumber() : parseInt(ch, base);
+                        return result;
+                    }
+                };
+                var readLongNumber = function () {
+                    var str = "";
+                    var ch = "";
+                    while (hasNext() && ch !== ')') {
+                        ch = data.charAt(dataIndex);
+                        str += ch;
+                        dataIndex++;
+                    }
+                    if (ch !== ')') {
+                        throw new Error("Unterminated parentheses");
+                    }
+                    return parseInt(str, base);
+                };
+                return {
+                    hasNext: hasNext,
+                    next: nextRleNumber
+                };
+            };
+            ArleIntSet.prototype.iterator = function () {
+                return new intSet.SimpleOrderedIterator(new RunLengthConversionIterator(this.runLengthIterator()));
+            };
+            return ArleIntSet;
+        })(intSet.AbstractIntSet);
+        intSet.ArleIntSet = ArleIntSet;
+        /** Translates run-length data into OrderedIterator data. */
+        var RunLengthConversionIterator = (function () {
+            function RunLengthConversionIterator(runLengthIterator) {
+                this.runLengthIterator = runLengthIterator;
+                this.previous = -1;
+                this.remainingTrues = 0;
+            }
+            RunLengthConversionIterator.prototype.hasNext = function () { return this.remainingTrues > 0 || this.runLengthIterator.hasNext(); };
+            RunLengthConversionIterator.prototype.readPair = function () {
+                this.previous += this.runLengthIterator.next(); // Skip to the next true
+                this.remainingTrues = this.runLengthIterator.next(); // the next true
+            };
+            RunLengthConversionIterator.prototype.next = function () {
+                if (this.hasNext()) {
+                    if (!this.remainingTrues) {
+                        this.readPair();
+                    }
+                    this.previous++;
+                    this.remainingTrues--;
+                    return this.previous;
+                }
+            };
+            return RunLengthConversionIterator;
+        })();
+    })(intSet = ozone.intSet || (ozone.intSet = {}));
+})(ozone || (ozone = {}));
+/**
+ * Copyright 2013-2015 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
+ */
+/// <reference path='../_all.ts' />
+var ozone;
+(function (ozone) {
+    var intSet;
+    (function (intSet) {
         intSet.numberOfArrayIndexIntSetsConstructed = 0;
         /**
          * The most trivial of general-purpose IntSet implementations;  a sorted array of indexes.  This can work well for
@@ -1917,6 +2146,42 @@ var ozone;
         })();
         intSet.RangeIntSet = RangeIntSet;
         intSet.empty = new RangeIntSet(-1, 0);
+    })(intSet = ozone.intSet || (ozone.intSet = {}));
+})(ozone || (ozone = {}));
+/**
+ * Copyright 2013-2015 by Vocal Laboratories, Inc. Distributed under the Apache License 2.0.
+ */
+/// <reference path='../_all.ts' />
+var ozone;
+(function (ozone) {
+    var intSet;
+    (function (intSet) {
+        /**
+         * Wraps an Iterator to build an OrderedIterator.
+         */
+        var SimpleOrderedIterator = (function () {
+            function SimpleOrderedIterator(iterator) {
+                this.iterator = iterator;
+                this.hasNextItem = iterator.hasNext();
+                if (this.hasNextItem) {
+                    this.nextItem = iterator.next();
+                }
+            }
+            SimpleOrderedIterator.prototype.hasNext = function () { return this.hasNextItem; };
+            SimpleOrderedIterator.prototype.next = function () {
+                var result = this.nextItem;
+                this.hasNextItem = this.iterator.hasNext();
+                this.nextItem = this.iterator.next();
+                return result;
+            };
+            SimpleOrderedIterator.prototype.skipTo = function (item) {
+                while (this.hasNext() && this.nextItem < item) {
+                    this.next();
+                }
+            };
+            return SimpleOrderedIterator;
+        })();
+        intSet.SimpleOrderedIterator = SimpleOrderedIterator;
     })(intSet = ozone.intSet || (ozone.intSet = {}));
 })(ozone || (ozone = {}));
 /**
@@ -2560,11 +2825,12 @@ var ozone;
             //
             if (jsonData.hasOwnProperty("type")) {
                 var type = parseType(jsonData.type);
-                if (type.subTypes.length > 0) {
+                if (type.subTypes.length > 0 && type.mainType !== 'arle') {
                     throw new Error("Unknown subtypes: " + type.subTypes);
                 }
                 switch (type.mainType) {
-                    case "array": return ozone.intSet.ArrayIndexIntSet.fromArray(jsonData.data);
+                    case "array": return ozone.intSet.ArrayIndexIntSet.fromArray(jsonData.data); // No longer written
+                    case "arle": return readIntSetArleData(type, jsonData);
                     case "empty": return ozone.intSet.empty;
                     case "range": return ozone.intSet.RangeIntSet.fromTo(jsonData.min, jsonData.max);
                     default: throw new Error("Unknown IntSet type: " + jsonData.type);
@@ -2578,7 +2844,7 @@ var ozone;
                 return { type: "empty" };
             if (toWrite instanceof ozone.intSet.RangeIntSet)
                 return writeRangeIntSet(toWrite);
-            return writeIntSetArrayData(toWrite);
+            return writeIntSetArleData(toWrite);
         }
         serialization.writeIntSet = writeIntSet;
         function writeRangeIntSet(rangeIntSet) {
@@ -2588,17 +2854,19 @@ var ozone;
                 max: rangeIntSet.max()
             };
         }
-        function writeIntSetArrayData(toWrite) {
-            var array = [];
-            if (toWrite instanceof ozone.intSet.ArrayIndexIntSet) {
-                array = toWrite.toArray();
-            }
-            else {
-                toWrite.each(function (value) { array.push(value); });
-            }
+        function readIntSetArleData(parsedType, jsonData) {
+            var base = Number(parsedType.subTypes[0]);
+            var arle = new ozone.intSet.ArleIntSet(base, jsonData.data);
+            return ozone.intSet.mostEfficientIntSet(arle);
+        }
+        function writeIntSetArleData(toWrite) {
+            var base = 36;
+            var builder = ozone.intSet.ArleIntSet.builderWithBase(base);
+            toWrite.each(builder.onItem);
+            var arle = builder.onEnd();
             return {
-                type: "array",
-                data: array
+                type: "arle/" + arle.base,
+                data: arle.data
             };
         }
         function parseType(typeString) {
@@ -2917,9 +3185,12 @@ var ozone;
 /// <reference path='columnStore/IndexedField.ts' />
 /// <reference path='intSet/bits.ts' />
 /// <reference path='intSet/functions.ts' />
+/// <reference path='intSet/AbstractIntSet.ts' />
+/// <reference path='intSet/ArleIntSet.ts' />
 /// <reference path='intSet/ArrayIndexIntSet.ts' />
 /// <reference path='intSet/BitmapArrayIntSet.ts' />
 /// <reference path='intSet/RangeIntSet.ts' />
+/// <reference path='intSet/SimpleOrderedIterator.ts' />
 /// <reference path='rowStore/functions.ts' />
 /// <reference path='rowStore/CsvReader.ts' />
 /// <reference path='rowStore/RowStore.ts' />

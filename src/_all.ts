@@ -12,9 +12,13 @@
 
 /// <reference path='intSet/bits.ts' />
 /// <reference path='intSet/functions.ts' />
+/// <reference path='intSet/AbstractIntSet.ts' />
+/// <reference path='intSet/ArleIntSet.ts' />
 /// <reference path='intSet/ArrayIndexIntSet.ts' />
 /// <reference path='intSet/BitmapArrayIntSet.ts' />
 /// <reference path='intSet/RangeIntSet.ts' />
+/// <reference path='intSet/SimpleOrderedIterator.ts' />
+
 
 /// <reference path='rowStore/functions.ts' />
 /// <reference path='rowStore/CsvReader.ts' />
